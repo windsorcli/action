@@ -79,8 +79,12 @@ runs:
           tar -xzf "$LOCAL_FILE_NAME" -C "${{ inputs.windsorcli_install_folder }}"
           chmod +x "${{ inputs.windsorcli_install_folder }}/windsor"
           rm -rf "$LOCAL_FILE_NAME"
+          $expected_version="${{ inputs.windsorcli_version }}"
+
         else
 
+          $expected_version="dev"
+  
           echo "Installing Windsor CLI from branch (${{ inputs.windsorcli_branch }})..."
           if [ -z "${{ inputs.windsorcli_branch }}" ]; then
             echo "inputs.windsorcli_branch is not set."
@@ -166,6 +170,7 @@ runs:
             Write-Output "Installing Windsor CLI on Windows from release (${{ inputs.windsorcli_version }})..."
             # Assign the version string to a variable
             $versionString = "${{ inputs.windsorcli_version }}"
+            $expected_version="${{  inputs.windsorcli_version }}"
             # Trim the 'v' from the start of the version string
             $numeric_version = $versionString.TrimStart('v')
             $url = "https://github.com/windsorcli/cli/releases/download/${{ inputs.windsorcli_version }}/windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
@@ -199,6 +204,7 @@ runs:
                 exit 1
             }
         } else {
+            $expected_version="dev"
             Write-Output "Installing Windsor CLI on Windows from branch (${{ inputs.windsorcli_branch }})..."
             try {
                 git clone --branch ${{ inputs.windsorcli_branch }} https://github.com/windsorcli/cli.git
