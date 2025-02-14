@@ -69,21 +69,14 @@ runs:
         LOCAL_FILE_NAME="windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
         DOWNLOAD_FILE_NAME="https://github.com/windsorcli/cli/releases/download/${{ inputs.windsorcli_version }}/${LOCAL_FILE_NAME}"
 
-        echo "Creating directory: ${{ inputs.windsorcli_install_folder }}"
-        if ! command -v mkdir &> /dev/null; then
-          echo "mkdir command not found. Please ensure it is installed and in your PATH."
-          exit 1
-        fi
-        mkdir -p "${{ inputs.windsorcli_install_folder }}"
-
         if [ "${{ inputs.use_release }}" == "true" ]; then
           echo "Installing Windsor CLI using release (${{ inputs.windsorcli_version }})..."
           curl -L -o "$LOCAL_FILE_NAME" "$DOWNLOAD_FILE_NAME"
 
           mkdir -p "${{ inputs.windsorcli_install_folder }}"
 
-          echo "tar -xzf $LOCAL_FILE_NAME -C ${{inputs.windsorcli_install_folder}}/windsor"
-          tar -xzf "$LOCAL_FILE_NAME" -C "${{ inputs.windsorcli_install_folder }}/windsor"
+          echo "tar -xzf $LOCAL_FILE_NAME -C ${{inputs.windsorcli_install_folder}}"
+          tar -xzf "$LOCAL_FILE_NAME" -C "${{ inputs.windsorcli_install_folder }}"
           chmod +x "${{ inputs.windsorcli_install_folder }}/windsor"
           rm -rf "$LOCAL_FILE_NAME"
         else
@@ -108,6 +101,7 @@ runs:
             exit 1
           fi
         fi
+
       shell: bash
 
     # Install Windsor CLI on Windows
