@@ -225,23 +225,23 @@ runs:
         echo "Installed version: $installed_version"
         echo "Expected version: $expected_version"
 
-        # if ("${{ inputs.use_release }}" -eq "true") {
-        #   if [ "$installed_version" == "${{ inputs.windsorcli_version }}" ]; then
-        #     echo "Version match: got $installed_version as expected"
-        #     exit 0
-        #   else
-        #     echo "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installed_version"
-        #     exit 1
-        #   fi
-        # } else {
-        #   if [ "$installed_version" == "dev" ]; then
-        #     echo "Version match: got $installed_version as expected"
-        #     exit 0
-        #   else
-        #     echo "Version mismatch: expected dev, got $installed_version"
-        #     exit 1
-        #   fi
-        # }
+        if ("${{ inputs.use_release }}" -eq "true") {
+          if [ "$installed_version" == "${{ inputs.windsorcli_version }}" ]; then
+            echo "Version match: got $installed_version as expected"
+            exit 0
+          else
+            echo "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installed_version"
+            exit 1
+          fi
+        } else {
+          if [ "$installed_version" == "dev" ]; then
+            echo "Version match: got $installed_version as expected"
+            exit 0
+          else
+            echo "Version mismatch: expected dev, got $installed_version"
+            exit 1
+          fi
+        }
       shell: bash
 
     # Verify Windsor CLI version on Windows
@@ -264,14 +264,19 @@ runs:
         Write-Output "Installed version: $installedVersion"
         Write-Output "Expected version: $expected_version"
 
-        exit 0
+        if ($installedVersion -contains $expected_version) {
+          Write-Output "Version match: $installedVersion contains $expected_version"
+        } else {
+          Write-Error "Version mismatch: $installedVersion does not contain $expected_version"
+          exit 1
+        }
+
         if ("${{ inputs.use_release }}" -eq "true") {
-          if ("$installedVersion" -eq "${{ inputs.windsorcli_version }}") {
-            Write-Output "Version match: got $installedVersion as expected"
+          if ($installedVersion -contains $expected_version) {
+            Write-Output "Version match: $installedVersion contains $expected_version"
             exit 0
           } else {
-            Write-Output "Version mismatch: expected .${{ inputs.windsorcli_version }}., got .$installedVersion."
-            Write-Error "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installedVersion"
+            Write-Error "Version mismatch: $installedVersion does not contain $expected_version"
             exit 1
           }
         } else {
