@@ -222,23 +222,24 @@ runs:
       run: |
         set -e
         installed_version=$("${{ inputs.windsorcli_install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
-        if [ "$installed_version" != "${{ inputs.windsorcli_version }}" ]; then
-          if [ "${{ inputs.use_release }}" == "true" ]; then  
+
+        if ("${{ inputs.use_release }}" -eq "true") {
+          if [ "$installed_version" == "${{ inputs.windsorcli_version }}" ]; then
+            echo "Version match: got $installed_version as expected"
+            exit 0
+          else
             echo "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installed_version"
             exit 1
-          else
-            if [ "$installed_version" == "dev" ]; then  
-              echo "Version match: got $installed_version as expected"
-              exit 0
-            else
-              echo "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installed_version"
-              exit 1
-            fi
           fi
-        else
-          echo "Version match: got $installed_version as expected"
-          exit 1
-        fi
+        } else {
+          if [ "$installed_version" == "dev" ]; then
+            echo "Version match: got $installed_version as expected"
+            exit 0
+          else
+            echo "Version mismatch: expected dev, got $installed_version"
+            exit 1
+          fi
+        }
       shell: bash
 
     # Verify Windsor CLI version on Windows
@@ -252,22 +253,23 @@ runs:
         # Trim any whitespace from the extracted version
         $installedVersion = $installedVersion.Trim()
         $installedVersion = "v" + $installedVersion
-        # Compare the installed version with the expected version
-        if ($installedVersion -ne "${{ inputs.windsorcli_version }}") {
-          if ("${{ inputs.use_release }}" -eq "true") {
+
+        if ("${{ inputs.use_release }}" -eq "true") {
+          if ($installedVersion -eq "${{ inputs.windsorcli_version }}") {
+            Write-Output "Version match: got $installedVersion as expected"
+            exit 0
+          } else {
             Write-Error "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installedVersion"
             exit 1
-          } else {
-            if ($installedVersion -eq "vdev") {
-              Write-Output "Version match: got dev as expected"
-              exit 0
-            } else {
-              Write-Error "Version mismatch: expected dev, got $installedVersion"
-              exit 1
-            }
           }
         } else {
-          Write-Output "Version match: got $installedVersion as expected"
-          exit 0
+          if ($installedVersion -eq "vdev") {
+            Write-Output "Version match: got dev as expected"
+            exit 0
+          } else {
+            Write-Error "Version mismatch: expected dev, got $installedVersion"
+            exit 1
+          }
         }
+
       shell: powershell
