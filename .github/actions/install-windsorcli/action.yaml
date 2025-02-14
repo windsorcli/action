@@ -204,7 +204,6 @@ runs:
                 exit 1
             }
         } else {
-            expected_version="dev"
             Write-Output "Installing Windsor CLI on Windows from branch (${{ inputs.windsorcli_branch }})..."
             try {
                 git clone --branch ${{ inputs.windsorcli_branch }} https://github.com/windsorcli/cli.git
