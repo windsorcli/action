@@ -216,6 +216,7 @@ runs:
       run: |
         set -e
         installed_version=$("${{ inputs.windsorcli_install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
+        installed_version=${installed_version//v/}
 
         if ("${{ inputs.use_release }}" -eq "true") {
           if [ "$installed_version" == "${{ inputs.windsorcli_version }}" ]; then
@@ -245,6 +246,7 @@ runs:
         # Extract the version number from the output
         $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1'
         # Trim any whitespace from the extracted version
+        $installedVersion = $installedVersion -replace 'Version: ([^\s]+).*', '$1'
         $installedVersion = $installedVersion.Trim()
         $installedVersion = "v" + $installedVersion
 
