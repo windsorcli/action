@@ -80,11 +80,12 @@ runs:
           echo "Installing Windsor CLI using release (${{ inputs.windsorcli_version }})..."
           curl -L -o "$LOCAL_FILE_NAME" "$DOWNLOAD_FILE_NAME"
 
-          echo "tar -xzf $LOCAL_FILE_NAME -C ${{inputs.windsorcli_install_folder}}"
-          tar -xzf "$LOCAL_FILE_NAME" -C "${{ inputs.windsorcli_install_folder }}"
-          chmod +x "${{ inputs.windsorcli_install_folder }}"/windsor
+          echo "tar -xzf $LOCAL_FILE_NAME -C ${{inputs.windsorcli_install_folder}}/windsor"
+          tar -xzf "$LOCAL_FILE_NAME" -C "${{ inputs.windsorcli_install_folder }}/windsor"
+          chmod +x "${{ inputs.windsorcli_install_folder }}/windsor"
           rm -rf "$LOCAL_FILE_NAME"
         else
+
           echo "Installing Windsor CLI from branch (${{ inputs.windsorcli_branch }})..."
           if [ -z "${{ inputs.windsorcli_branch }}" ]; then
             echo "inputs.windsorcli_branch is not set."
@@ -218,20 +219,21 @@ runs:
       if: inputs.os == 'Linux' || inputs.os == 'macOS'
       run: |
         set -e
-        installed_version=$(${inputs.windsorcli_install_folder}/windsor version)        
-        if [ "$installed_version" != "${inputs.windsorcli_version}" ]; then
-          if [ "${inputs.use_release}" == "true" ]; then  
-            echo "Version mismatch: expected ${inputs.windsorcli_version}, got $installed_version"
+        installed_version=$("${{ inputs.windsorcli_install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
+        if [ "$installed_version" != "${{ inputs.windsorcli_version }}" ]; then
+          if [ "${{ inputs.use_release }}" == "true" ]; then  
+            echo "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installed_version"
             exit 1
           else
             if [ "$installed_version" != "dev" ]; then  
-              echo "Version mismatch: expected ${inputs.windsorcli_version}, got $installed_version"
-              exit 1
-            else
-              echo "Version match: got $installed_version as expected"
+              echo "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installed_version"
               exit 1
             fi
+            exit 0
           fi
+        else
+          echo "Version match: got $installed_version as expected"
+          exit 1
         fi
       shell: bash
 
@@ -239,7 +241,13 @@ runs:
     - name: Check Windsor CLI version on Windows
       if: inputs.os == 'Windows'
       run: |
-        $installedVersion = & "${{ inputs.windsorcli_install_folder }}\\windsor.exe" version
+        # Retrieve the installed version of Windsor CLI
+        $installedVersionOutput = & "${{ inputs.windsorcli_install_folder }}\\windsor.exe" version
+        # Extract the version number from the output
+        $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1'
+        # Trim any whitespace from the extracted version
+        $installedVersion = $installedVersion.Trim()
+        # Compare the installed version with the expected version
         if ($installedVersion -ne "${{ inputs.windsorcli_version }}") {
           if ("${{ inputs.use_release }}" -eq "true") {
             Write-Error "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installedVersion"
@@ -248,10 +256,11 @@ runs:
             if ($installedVersion -ne "dev") {
               Write-Error "Version mismatch: expected dev, got $installedVersion"
               exit 1
-            } else {
-              Write-Output "Version match: got $installedVersion as expected"
-              exit 1
-            }
+            } 
+            exit 0
           }
+        } else {
+          Write-Output "Version match: got $installedVersion as expected"
+          exit 0
         }
       shell: powershell
