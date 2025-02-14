@@ -218,7 +218,7 @@ runs:
       if: inputs.os == 'Linux' || inputs.os == 'macOS'
       run: |
         set -e
-        installed_version=$(${inputs.windsorcli_install_folder}/windsor --version)        
+        installed_version=$(${inputs.windsorcli_install_folder}/windsor version)        
         if [ "$installed_version" != "${inputs.windsorcli_version}" ]; then
           if [ "${inputs.use_release}" == "true" ]; then  
             echo "Version mismatch: expected ${inputs.windsorcli_version}, got $installed_version"
@@ -239,7 +239,7 @@ runs:
     - name: Check Windsor CLI version on Windows
       if: inputs.os == 'Windows'
       run: |
-        $installedVersion = & "${{ inputs.windsorcli_install_folder }}\\windsor.exe" --version
+        $installedVersion = & "${{ inputs.windsorcli_install_folder }}\\windsor.exe" version
         if ($installedVersion -ne "${{ inputs.windsorcli_version }}") {
           if ("${{ inputs.use_release }}" -eq "true") {
             Write-Error "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installedVersion"
