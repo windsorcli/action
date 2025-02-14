@@ -219,7 +219,8 @@ runs:
         installed_version="v${installed_version}"
 
         # make a new variable called expected_version 
-        expected_version=$(echo "${{ inputs.windsorcli_version }}" | sed 's/^v//')
+        # expected_version=$(echo "${{ inputs.windsorcli_version }}" | sed 's/^v//')
+        expected_version="v${{  inputs.windsorcli_version }}"
 
         echo "Installed version: $installed_version"
         echo "Expected version: $expected_version"
@@ -258,7 +259,7 @@ runs:
         $installedVersion = "v" + $installedVersion
 
         # make a new variable called expected_version 
-        expected_version=$(echo "${{ inputs.windsorcli_version }}" | sed 's/^v//')
+        $expected_version = ${{ inputs.windsorcli_version }}.TrimStart('v')
   
         Write-Output "Installed version: $installedVersion"
         Write-Output "Expected version: $expected_version"
