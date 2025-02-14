@@ -244,9 +244,8 @@ runs:
         # Retrieve the installed version of Windsor CLI
         $installedVersionOutput = & "${{ inputs.windsorcli_install_folder }}\\windsor.exe" version
         # Extract the version number from the output
-        $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1'
+        $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+)', '$1'
         # Trim any whitespace from the extracted version
-        $installedVersion = $installedVersion -replace 'Version: ([^\s]+).*', '$1'
         $installedVersion = $installedVersion.Trim()
         $installedVersion = "v" + $installedVersion
 
