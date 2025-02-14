@@ -96,7 +96,7 @@ runs:
             exit 1
           fi
 
-          if ! go build -o "${{ inputs.windsorcli_install_folder }}"/windsor; then
+          if ! go build -o "${{ inputs.windsorcli_install_folder }}/windsor"; then
             echo "Failed to build the Windsor CLI. Please ensure Go is installed and properly configured."
             exit 1
           fi
