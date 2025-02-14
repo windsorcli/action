@@ -80,6 +80,8 @@ runs:
           echo "Installing Windsor CLI using release (${{ inputs.windsorcli_version }})..."
           curl -L -o "$LOCAL_FILE_NAME" "$DOWNLOAD_FILE_NAME"
 
+          mkdir -p "${{ inputs.windsorcli_install_folder }}"
+
           echo "tar -xzf $LOCAL_FILE_NAME -C ${{inputs.windsorcli_install_folder}}/windsor"
           tar -xzf "$LOCAL_FILE_NAME" -C "${{ inputs.windsorcli_install_folder }}/windsor"
           chmod +x "${{ inputs.windsorcli_install_folder }}/windsor"
@@ -249,14 +251,15 @@ runs:
         $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1'
         # Trim any whitespace from the extracted version
         $installedVersion = $installedVersion.Trim()
+        $installedVersion = "v" + $installedVersion
         # Compare the installed version with the expected version
         if ($installedVersion -ne "${{ inputs.windsorcli_version }}") {
           if ("${{ inputs.use_release }}" -eq "true") {
             Write-Error "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installedVersion"
             exit 1
           } else {
-            if ($installedVersion -eq "dev") {
-              Write-Output "Version match: got $installedVersion as expected"
+            if ($installedVersion -eq "vdev") {
+              Write-Output "Version match: got dev as expected"
               exit 0
             } else {
               Write-Error "Version mismatch: expected dev, got $installedVersion"
