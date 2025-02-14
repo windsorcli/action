@@ -102,6 +102,29 @@ runs:
           fi
         fi
 
+        echo "Installation complete."
+
+        # Verify the installation
+        installed_version=$("${{ inputs.windsorcli_install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
+        installed_version="v${installed_version}"
+
+        if [ "${{ inputs.use_release }}" == "true" ]; then
+          if [ "$installed_version" == "${{ inputs.windsorcli_version }}" ]; then
+            echo "Using release version: ${{ inputs.windsorcli_version }}"
+            echo "Installed version: $installed_version"
+          else
+            echo "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installed_version"
+            exit 1
+          fi
+        else
+          echo "Using branch version: ${{ inputs.windsorcli_branch }}"
+          if [ "$installed_version" == "dev" ]; then
+            echo "Installed version: $installed_version"  
+          else
+            echo "Version mismatch: expected dev, got $installed_version"
+            exit 1
+          fi
+        fi
       shell: bash
 
     # Install Windsor CLI on Windows
@@ -202,74 +225,11 @@ runs:
 
         Write-Output "Installation complete."
 
-      shell: powershell
-
-    - name: Add Windsor CLI Install Folder to the GitHub path
-      if: inputs.os == 'Linux' || inputs.os == 'macOS'
-      run: |
-        echo "${{ inputs.windsorcli_install_folder }}" >> $GITHUB_PATH
-      shell: bash
-
-    # Verify Windsor CLI version on Linux/macOS
-    - name: Check Windsor CLI version on Linux/macOS
-      if: inputs.os == 'Linux' || inputs.os == 'macOS'
-      run: |
-        set -e
-        installed_version=$("${{ inputs.windsorcli_install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
-        installed_version="v${installed_version}"
-
-        # make a new variable called expected_version 
-        # expected_version=$(echo "${{ inputs.windsorcli_version }}" | sed 's/^v//')
-        expected_version="${{  inputs.windsorcli_version }}"
-
-        echo "Installed version: $installed_version"
-        echo "Expected version: $expected_version"
-
-        if ("${{ inputs.use_release }}" -eq "true") {
-          if [ "$installed_version" == "${{ inputs.windsorcli_version }}" ]; then
-            echo "Version match: got $installed_version as expected"
-            exit 0
-          else
-            echo "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installed_version"
-            exit 1
-          fi
-        } else {
-          if [ "$installed_version" == "dev" ]; then
-            echo "Version match: got $installed_version as expected"
-            exit 0
-          else
-            echo "Version mismatch: expected dev, got $installed_version"
-            exit 1
-          fi
-        }
-      shell: bash
-
-    # Verify Windsor CLI version on Windows
-    - name: Check Windsor CLI version on Windows
-      if: inputs.os == 'Windows'
-      run: |
-        # Retrieve the installed version of Windsor CLI
-        $installedVersionOutput = & "${{ inputs.windsorcli_install_folder }}\\windsor.exe" version
-
-        # Extract the version number from the output
+        # Verify the installation
+        $installedVersionOutput = & "${{ inputs.windsorcli_install_folder }}\windsor.exe" version
         $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1' -replace '.*Commit SHA:.*', ''
-
-        # Trim any whitespace from the extracted version
         $installedVersion = $installedVersion.Trim()
-        $installedVersion = "v" + $installedVersion
-
-        # make a new variable called expected_version 
-        $expected_version = "${{ inputs.windsorcli_version }}".TrimStart('v')
-  
-        Write-Output "Installed version: $installedVersion"
-        Write-Output "Expected version: $expected_version"
-
-        if ($installedVersion -contains $expected_version) {
-          Write-Output "Version match: $installedVersion contains $expected_version"
-        } else {
-          Write-Error "Version mismatch: $installedVersion does not contain $expected_version"
-          exit 1
-        }
+        $installedVersion = "v" + $installedVersion 
 
         if ("${{ inputs.use_release }}" -eq "true") {
           if ($installedVersion -contains $expected_version) {
@@ -280,7 +240,7 @@ runs:
             exit 1
           }
         } else {
-          if ("$installedVersion" -eq "vdev") {
+          if ($installedVersion -eq "vdev") {
             Write-Output "Version match: got dev as expected"
             exit 0
           } else {
@@ -288,5 +248,10 @@ runs:
             exit 1
           }
         }
-
       shell: powershell
+
+    - name: Add Windsor CLI Install Folder to the GitHub path
+      if: inputs.os == 'Linux' || inputs.os == 'macOS'
+      run: |
+        echo "${{ inputs.windsorcli_install_folder }}" >> $GITHUB_PATH
+      shell: bash
