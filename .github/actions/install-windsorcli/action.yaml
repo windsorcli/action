@@ -243,8 +243,9 @@ runs:
 
         if ("${{ inputs.use_release }}" -eq "true") {
           # Compare only the version number
-          if ($installedVersion -like "*$expected_version*") {
-            Write-Output "Version match: $installedVersion equals $expected_version"
+          
+          if ($installedVersion -like "$expected_version*") {
+            Write-Output "Version match: $installedVersion starts with $expected_version"
             exit 0
           } else {
             Write-Error "Version mismatch: $installedVersion does not equal $expected_version"
