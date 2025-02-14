@@ -219,8 +219,12 @@ runs:
         installed_version="${installed_version}"
         installed_version="v${installed_version}"
 
+
+        # make a new variable called expected_version 
+        expected_version="${{ inputs.windsorcli_version#v }}"
+
         echo "Installed version: $installed_version"
-        echo "Expected version: ${{ inputs.windsorcli_version }}"
+        echo "Expected version: ${{ expected_version }}"
 
         # if ("${{ inputs.use_release }}" -eq "true") {
         #   if [ "$installed_version" == "${{ inputs.windsorcli_version }}" ]; then
@@ -255,8 +259,11 @@ runs:
         $installedVersion = $installedVersion.Trim()
         $installedVersion = "v" + $installedVersion
 
+        # make a new variable called expected_version 
+        expected_version="${{ inputs.windsorcli_version#v }}"
+  
         Write-Output "Installed version: $installedVersion"
-        Write-Output "Expected version: ${{ inputs.windsorcli_version }}"
+        Write-Output "Expected version: ${{ expected_version }}"
 
         exit 0
         if ("${{ inputs.use_release }}" -eq "true") {
