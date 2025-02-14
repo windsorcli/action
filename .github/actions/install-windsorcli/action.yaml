@@ -216,15 +216,13 @@ runs:
       run: |
         set -e
         installed_version=$("${{ inputs.windsorcli_install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
-        installed_version="${installed_version}"
         installed_version="v${installed_version}"
 
-
         # make a new variable called expected_version 
-        expected_version="${{ inputs.windsorcli_version#v }}"
+        expected_version=$(echo "${{ inputs.windsorcli_version }}" | sed 's/^v//')
 
         echo "Installed version: $installed_version"
-        echo "Expected version: ${{ expected_version }}"
+        echo "Expected version: $expected_version"
 
         # if ("${{ inputs.use_release }}" -eq "true") {
         #   if [ "$installed_version" == "${{ inputs.windsorcli_version }}" ]; then
@@ -260,10 +258,10 @@ runs:
         $installedVersion = "v" + $installedVersion
 
         # make a new variable called expected_version 
-        expected_version="${{ inputs.windsorcli_version#v }}"
+        expected_version=$(echo "${{ inputs.windsorcli_version }}" | sed 's/^v//')
   
         Write-Output "Installed version: $installedVersion"
-        Write-Output "Expected version: ${{ expected_version }}"
+        Write-Output "Expected version: $expected_version"
 
         exit 0
         if ("${{ inputs.use_release }}" -eq "true") {
