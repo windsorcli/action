@@ -253,6 +253,7 @@ runs:
             Write-Output "Version match: got $installedVersion as expected"
             exit 0
           } else {
+            Write-Output "Version mismatch: expected .${{ inputs.windsorcli_version }}., got .$installedVersion."
             Write-Error "Version mismatch: expected ${{ inputs.windsorcli_version }}, got $installedVersion"
             exit 1
           }
