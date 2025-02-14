@@ -122,7 +122,7 @@ runs:
           fi
         else
           echo "Using branch version: ${{ inputs.windsorcli_branch }}"
-          if [ "$installed_version" == "dev" ]; then
+          if [ "$installed_version" == "dev" || "$installed_version" == "vdev" ]; then
             echo "Installed version: $installed_version"  
           else
             echo "Version mismatch: expected dev, got $installed_version"
@@ -251,7 +251,7 @@ runs:
             exit 1
           }
         } else {
-          if ($installedVersion -eq "vdev") {
+          if ($installedVersion -like "*dev*") {
             Write-Output "Version match: got dev as expected"
             exit 0
           } else {
