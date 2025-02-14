@@ -249,7 +249,7 @@ runs:
         $installedVersion = "v" + $installedVersion
 
         if ("${{ inputs.use_release }}" -eq "true") {
-          if ($installedVersion -eq "${{ inputs.windsorcli_version }}") {
+          if ("$installedVersion" -eq "${{ inputs.windsorcli_version }}") {
             Write-Output "Version match: got $installedVersion as expected"
             exit 0
           } else {
@@ -257,7 +257,7 @@ runs:
             exit 1
           }
         } else {
-          if ($installedVersion -eq "vdev") {
+          if ("$installedVersion" -eq "vdev") {
             Write-Output "Version match: got dev as expected"
             exit 0
           } else {
