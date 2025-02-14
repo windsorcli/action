@@ -79,11 +79,11 @@ runs:
           tar -xzf "$LOCAL_FILE_NAME" -C "${{ inputs.windsorcli_install_folder }}"
           chmod +x "${{ inputs.windsorcli_install_folder }}/windsor"
           rm -rf "$LOCAL_FILE_NAME"
-          $expected_version="${{ inputs.windsorcli_version }}"
+          expected_version="${{ inputs.windsorcli_version }}"
 
         else
 
-          $expected_version="dev"
+          expected_version="dev"
   
           echo "Installing Windsor CLI from branch (${{ inputs.windsorcli_branch }})..."
           if [ -z "${{ inputs.windsorcli_branch }}" ]; then
@@ -204,7 +204,7 @@ runs:
                 exit 1
             }
         } else {
-            $expected_version="dev"
+            expected_version="dev"
             Write-Output "Installing Windsor CLI on Windows from branch (${{ inputs.windsorcli_branch }})..."
             try {
                 git clone --branch ${{ inputs.windsorcli_branch }} https://github.com/windsorcli/cli.git
@@ -233,16 +233,19 @@ runs:
 
         # Verify the installation
         $installedVersionOutput = & "${{ inputs.windsorcli_install_folder }}\windsor.exe" version
-        $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1' -replace '.*Commit SHA:.*', ''
+        $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1'
         $installedVersion = $installedVersion.Trim()
         $installedVersion = "v" + $installedVersion 
+
+        echo "Installed version: $installedVersion"
+        echo "Expected version: $expected_version"
 
         if ("${{ inputs.use_release }}" -eq "true") {
           if ($installedVersion -contains $expected_version) {
             Write-Output "Version match: $installedVersion contains $expected_version"
             exit 0
           } else {
-            Write-Error "Version mismatch: $installedVersion does not contain $expected_version"
+            Write-Error "Version mismatch: $installedVersion does not equal $expected_version"
             exit 1
           }
         } else {
