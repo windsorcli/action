@@ -252,8 +252,8 @@ runs:
         $installedVersion = $installedVersion.Trim()
         $installedVersion = "v" + $installedVersion
 
-        echo "Installed version: .......$installedVersion........"
-        echo "Expected version: ......${{ inputs.windsorcli_version...... }}"
+        echo "Installed version: $installedVersion"
+        echo "Expected version: ${{ inputs.windsorcli_version }}"
 
         exit 0
         if ("${{ inputs.use_release }}" -eq "true") {
