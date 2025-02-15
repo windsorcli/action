@@ -39,20 +39,20 @@ jobs:
           echo "runner_list=$runner_list"
 
   install-windsorcli:
-    needs: runner-list
-    strategy:
-      fail-fast: false
-      matrix:
+    # needs: runner-list
+    # strategy:
+    #   fail-fast: false
+    #   matrix:
 
-        # This runner list is created by the create-runner-list.sh script
-        runner: ${{ fromJson(needs.runner-list.outputs.runner_list) }}
-    runs-on: 
-      - self-hosted
-      - ${{ matrix.runner.os }}
-      - ${{ matrix.runner.label }}
-      - ${{ matrix.runner.arch }}
+    #     # This runner list is created by the create-runner-list.sh script
+    #     runner: ${{ fromJson(needs.runner-list.outputs.runner_list) }}
+    # runs-on: 
+    #   - self-hosted
+    #   - ${{ matrix.runner.os }}
+    #   - ${{ matrix.runner.label }}
+    #   - ${{ matrix.runner.arch }}
 
-    # runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
   
     steps:
       - name: Checkout code
