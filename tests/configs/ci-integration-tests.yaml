@@ -3,9 +3,9 @@ runners:
   #   label: bare-metal
   #   arch: X64
   - os: Windows
-    label: bare-metal
+    label: windows-latest
     arch: X64
   - os: macOS
-    label: forest-shadows
+    label: macos-latest
     arch: ARM64
   
