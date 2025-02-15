@@ -75,7 +75,8 @@ jobs:
 
       # Install Windsor CLI
       - name: Install Windsor CLI
-        uses: windsorcli/action/.github/actions/install-windsorcli@v0.0.2
+        uses: ./.github/actions/install-windsorcli
+        # uses: windsorcli/action/.github/actions/install-windsorcli@v0.0.2
         with:
           use_release: true
           windsorcli_version: "v0.4.1"
@@ -105,11 +106,4 @@ jobs:
           ${{ github.workspace }}/bin/windsor env
           echo "Calling env"
           env
-        shell: bash
-
-      # Windsor Clean
-      - name: Windsor Clean on Linux/macOS
-        if: always() && (runner.os == 'Linux' || runner.os == 'macOS') 
-        run: |
-          ls -al
         shell: bash
