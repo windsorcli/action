@@ -85,25 +85,9 @@ jobs:
           os: Linux
           arch: X64
       
-      - name: Check folder
-        run: |
-          ls -al
-        shell: bash
-
-      - name: Verify Windsor CLI
-        run: |
-          ${{ github.workspace }}/bin/windsor version
-        shell: bash
-
       - name: Windsor Context Get
         run: |
           ${{ github.workspace }}/bin/windsor context get
-        shell: bash
-
-      - name: Initialize the windsor project
-        run: |
-          export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
-          ${{ github.workspace }}/bin/windsor init local
         shell: bash
 
       - name: Check environment variables
