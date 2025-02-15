@@ -82,8 +82,8 @@ jobs:
           windsorcli_version: "v0.4.1"
           windsorcli_branch: main
           windsorcli_install_folder: ${{ github.workspace }}/bin
-          os: ${{ matrix.runner.os }}
-          arch: ${{ matrix.runner.arch }}
+          os: ${{ runner.os }}
+          arch: ${{ runner.arch }}
         
       - name: Windsor Context Get
         run: |
@@ -91,7 +91,7 @@ jobs:
         shell: bash
 
       - name: Check environment variables (Linux/macOS)
-        if: ${{ matrix.runner.os == 'Linux' || matrix.runner.os == 'macOS' }}
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
           echo KUBECONFIG="$KUBECONFIG"
           echo KUBE_CONFIG_PATH="$KUBE_CONFIG_PATH"
@@ -104,7 +104,7 @@ jobs:
         shell: bash
 
       - name: Check environment variables (Windows)
-        if: ${{ matrix.runner.os == 'Windows' }}
+        if: ${{ runner.os == 'Windows' }}
         run: |
           # Print the $windsorEnvOutput variables
           Write-Output "windsorEnvOutput variables:"
