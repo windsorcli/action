@@ -13,9 +13,65 @@ on:
       - main-branch-update
 
 jobs:
-  install-windsorcli:
+
+  # Runner List
+  # This job creates a runner list based on the windsor-test-config.yaml file
+  # The runner list is used by the integration-test job to run the tests on the correct runner
+  runner-list:
     runs-on: ubuntu-latest
+    outputs:
+      runner_list: ${{ steps.create-runner-list.outputs.runner_list }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create runner list
+        id: create-runner-list
+        run: |
+          set -e
+          runner_list=$(${{github.workspace}}/scripts/create-runner-list.sh tests/configs/ci-integration-tests.yaml)
+          echo "runner_list=$runner_list" >> $GITHUB_ENV
+          echo "::set-output name=runner_list::$runner_list"
+        shell: bash
+
+      - name: Debug Print runner-list
+        run: |
+          echo "runner_list=$runner_list"
+
+  install-windsorcli:
+    needs: runner-list
+    strategy:
+      fail-fast: false
+      matrix:
+
+        # This runner list is created by the create-runner-list.sh script
+        runner: ${{ fromJson(needs.runner-list.outputs.runner_list) }}
+    runs-on:
+      - self-hosted
+      - ${{ matrix.runner.os }}
+      - ${{ matrix.runner.label }}
+      - ${{ matrix.runner.arch }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+        # Install Aqua
+      - name: Install Aqua on Linux/macOS
+        if: matrix.runner.os == 'Linux' || matrix.runner.os == 'macOS'
+        uses: aquaproj/aqua-installer@e2d0136abcf70b7a2f6f505720640750557c4b33 # v3.1.1
+        with:
+          aqua_version: v2.28.0
+
+      - name: Set aqua path
+        if: matrix.runner.os == 'Linux' || matrix.runner.os == 'macOS'
+        run: |
+          echo "${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin" >> $GITHUB_PATH
+
+      # Install tools
+      - name: Install tools
+        run: |
+          aqua install     
+
       # Install Windsor CLI
       - name: Install Windsor CLI
         uses: windsorcli/action/.github/actions/install-windsorcli@v0.0.2

@@ -1,0 +1,11 @@
+runners:
+  # - os: Linux
+  #   label: bare-metal
+  #   arch: X64
+  - os: Windows
+    label: bare-metal
+    arch: X64
+  - os: macOS
+    label: forest-shadows
+    arch: ARM64
+  
