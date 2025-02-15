@@ -61,16 +61,19 @@ jobs:
 
         # Install Aqua
       - name: Install Aqua on Linux/macOS
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         uses: aquaproj/aqua-installer@e2d0136abcf70b7a2f6f505720640750557c4b33 # v3.1.1
         with:
           aqua_version: v2.28.0
 
       - name: Set aqua path
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
           echo "${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin" >> $GITHUB_PATH
 
       # Install tools
       - name: Install tools
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
           aqua install     
 
