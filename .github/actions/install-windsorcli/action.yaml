@@ -328,5 +328,11 @@ runs:
           $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
         }
 
+        # Print the $env:GITHUB_ENV variables
+        Write-Output "GITHUB_ENV variables:"
+        Get-Content $env:GITHUB_ENV | ForEach-Object {
+          Write-Output $_
+        }
+
       shell: powershell
 
