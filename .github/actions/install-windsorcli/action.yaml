@@ -138,9 +138,11 @@ runs:
           fi
         fi
 
+
+        # Add windsor env to GITHUB_ENV
+
         # Add the Windsor CLI install folder to the GitHub path
         echo "${{ inputs.windsorcli_install_folder }}" >> $GITHUB_PATH
-
         echo "WINDSOR_PROJECT_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
 
         export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
@@ -301,8 +303,31 @@ runs:
           }
         }
 
+        # Add windsor env to GITHUB_ENV
+
         # Add the Windsor CLI install folder to the GitHub path
         Add-Content -Path $env:GITHUB_PATH -Value "${{ inputs.windsorcli_install_folder }}"
+        Add-Content -Path $env:GITHUB_ENV -Value "WINDSOR_PROJECT_ROOT=${{ github.workspace }}"
+
+        $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
+        
+        & "${{ inputs.windsorcli_install_folder }}\windsor.exe" init local
+
+        # Run the Windsor env command and capture the output
+        $windsorEnvOutput = & "${{ inputs.windsorcli_install_folder }}\windsor.exe" env
+
+        # Check if the command was successful
+        if ($LASTEXITCODE -ne 0) {
+          Write-Output "Failed to run the Windsor env command."
+          exit 1
+        }
+
+        # Parse the output and add it to $GITHUB_ENV
+        $windsorEnvOutput -split "`n" | ForEach-Object {
+          # Remove 'export ' from the beginning of each line
+          $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
+        }
+
       shell: powershell
 
     # echo $GITHUB_ENV
