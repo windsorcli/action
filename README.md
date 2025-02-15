@@ -4,7 +4,7 @@ A Github Action for installing the Windsor CLI
 ## Usage
   # Install Windsor CLI
   - name: Install Windsor CLI
-    uses: windsorcli/action/.github/actions/install-windsorcli@v0.0.1
+    uses: windsorcli/action/.github/actions/windsorcli@v0.0.1
     with:
       windsorcli_version:           ${{ inputs.windsorcli_version }}
       windsorcli_branch:            ${{ inputs.windsorcli_branch }}

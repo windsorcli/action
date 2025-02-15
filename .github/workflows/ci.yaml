@@ -14,7 +14,7 @@ on:
 
 jobs:
 
-  install-windsorcli:
+  windsorcli:
 
     runs-on: ubuntu-latest
     # runs-on: windows-latest
@@ -43,8 +43,8 @@ jobs:
 
       # Install Windsor CLI Action
       - name: Install Windsor CLI Action
-        uses: ./.github/actions/install-windsorcli
-        # uses: windsorcli/action/.github/actions/install-windsorcli@v0.0.2
+        uses: ./.github/actions/windsorcli
+        # uses: windsorcli/action/.github/actions/windsorcli@v0.0.2
         with:
           use_release: true
           windsorcli_version: "v0.4.1"

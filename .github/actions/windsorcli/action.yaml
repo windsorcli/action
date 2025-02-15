@@ -1,5 +1,5 @@
-# install-windsorcli.yaml
-name: 'Install Windsor CLI'
+# windsorcli.yaml
+name: 'Windsor CLI Action'
 
 inputs:
   windsorcli_version:
