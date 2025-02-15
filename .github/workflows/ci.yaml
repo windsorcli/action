@@ -47,7 +47,7 @@ jobs:
         # This runner list is created by the create-runner-list.sh script
         runner: ${{ fromJson(needs.runner-list.outputs.runner_list) }}
     runs-on:
-      - self-hosted
+      # - self-hosted
       - ${{ matrix.runner.os }}
       - ${{ matrix.runner.label }}
       - ${{ matrix.runner.arch }}
