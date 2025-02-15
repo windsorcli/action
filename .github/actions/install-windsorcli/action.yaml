@@ -318,14 +318,6 @@ runs:
         # Run the Windsor env command and capture the output
         $windsorEnvOutput = & "${{ inputs.windsorcli_install_folder }}\windsor.exe" env
 
-        Write-Output "Printing the windsorEnvOutput variables"
-        
-        # Print the $windsorEnvOutput variables
-        Write-Output "windsorEnvOutput variables:"
-        $windsorEnvOutput -split "`n" | ForEach-Object {
-          Write-Output $_
-        }
-
         # Check if the command was successful
         if ($LASTEXITCODE -ne 0) {
           Write-Output "Failed to run the Windsor env command."
@@ -336,12 +328,6 @@ runs:
         $windsorEnvOutput -split "`n" | ForEach-Object {
           # Remove 'export ' from the beginning of each line
           $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
-        }
-
-        # Print the $env:GITHUB_ENV variables
-        Write-Output "GITHUB_ENV variables:"
-        Get-Content $env:GITHUB_ENV | ForEach-Object {
-          Write-Output $_
         }
 
       shell: powershell
