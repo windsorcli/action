@@ -293,4 +293,5 @@ clean:
         if: always()
         run: |
           ls -al
+          echo "CLEANING UP"
         shell: bash
