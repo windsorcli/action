@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+      - action
+  repository_dispatch:
+    types: 
+      - main-branch-update
+
+jobs:
+  install-windsorcli:
+    runs-on: ubuntu-latest
+    steps:
+      # Install Windsor CLI
+      - name: Install Windsor CLI
+        uses: windsorcli/action/.github/actions/install-windsorcli@v0.0.2
+        with:
+          use_release: true
+          windsorcli_version: "v0.4.1"
+          windsorcli_branch: main
+          windsorcli_install_folder: ${{ github.workspace }}/bin
+          os: runner.os
+          arch: runner.arch
+
+      # Windsor Clean
+      - name: Windsor Clean on Linux/macOS
+        if: always() && (runner.os == 'Linux' || runner.os == 'macOS') 
+        run: |
+          ls -al
+        shell: bash
+        
+      - name: Windsor Clean on Windows
+        if: always() && runner.os == 'Windows'
+        run: |
+          Get-ChildItem -Path . -Force
+        shell: powershell
