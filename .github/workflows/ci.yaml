@@ -39,31 +39,32 @@ jobs:
           echo "runner_list=$runner_list"
 
   install-windsorcli:
-    needs: runner-list
-    strategy:
-      fail-fast: false
-      matrix:
+    # needs: runner-list
+    # strategy:
+    #   fail-fast: false
+    #   matrix:
 
-        # This runner list is created by the create-runner-list.sh script
-        runner: ${{ fromJson(needs.runner-list.outputs.runner_list) }}
-    runs-on: 
-      - self-hosted
-      - ${{ matrix.runner.os }}
-      - ${{ matrix.runner.label }}
-      - ${{ matrix.runner.arch }}
+    #     # This runner list is created by the create-runner-list.sh script
+    #     runner: ${{ fromJson(needs.runner-list.outputs.runner_list) }}
+    # runs-on: 
+    #   - self-hosted
+    #   - ${{ matrix.runner.os }}
+    #   - ${{ matrix.runner.label }}
+    #   - ${{ matrix.runner.arch }}
+
+    runs-on: ubuntu-latest
+  
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
         # Install Aqua
       - name: Install Aqua on Linux/macOS
-        if: matrix.runner.os == 'Linux' || matrix.runner.os == 'macOS'
         uses: aquaproj/aqua-installer@e2d0136abcf70b7a2f6f505720640750557c4b33 # v3.1.1
         with:
           aqua_version: v2.28.0
 
       - name: Set aqua path
-        if: matrix.runner.os == 'Linux' || matrix.runner.os == 'macOS'
         run: |
           echo "${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin" >> $GITHUB_PATH
 
@@ -99,9 +100,3 @@ jobs:
         run: |
           ls -al
         shell: bash
-
-      - name: Windsor Clean on Windows
-        if: always() && runner.os == 'Windows'
-        run: |
-          Get-ChildItem -Path . -Force
-        shell: powershell
