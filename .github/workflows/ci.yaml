@@ -85,6 +85,11 @@ jobs:
           os: Linux
           arch: X64
       
+      - name: Which windsor
+        run: |
+          which windsor
+        shell: bash
+
       - name: Windsor Context Get
         run: |
           ${{ github.workspace }}/bin/windsor context get
