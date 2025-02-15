@@ -71,9 +71,9 @@ runs:
         DOWNLOAD_FILE_NAME="https://github.com/windsorcli/cli/releases/download/${{ inputs.windsorcli_version }}/${LOCAL_FILE_NAME}"
 
         if [ "${{ inputs.use_release }}" == "true" ]; then
-          # ----------------------------------------------
+          
           # Install the release version on Linux/macOS
-          # ----------------------------------------------
+          
           echo "Installing Windsor CLI using release (${{ inputs.windsorcli_version }})..."
           curl -L -o "$LOCAL_FILE_NAME" "$DOWNLOAD_FILE_NAME"
 
@@ -86,9 +86,9 @@ runs:
           expected_version="${{ inputs.windsorcli_version }}"
 
         else
-          # ----------------------------------------------
+          
           # Install the branch version on Linux/macOS
-          # ----------------------------------------------
+          
           expected_version="dev"
   
           echo "Installing Windsor CLI from branch (${{ inputs.windsorcli_branch }})..."
@@ -114,9 +114,9 @@ runs:
 
         echo "Installation complete."
 
-        # ----------------------------------------------
+        
         # Verify the installation on Linux/macOS
-        # ----------------------------------------------
+        
         installed_version=$("${{ inputs.windsorcli_install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
         installed_version="v${installed_version}"
 
@@ -178,9 +178,9 @@ runs:
 
         # Install Windsor CLI
         if ("${{ inputs.use_release }}" -eq "true") {
-          # ----------------------------------------------
+          
           # Install the release version on Windows
-          # ----------------------------------------------
+          
             Write-Output "Installing Windsor CLI on Windows from release (${{ inputs.windsorcli_version }})..."
             # Assign the version string to a variable
             $versionString = "${{ inputs.windsorcli_version }}"
@@ -218,9 +218,9 @@ runs:
                 exit 1
             }
         } else {
-          # ----------------------------------------------
+          
           # Install the branch version on Windows
-          # ----------------------------------------------
+          
             Write-Output "Installing Windsor CLI on Windows from branch (${{ inputs.windsorcli_branch }})..."
             try {
                 git clone --branch ${{ inputs.windsorcli_branch }} https://github.com/windsorcli/cli.git
@@ -247,9 +247,9 @@ runs:
 
         Write-Output "Installation complete."
 
-        # ----------------------------------------------
+        
         # Verify the installation on Windows
-        # ----------------------------------------------
+        
         $installedVersionOutput = & "${{ inputs.windsorcli_install_folder }}\windsor.exe" version
         # Extract only the version number from the output
         $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1'
