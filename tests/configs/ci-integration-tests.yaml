@@ -2,10 +2,10 @@ runners:
   # - os: Linux
   #   label: bare-metal
   #   arch: X64
-  - os: Windows
+  - os: ""
     label: windows-latest
-    arch: X64
-  - os: macOS
+    arch: ""
+  - os: ""
     label: macos-latest
-    arch: ARM64
+    arch: ""
   
