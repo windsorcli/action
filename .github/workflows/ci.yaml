@@ -27,13 +27,18 @@ jobs:
           os: runner.os
           arch: runner.arch
 
+      - name: Verify Windsor CLI
+        run: |
+          windsor --version
+        shell: bash
+
       # Windsor Clean
       - name: Windsor Clean on Linux/macOS
         if: always() && (runner.os == 'Linux' || runner.os == 'macOS') 
         run: |
           ls -al
         shell: bash
-        
+
       - name: Windsor Clean on Windows
         if: always() && runner.os == 'Windows'
         run: |
