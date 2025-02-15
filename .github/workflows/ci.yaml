@@ -91,7 +91,15 @@ jobs:
 
       - name: Verify Windsor CLI
         run: |
-          ${{ github.workspace }}/bin/windsor --version
+          ${{ github.workspace }}/bin/windsor version
+        shell: bash
+
+      - name: Check environment variables
+        run: |
+          echo "Calling windsor env"
+          ${{ github.workspace }}/bin/windsor env
+          echo "Calling env"
+          env
         shell: bash
 
       # Windsor Clean
