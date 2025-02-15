@@ -5,7 +5,7 @@ inputs:
   windsorcli_version:
     required: false
     type: string
-    default: v0.4.0
+    default: v0.4.1
   windsorcli_branch:
     required: false
     type: string
@@ -15,7 +15,7 @@ inputs:
     type: string
     default: ${{ github.workspace }}/bin
   use_release:
-    required: false
+    required: true
     type: boolean
     default: true
   os:
@@ -25,6 +25,7 @@ inputs:
   arch:
     required: false
     type: string  
+    default: X64
 
 runs:
   using: 'composite'
