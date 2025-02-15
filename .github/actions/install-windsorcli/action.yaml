@@ -330,28 +330,3 @@ runs:
 
       shell: powershell
 
-    # echo $GITHUB_ENV
-    - name: Print GITHUB_ENV
-      run: |
-        echo $GITHUB_ENV
-      shell: bash
-
-    # Set the WINDSOR_PROJECT_ROOT environment variable
-    # - name: Set WINDSOR_PROJECT_ROOT
-    #   run: |
-    #     # echo "${{ inputs.windsorcli_install_folder }}" >> $GITHUB_PATH
-    #     echo "WINDSOR_PROJECT_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
-    #   shell: bash
-
-  # clean:
-  #   runs:
-  #   using: 'composite'
-  #   steps:
-  #     # Windsor Clean
-  #     - name: Windsor Clean on Linux/macOS
-  #       # if: always() && (runner.os == 'Linux' || runner.os == 'macOS') 
-  #       if: always()
-  #       run: |
-  #         ls -al
-  #         echo "CLEANING UP"
-  #       shell: bash
