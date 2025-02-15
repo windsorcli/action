@@ -283,11 +283,14 @@ runs:
         Add-Content -Path $env:GITHUB_PATH -Value "${{ inputs.windsorcli_install_folder }}"
       shell: powershell
 
-    # Windsor Clean
-    - name: Windsor Clean on Linux/macOS
-      # if: always() && (runner.os == 'Linux' || runner.os == 'macOS') 
-      if: always()
-      run: |
-        ls -al
-      shell: bash
-      post: true
+clean:
+  runs:
+    using: 'composite'
+    steps:
+      # Windsor Clean
+      - name: Windsor Clean on Linux/macOS
+        # if: always() && (runner.os == 'Linux' || runner.os == 'macOS') 
+        if: always()
+        run: |
+          ls -al
+        shell: bash
