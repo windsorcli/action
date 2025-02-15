@@ -283,8 +283,15 @@ runs:
         Add-Content -Path $env:GITHUB_PATH -Value "${{ inputs.windsorcli_install_folder }}"
       shell: powershell
 
-clean:
-  runs:
+    # Set the WINDSOR_PROJECT_ROOT environment variable
+    - name: Set WINDSOR_PROJECT_ROOT
+      run: |
+        # echo "${{ inputs.windsorcli_install_folder }}" >> $GITHUB_PATH
+        echo "WINDSOR_PROJECT_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
+      shell: bash
+
+  clean:
+    runs:
     using: 'composite'
     steps:
       # Windsor Clean
