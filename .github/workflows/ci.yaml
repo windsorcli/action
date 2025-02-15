@@ -46,11 +46,11 @@ jobs:
 
         # This runner list is created by the create-runner-list.sh script
         runner: ${{ fromJson(needs.runner-list.outputs.runner_list) }}
-    runs-on:
+    runs-on: ubuntu-latest
       # - self-hosted
-      - ${{ matrix.runner.os }}
-      - ${{ matrix.runner.label }}
-      - ${{ matrix.runner.arch }}
+      # - ${{ matrix.runner.os }}
+      # - ${{ matrix.runner.label }}
+      # - ${{ matrix.runner.arch }}
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
