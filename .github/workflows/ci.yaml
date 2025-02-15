@@ -96,7 +96,7 @@ jobs:
 
       - name: Initialize the windsor project
         run: |
-          ${{ github.workspace }}/bin/windsor init
+          ${{ github.workspace }}/bin/windsor init local
         shell: bash
 
       - name: Check environment variables
