@@ -288,7 +288,6 @@ runs:
           
           if ($installedVersion -like "$expected_version*") {
             Write-Output "Version match: $installedVersion starts with $expected_version"
-            exit 0
           } else {
             Write-Error "Version mismatch: $installedVersion does not equal $expected_version"
             exit 1
@@ -296,7 +295,6 @@ runs:
         } else {
           if ($installedVersion -like "*dev*") {
             Write-Output "Version match: got dev as expected"
-            exit 0
           } else {
             Write-Error "Version mismatch: expected dev, got $installedVersion"
             exit 1
@@ -304,6 +302,8 @@ runs:
         }
 
         # Add windsor env to GITHUB_ENV
+
+        Write-Output "Adding windsor env to GITHUB_ENV" 
 
         # Add the Windsor CLI install folder to the GitHub path
         Add-Content -Path $env:GITHUB_PATH -Value "${{ inputs.windsorcli_install_folder }}"
@@ -313,9 +313,13 @@ runs:
         
         & "${{ inputs.windsorcli_install_folder }}\windsor.exe" init local
 
+        Write-Output "Running the Windsor env command"
+
         # Run the Windsor env command and capture the output
         $windsorEnvOutput = & "${{ inputs.windsorcli_install_folder }}\windsor.exe" env
 
+        Write-Output "Printing the windsorEnvOutput variables"
+        
         # Print the $windsorEnvOutput variables
         Write-Output "windsorEnvOutput variables:"
         $windsorEnvOutput -split "`n" | ForEach-Object {
