@@ -108,8 +108,12 @@ jobs:
 
       - name: Check environment variables
         run: |
-          echo "Calling windsor env"
-          ${{ github.workspace }}/bin/windsor env
-          echo "Calling env"
-          env
+          echo KUBECONFIG="$KUBECONFIG"
+          echo KUBE_CONFIG_PATH="$KUBE_CONFIG_PATH"
+          echo DOCKER_CONFIG="$DOCKER_CONFIG"
+          echo DOCKER_HOST="$DOCKER_HOST"
+          echo OMNICONFIG="$OMNICONFIG"
+          echo TALOSCONFIG="$TALOSCONFIG"
+          echo WINDSOR_CONTEXT="$WINDSOR_CONTEXT"
+          echo WINDSOR_PROJECT_ROOT="$WINDSOR_PROJECT_ROOT"
         shell: bash
