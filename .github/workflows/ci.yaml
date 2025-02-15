@@ -27,6 +27,11 @@ jobs:
           os: runner.os
           arch: runner.arch
 
+      - name: Check folder
+        run: |
+          ls -al
+        shell: bash
+
       - name: Verify Windsor CLI
         run: |
           ${{ github.workspace }}/bin/windsor --version
