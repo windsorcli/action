@@ -1,2 +1,15 @@
 # action
-A Github Action for setting up a Windsor environment
+A Github Action for installing the Windsor CLI
+
+## Usage
+  # Install Windsor CLI
+  - name: Install Windsor CLI
+    uses: windsorcli/action/.github/actions/install-windsorcli@v0.0.1
+    with:
+      windsorcli_version:           ${{ inputs.windsorcli_version }}
+      windsorcli_branch:            ${{ inputs.windsorcli_branch }}
+      windsorcli_install_folder:    ${{ github.workspace }}/${{ inputs.windsorcli_install_folder }}
+      use_release:                  ${{ inputs.use_release }}
+      os:                           ${{ matrix.runner.os }}
+      arch:                         ${{ matrix.runner.arch }}
+
