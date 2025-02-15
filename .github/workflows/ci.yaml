@@ -29,7 +29,7 @@ jobs:
 
       - name: Verify Windsor CLI
         run: |
-          windsor --version
+          ${{ github.workspace }}/bin/windsor --version
         shell: bash
 
       # Windsor Clean
