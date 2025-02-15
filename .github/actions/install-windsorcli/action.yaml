@@ -290,3 +290,4 @@ runs:
       run: |
         ls -al
       shell: bash
+      post: true
