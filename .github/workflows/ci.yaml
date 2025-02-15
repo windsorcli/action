@@ -97,6 +97,7 @@ jobs:
 
       - name: Initialize the windsor project
         run: |
+          export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
           ${{ github.workspace }}/bin/windsor init local
         shell: bash
 
