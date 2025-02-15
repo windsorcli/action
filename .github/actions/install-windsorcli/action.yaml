@@ -143,7 +143,7 @@ runs:
 
         echo "WINDSOR_PROJECT_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
 
-        windsor init local
+        "${{ inputs.windsorcli_install_folder }}/windsor" init local
 
         # Run the Windsor env command and capture the output
         windsor_env_output=$("${{ inputs.windsorcli_install_folder }}/windsor" env)
@@ -307,7 +307,7 @@ runs:
       run: |
         echo $GITHUB_ENV
       shell: bash
-      
+
     # Set the WINDSOR_PROJECT_ROOT environment variable
     # - name: Set WINDSOR_PROJECT_ROOT
     #   run: |
