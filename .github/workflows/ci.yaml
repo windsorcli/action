@@ -14,29 +14,29 @@ on:
 
 jobs:
 
-  # Runner List
-  # This job creates a runner list based on the windsor-test-config.yaml file
-  # The runner list is used by the integration-test job to run the tests on the correct runner
-  runner-list:
-    runs-on: ubuntu-latest
-    outputs:
-      runner_list: ${{ steps.create-runner-list.outputs.runner_list }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+  # # Runner List
+  # # This job creates a runner list based on the windsor-test-config.yaml file
+  # # The runner list is used by the integration-test job to run the tests on the correct runner
+  # runner-list:
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     runner_list: ${{ steps.create-runner-list.outputs.runner_list }}
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
 
-      - name: Create runner list
-        id: create-runner-list
-        run: |
-          set -e
-          runner_list=$(${{github.workspace}}/scripts/create-runner-list.sh tests/configs/ci-integration-tests.yaml)
-          echo "runner_list=$runner_list" >> $GITHUB_ENV
-          echo "::set-output name=runner_list::$runner_list"
-        shell: bash
+  #     - name: Create runner list
+  #       id: create-runner-list
+  #       run: |
+  #         set -e
+  #         runner_list=$(${{github.workspace}}/scripts/create-runner-list.sh tests/configs/ci-integration-tests.yaml)
+  #         echo "runner_list=$runner_list" >> $GITHUB_ENV
+  #         echo "::set-output name=runner_list::$runner_list"
+  #       shell: bash
 
-      - name: Debug Print runner-list
-        run: |
-          echo "runner_list=$runner_list"
+  #     - name: Debug Print runner-list
+  #       run: |
+  #         echo "runner_list=$runner_list"
 
   install-windsorcli:
     # needs: runner-list
@@ -83,7 +83,7 @@ jobs:
           windsorcli_install_folder: ${{ github.workspace }}/bin
           os: Linux
           arch: X64
-
+      
       - name: Check folder
         run: |
           ls -al
@@ -92,6 +92,11 @@ jobs:
       - name: Verify Windsor CLI
         run: |
           ${{ github.workspace }}/bin/windsor version
+        shell: bash
+
+      - name: Initialize the windsor project
+        run: |
+          ${{ github.workspace }}/bin/windsor init
         shell: bash
 
       - name: Check environment variables
