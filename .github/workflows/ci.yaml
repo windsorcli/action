@@ -82,31 +82,16 @@ jobs:
           windsorcli_version: "v0.4.1"
           windsorcli_branch: main
           windsorcli_install_folder: ${{ github.workspace }}/bin
-          os: Linux
-          arch: X64
-      
-      # - name: Set environment variables
-      #   run: |
-      #     echo "KUBECONFIG=${{ github.workspace }}/contexts/local/.kube/config" >> $GITHUB_ENV
-      #     echo "KUBE_CONFIG_PATH=${{ github.workspace }}/contexts/local/.kube/config" >> $GITHUB_ENV
-      #     echo "DOCKER_CONFIG=${{ github.workspace }}/contexts/local/.kube/config" >> $GITHUB_ENV
-      #     echo "DOCKER_HOST=host" >> $GITHUB_ENV
-      #     echo "OMNICONFIG=/path/to/omniconfig" >> $GITHUB_ENV
-      #     echo "TALOSCONFIG=/path/to/talosconfig" >> $GITHUB_ENV
-      #     echo "WINDSOR_CONTEXT=context" >> $GITHUB_ENV
-      #     echo "WINDSOR_PROJECT_ROOT=/path/to/project/root" >> $GITHUB_ENV
-  
-      - name: Which windsor
-        run: |
-          which windsor
-        shell: bash
-
+          os: ${{ matrix.runner.os }}
+          arch: ${{ matrix.runner.arch }}
+        
       - name: Windsor Context Get
         run: |
           ${{ github.workspace }}/bin/windsor context get
         shell: bash
 
-      - name: Check environment variables
+      - name: Check environment variables (Linux/macOS)
+        if: ${{ matrix.runner.os == 'Linux' || matrix.runner.os == 'macOS' }}
         run: |
           echo KUBECONFIG="$KUBECONFIG"
           echo KUBE_CONFIG_PATH="$KUBE_CONFIG_PATH"
@@ -117,3 +102,13 @@ jobs:
           echo WINDSOR_CONTEXT="$WINDSOR_CONTEXT"
           echo WINDSOR_PROJECT_ROOT="$WINDSOR_PROJECT_ROOT"
         shell: bash
+
+      - name: Check environment variables (Windows)
+        if: ${{ matrix.runner.os == 'Windows' }}
+        run: |
+          # Print the $windsorEnvOutput variables
+          Write-Output "windsorEnvOutput variables:"
+          $windsorEnvOutput -split "`n" | ForEach-Object {
+            Write-Output $_
+          }
+        shell: powershell
