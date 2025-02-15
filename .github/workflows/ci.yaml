@@ -14,43 +14,7 @@ on:
 
 jobs:
 
-  # Runner List
-  # This job creates a runner list based on the windsor-test-config.yaml file
-  # The runner list is used by the integration-test job to run the tests on the correct runner
-  runner-list:
-    runs-on: ubuntu-latest
-    outputs:
-      runner_list: ${{ steps.create-runner-list.outputs.runner_list }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Create runner list
-        id: create-runner-list
-        run: |
-          set -e
-          runner_list=$(${{github.workspace}}/scripts/create-runner-list.sh tests/configs/ci-integration-tests.yaml)
-          echo "runner_list=$runner_list" >> $GITHUB_ENV
-          echo "::set-output name=runner_list::$runner_list"
-        shell: bash
-
-      - name: Debug Print runner-list
-        run: |
-          echo "runner_list=$runner_list"
-
   install-windsorcli:
-    # needs: runner-list
-    # strategy:
-    #   fail-fast: false
-    #   matrix:
-
-    #     # This runner list is created by the create-runner-list.sh script
-    #     runner: ${{ fromJson(needs.runner-list.outputs.runner_list) }}
-    # runs-on: 
-    #   - self-hosted
-    #   - ${{ matrix.runner.os }}
-    #   - ${{ matrix.runner.label }}
-    #   - ${{ matrix.runner.arch }}
 
     runs-on: ubuntu-latest
     # runs-on: windows-latest
