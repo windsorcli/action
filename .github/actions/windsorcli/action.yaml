@@ -93,12 +93,14 @@ runs:
             exit 1
           fi
 
-          cd cli
+          pushd cli
 
           if ! git checkout "${{ inputs.ref }}"; then
             echo "Failed to clone the repository. Please check the branch name and network connection."
             exit 1
           fi
+
+          popd
 
           if ! cd cli/cmd/windsor; then
             echo "Failed to navigate to the Windsor CLI directory."
@@ -252,10 +254,10 @@ runs:
                 exit 1
             }
 
-            cd cli
-            
             try {
+              Push-Location cli
               git checkout ${{ inputs.ref }}
+              Pop-Location
             } catch {
                 Write-Output "Failed to checkout the branch ${{ inputs.ref }}"
                 exit 1
