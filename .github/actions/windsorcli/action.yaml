@@ -122,7 +122,7 @@ runs:
         installed_version=$("${{ inputs.install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
         installed_version="v${installed_version}"
 
-        if [ "$installed_version" == "$expected_version" ] || [ "$installed_version" == "v${expected_version}" ]; then
+        if [ "$installed_version" == "$expected_version" ] || [ "$installed_version" == "v$expected_version" ]; then
           echo "Installed version: $expected_version"
         else
           echo "Version mismatch: expected $expected_version, got $installed_version"
@@ -193,7 +193,7 @@ runs:
         # Install Windsor CLI
         if ("${{ inputs.ref }}" -eq "") {
           
-          # Install the release version on Windows
+            # Install the release version on Windows
           
             Write-Output "Installing Windsor CLI on Windows from release (${{ inputs.version }})..."
             # Assign the version string to a variable
