@@ -130,9 +130,8 @@ runs:
             exit 1
           fi
         else
-          echo "Using branch version: ${{ inputs.branch }}"
           if [ "$installed_version" == "vdev" ]; then
-            echo "Installed version: $installed_version"  
+            echo "Installed version: dev"  
           else
             echo "Version mismatch: expected dev, got $installed_version"
             exit 1
