@@ -289,12 +289,9 @@ runs:
         $installedVersion = $installedVersion.Trim()
         $installedVersion = "v" + $installedVersion 
 
-        echo "Installed version: $installedVersion"
-        echo "Expected version: $expected_version"
-
         if ("${{ inputs.use_release }}" -eq "true") {
-          # Compare only the version number
-          
+
+          # Compare only the version number          
           if ($installedVersion -like "$expected_version*") {
             Write-Output "Version match: $installedVersion starts with $expected_version"
           } else {
