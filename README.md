@@ -2,7 +2,7 @@
 A Github Action for installing the Windsor CLI
 
 ## Usage
-  # Install Windsor CLI
+  ```yaml
   - name: Install Windsor CLI
     uses: windsorcli/action/.github/actions/windsorcli@v0.0.1
     with:
@@ -12,4 +12,5 @@ A Github Action for installing the Windsor CLI
       use_release:                  ${{ inputs.use_release }}
       os:                           ${{ matrix.runner.os }}
       arch:                         ${{ matrix.runner.arch }}
+  ```
 
