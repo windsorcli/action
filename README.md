@@ -6,10 +6,10 @@ A Github Action for installing the Windsor CLI
   - name: Install Windsor CLI
     uses: windsorcli/action/.github/actions/windsorcli@v0.0.1
     with:
-      windsorcli_version:           ${{ inputs.windsorcli_version }}
-      windsorcli_branch:            ${{ inputs.windsorcli_branch }}
-      windsorcli_install_folder:    ${{ github.workspace }}/${{ inputs.windsorcli_install_folder }}
-      use_release:                  ${{ inputs.use_release }}
-      context:                      ${{ inputs.context }}
+      version:           ${{ inputs.version }}
+      branch:            ${{ inputs.branch }}
+      install_folder:    ${{ github.workspace }}/${{ inputs.install_folder }}
+      use_release:       ${{ inputs.use_release }}
+      context:           ${{ inputs.context }}
   ```
 
