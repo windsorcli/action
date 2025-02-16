@@ -232,7 +232,7 @@ runs:
           
             # Install the ref version on Windows
           
-            $expected_version = "dev"
+            $expected_version = "vdev"
           
             Write-Output "Installing Windsor CLI on Windows from ref (${{ inputs.ref }})..."
             try {
@@ -276,7 +276,7 @@ runs:
         # Extract only the version number from the output
         $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1'
         $installedVersion = $installedVersion.Trim()
-        # $installedVersion = "v" + $installedVersion 
+        $installedVersion = "v" + $installedVersion 
 
         # Compare only the version number          
         if ($installedVersion -like "$expected_version*") {
