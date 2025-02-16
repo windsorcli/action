@@ -50,6 +50,7 @@ jobs:
           windsorcli_version: "v0.4.1"
           windsorcli_branch: main
           windsorcli_install_folder: ${{ github.workspace }}/bin
+          context: local
           os: ${{ runner.os }}
           arch: ${{ runner.arch }}
         

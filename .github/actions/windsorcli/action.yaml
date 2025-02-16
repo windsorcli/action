@@ -18,6 +18,10 @@ inputs:
     required: true
     type: boolean
     default: true
+  context:
+    required: false
+    type: string
+    default: local
   os:
     required: false
     type: string
@@ -147,7 +151,7 @@ runs:
 
         export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
         
-        "${{ inputs.windsorcli_install_folder }}/windsor" init local
+        "${{ inputs.windsorcli_install_folder }}/windsor" init ${{ inputs.context }}
 
         # Run the Windsor env command and capture the output
         windsor_env_output=$("${{ inputs.windsorcli_install_folder }}/windsor" env)
@@ -311,7 +315,7 @@ runs:
 
         $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
         
-        & "${{ inputs.windsorcli_install_folder }}\windsor.exe" init local
+        & "${{ inputs.windsorcli_install_folder }}\windsor.exe" init ${{ inputs.context }}
 
         Write-Output "Running the Windsor env command"
 
