@@ -203,9 +203,6 @@ runs:
             $url = "https://github.com/windsorcli/cli/releases/download/${{ inputs.version }}/windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
             $outputFile = "windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
             
-            echo "Downloading Windsor CLI from $url"
-            echo "Output file: $outputFile"
-
             # Download the release
             try {
                 Invoke-WebRequest -Uri $url -Headers @{"Accept"="application/octet-stream"} -OutFile $outputFile -ErrorAction Stop
@@ -232,7 +229,9 @@ runs:
             }
         } else {
           
-          # Install the ref version on Windows
+            # Install the ref version on Windows
+          
+            expected_version="dev"
           
             Write-Output "Installing Windsor CLI on Windows from ref (${{ inputs.ref }})..."
             try {
@@ -278,22 +277,12 @@ runs:
         $installedVersion = $installedVersion.Trim()
         $installedVersion = "v" + $installedVersion 
 
-        if ("${{ inputs.use_release }}" -eq "true") {
-
-          # Compare only the version number          
-          if ($installedVersion -like "$expected_version*") {
-            Write-Output "Version match: $installedVersion starts with $expected_version"
-          } else {
-            Write-Error "Version mismatch: $installedVersion does not equal $expected_version"
-            exit 1
-          }
+        # Compare only the version number          
+        if ($installedVersion -like "$expected_version*") {
+          Write-Output "Version match: $installedVersion starts with $expected_version"
         } else {
-          if ($installedVersion -like "*dev*") {
-            Write-Output "Version match: got dev as expected"
-          } else {
-            Write-Error "Version mismatch: expected dev, got $installedVersion"
-            exit 1
-          }
+          Write-Error "Version mismatch: $installedVersion does not equal $expected_version"
+          exit 1
         }
 
         # Add windsor env to GITHUB_ENV
