@@ -122,8 +122,8 @@ runs:
         installed_version=$("${{ inputs.install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
         installed_version="v${installed_version}"
 
-        if [ "$installed_version" == "$expected_version" ]; then
-          echo "Installed version: $installed_version"
+        if [ "$installed_version" == "$expected_version" ] || [ "$installed_version" == "v${expected_version}" ]; then
+          echo "Installed version: $expected_version"
         else
           echo "Version mismatch: expected $expected_version, got $installed_version"
           exit 1
