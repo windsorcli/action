@@ -93,7 +93,9 @@ runs:
             exit 1
           fi
 
-          if ! git checkout "${{ inputs.ref }}" https://github.com/windsorcli/cli.git; then
+          cd cli
+
+          if ! git checkout "${{ inputs.ref }}"; then
             echo "Failed to clone the repository. Please check the branch name and network connection."
             exit 1
           fi
@@ -250,6 +252,8 @@ runs:
                 exit 1
             }
 
+            cd cli
+            
             try {
               git checkout ${{ inputs.ref }}
             } catch {
