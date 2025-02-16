@@ -16,8 +16,8 @@ jobs:
 
   windsorcli:
 
-    runs-on: ubuntu-latest
-    # runs-on: windows-latest
+    # runs-on: ubuntu-latest
+    runs-on: windows-latest
   
     steps:
       - name: Checkout code
@@ -44,7 +44,6 @@ jobs:
       # Install Windsor CLI Action
       - name: Install Windsor CLI Action
         uses: ./.github/actions/windsorcli
-        # uses: windsorcli/action/.github/actions/windsorcli@v0.0.2
         with:
           ref: main
           install_folder: ${{ github.workspace }}/bin
