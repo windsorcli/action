@@ -51,8 +51,6 @@ jobs:
           windsorcli_branch: main
           windsorcli_install_folder: ${{ github.workspace }}/bin
           context: local
-          os: ${{ runner.os }}
-          arch: ${{ runner.arch }}
         
       - name: Windsor Context Get
         run: |

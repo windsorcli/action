@@ -22,25 +22,17 @@ inputs:
     required: false
     type: string
     default: local
-  os:
-    required: false
-    type: string
-    default: Linux
-  arch:
-    required: false
-    type: string  
-    default: X64
 
 runs:
   using: 'composite'
   steps:
     # Install Windsor CLI on Linux/macOS
     - name: Install the Windsor CLI on Linux/macOS
-      if: inputs.os == 'Linux' || inputs.os == 'macOS'
+      if: runner.os == 'Linux' || runner.os == 'macOS'
       run: |
         
         # Convert HOST_ARCH to TMP_ARCH
-        case "${{ inputs.arch }}" in
+        case "${{ runner.arch }}" in
           "ARM64")
             TMP_HOST_ARCH="arm64"
             ;;
@@ -48,13 +40,13 @@ runs:
             TMP_HOST_ARCH="amd64"
             ;;
           *)
-            echo "Unsupported HOST_ARCH: ${{ inputs.arch }}"
+            echo "Unsupported HOST_ARCH: ${{ runner.arch }}"
             exit 1
             ;;
         esac
 
         # Convert HOST_OS to TMP_OS
-        case "${{ inputs.os }}" in
+        case "${{ runner.os }}" in
           "Windows")
             TMP_HOST_OS="windows"
             ;;
@@ -65,7 +57,7 @@ runs:
             TMP_HOST_OS="darwin"
             ;;
           *)
-            echo "Unsupported HOST_OS: ${{ inputs.os }}"
+            echo "Unsupported HOST_OS: ${{ runner.os }}"
             exit 1
             ;;
         esac
@@ -172,17 +164,17 @@ runs:
 
     # Install Windsor CLI on Windows
     - name: Install the Windsor CLI on Windows
-      if: inputs.os == 'Windows'
+      if: runner.os == 'Windows'
       run: |
         # Convert $HOST_OS
-        switch ("${{ inputs.os }}") {
+        switch ("${{ runner.os }}") {
           "Windows" {
             $TMP_HOST_OS = "windows"
           }
         }
 
         # Convert $HOST_ARCH
-        switch ("${{ inputs.arch }}") {
+        switch ("${{ runner.arch }}") {
           "ARM64" {
             $TMP_HOST_ARCH = "arm64"
           }
@@ -190,7 +182,7 @@ runs:
             $TMP_HOST_ARCH = "amd64"
           }
           default {
-            Write-Output "Unsupported HOST_ARCH: ${{ inputs.arch }}"
+            Write-Output "Unsupported HOST_ARCH: ${{ runner.arch }}"
             exit 1
           }
         }
