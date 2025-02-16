@@ -6,18 +6,14 @@ inputs:
     required: false
     type: string
     default: v0.4.1
-  branch:
+  ref:
     required: false
     type: string
-    default: main
+    default: ""
   install_folder:
     required: false
     type: string
     default: ${{ github.workspace }}/bin
-  use_release:
-    required: true
-    type: boolean
-    default: true
   context:
     required: false
     type: string
@@ -66,7 +62,7 @@ runs:
         LOCAL_FILE_NAME="windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
         DOWNLOAD_FILE_NAME="https://github.com/windsorcli/cli/releases/download/${{ inputs.version }}/${LOCAL_FILE_NAME}"
 
-        if [ "${{ inputs.use_release }}" == "true" ]; then
+        if [ "${{ inputs.ref }}" == "" ]; then
           
           # Install the release version on Linux/macOS
           
@@ -83,16 +79,21 @@ runs:
 
         else
           
-          # Install the branch version on Linux/macOS
+          # Install the ref version on Linux/macOS
           
           expected_version="dev"
   
-          echo "Installing Windsor CLI from branch (${{ inputs.branch }})..."
-          if [ -z "${{ inputs.branch }}" ]; then
-            echo "inputs.branch is not set."
+          echo "Installing Windsor CLI from ref (${{ inputs.ref }})..."
+          if [ -z "${{ inputs.ref }}" ]; then
+            echo "inputs.ref is not set."
             exit 1
           fi
-          if ! git clone --branch "${{ inputs.branch }}" https://github.com/windsorcli/cli.git; then
+          if ! git clone https://github.com/windsorcli/cli.git; then
+            echo "Failed to clone the repository. Please check the branch name and network connection."
+            exit 1
+          fi
+
+          if ! git checkout "${{ inputs.ref }}" https://github.com/windsorcli/cli.git; then
             echo "Failed to clone the repository. Please check the branch name and network connection."
             exit 1
           fi
@@ -197,7 +198,7 @@ runs:
         }
 
         # Install Windsor CLI
-        if ("${{ inputs.use_release }}" -eq "true") {
+        if ("${{ inputs.ref }}" -eq "") {
           
           # Install the release version on Windows
           
@@ -239,16 +240,23 @@ runs:
             }
         } else {
           
-          # Install the branch version on Windows
+          # Install the ref version on Windows
           
-            Write-Output "Installing Windsor CLI on Windows from branch (${{ inputs.branch }})..."
+            Write-Output "Installing Windsor CLI on Windows from ref (${{ inputs.ref }})..."
             try {
-                git clone --branch ${{ inputs.branch }} https://github.com/windsorcli/cli.git
+                git clone https://github.com/windsorcli/cli.git
             } catch {
-                Write-Output "Failed to clone the repository from branch ${{ inputs.branch }}"
+                Write-Output "Failed to clone the repository from branch ${{ inputs.ref }}"
                 exit 1
             }
-            
+
+            try {
+              git checkout ${{ inputs.ref }}
+            } catch {
+                Write-Output "Failed to checkout the branch ${{ inputs.ref }}"
+                exit 1
+            }
+           
             try {
                 Set-Location -Path "cli" -ErrorAction Stop
             } catch {

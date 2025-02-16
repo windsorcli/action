@@ -46,9 +46,7 @@ jobs:
         uses: ./.github/actions/windsorcli
         # uses: windsorcli/action/.github/actions/windsorcli@v0.0.2
         with:
-          use_release: true
-          version: "v0.4.1"
-          branch: main
+          ref: main
           install_folder: ${{ github.workspace }}/bin
           context: local
         
