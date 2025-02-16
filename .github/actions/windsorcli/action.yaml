@@ -27,7 +27,8 @@ runs:
       if: runner.os == 'Linux' || runner.os == 'macOS'
       run: |
         
-        # Convert HOST_ARCH to TMP_ARCH
+        # Install Windsor CLI
+        
         case "${{ runner.arch }}" in
           "ARM64")
             TMP_HOST_ARCH="arm64"

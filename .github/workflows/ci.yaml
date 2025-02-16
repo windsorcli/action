@@ -44,7 +44,7 @@ jobs:
       - name: Install Windsor CLI Action
         uses: ./.github/actions/windsorcli
         with:
-          ref: main
+          # ref: main
           version: v0.4.1
           install_folder: ${{ github.workspace }}/bin
           context: local
