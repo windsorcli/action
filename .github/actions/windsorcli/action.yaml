@@ -232,7 +232,7 @@ runs:
           
             # Install the ref version on Windows
           
-            expected_version="dev"
+            $expected_version = "dev"
           
             Write-Output "Installing Windsor CLI on Windows from ref (${{ inputs.ref }})..."
             try {
