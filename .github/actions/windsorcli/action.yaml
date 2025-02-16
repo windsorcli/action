@@ -63,6 +63,8 @@ runs:
         LOCAL_FILE_NAME="windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
         DOWNLOAD_FILE_NAME="https://github.com/windsorcli/cli/releases/download/${{ inputs.version }}/${LOCAL_FILE_NAME}"
 
+        expected_version="dev"
+
         if [ "${{ inputs.ref }}" == "" ]; then
           
           # Install the release version on Linux/macOS
@@ -81,9 +83,7 @@ runs:
         else
           
           # Install the ref version on Linux/macOS
-          
-          expected_version="dev"
-  
+            
           echo "Installing Windsor CLI from ref (${{ inputs.ref }})..."
           if [ -z "${{ inputs.ref }}" ]; then
             echo "inputs.ref is not set."
@@ -280,15 +280,13 @@ runs:
 
         # Compare only the version number          
         if ($installedVersion -like "$expected_version*") {
-          Write-Output "Version match: $installedVersion starts with $expected_version"
+          Write-Output "Version match: $installedVersion"
         } else {
           Write-Error "Version mismatch: $installedVersion does not equal $expected_version"
           exit 1
         }
 
         # Add windsor env to GITHUB_ENV
-
-        Write-Output "Adding windsor env to GITHUB_ENV" 
 
         # Add the Windsor CLI install folder to the GitHub path
         Add-Content -Path $env:GITHUB_PATH -Value "${{ inputs.install_folder }}"
@@ -297,8 +295,6 @@ runs:
         $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
         
         & "${{ inputs.install_folder }}\windsor.exe" init ${{ inputs.context }}
-
-        Write-Output "Running the Windsor env command"
 
         # Run the Windsor env command and capture the output
         $windsorEnvOutput = & "${{ inputs.install_folder }}\windsor.exe" env
