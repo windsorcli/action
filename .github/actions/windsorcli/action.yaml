@@ -47,10 +47,10 @@ runs:
     #   shell: bash
 
     # Install Docker Compose
-    # - name: Install Docker Compose
-    #   run: |
-    #     aqua i docker/compose@2.22.0
-    #   shell: bash
+    - name: Install Docker Compose
+      run: |
+        aqua i docker/compose@2.22.0
+      shell: bash
 
     # Install Docker CLI
     - name: Install Docker CLI
