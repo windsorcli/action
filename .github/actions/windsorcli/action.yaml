@@ -30,6 +30,15 @@ runs:
       with:
         go-version: 1.22.x
 
+    - name: Install Docker CLI
+      run: |
+        curl -L "https://download.docker.com/linux/static/stable/$(uname -m)/docker-20.10.7.tgz" -o docker.tgz
+        tar xzvf docker.tgz
+        mv docker/* /usr/local/bin/
+        echo "docker version: $(docker --version)"
+        echo "/usr/local/bin" >> $GITHUB_PATH
+      shell: bash
+
     - name: Install Docker Compose
       run: |
         curl -L "https://github.com/docker/compose/releases/download/2.22.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
