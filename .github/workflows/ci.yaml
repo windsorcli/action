@@ -13,8 +13,8 @@ on:
 
 jobs:
   windsorcli:
-    runs-on: ubuntu-latest
-    # runs-on: windows-latest
+    # runs-on: ubuntu-latest
+    runs-on: windows-latest
   
     steps:
       - name: Checkout code
@@ -33,10 +33,17 @@ jobs:
         with:
           aqua_version: v2.28.0
 
-      - name: Set aqua path
+      - name: Set aqua path on Linux/macOS
         if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
           echo "${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Set aqua path on Windows
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          echo "${Env:AQUA_ROOT_DIR:-${Env:XDG_DATA_HOME:-$Env:USERPROFILE\AppData\Local\aquaproj-aqua}\bin}" >> $GITHUB_PATH
+        shell: powershell
 
       # Install tools
       - name: Install tools
