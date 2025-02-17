@@ -74,10 +74,10 @@ runs:
       shell: bash
 
     # Install Tools
-    - name: Install Tools
-      run: |
-        aqua install
-      shell: bash
+    # - name: Install Tools
+    #   run: |
+    #     aqua install
+    #   shell: bash
 
     # Install Windsor CLI on Linux/macOS
     - name: Install the Windsor CLI on Linux/macOS
