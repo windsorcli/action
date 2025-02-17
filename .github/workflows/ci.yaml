@@ -45,10 +45,10 @@ jobs:
       #     Add-Content -Path $env:GITHUB_PATH -Value "$(`{Env:AQUA_ROOT_DIR:-$(`{Env:XDG_DATA_HOME:-$Env:USERPROFILE\AppData\Local\aquaproj-aqua`})\bin`})"
       #   shell: powershell
 
-      # Install tools
-      - name: Install tools
-        run: |
-          aqua install     
+      # # Install tools
+      # - name: Install tools
+      #   run: |
+      #     aqua install     
 
       # Install Windsor CLI Action
       - name: Install Windsor CLI Action
