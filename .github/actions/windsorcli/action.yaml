@@ -58,16 +58,16 @@ runs:
       continue-on-error: false
       shell: bash
 
-    - name: Install Docker Compose on Windows
-      if: runner.os == 'Windows'
-      run: |
-        $dockerComposeUrl = "https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-Windows-x86_64.exe"
-        $dockerComposePath = "$Env:ProgramFiles\docker\docker-compose.exe"
-        Invoke-WebRequest -Uri $dockerComposeUrl -OutFile $dockerComposePath
-        [Environment]::SetEnvironmentVariable('Path', $Env:Path + ';' + $Env:ProgramFiles + '\docker', [EnvironmentVariableTarget]::Machine)
-        docker-compose --version
-      continue-on-error: false
-      shell: powershell
+    # - name: Install Docker Compose on Windows
+    #   if: runner.os == 'Windows'
+    #   run: |
+    #     $dockerComposeUrl = "https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-Windows-x86_64.exe"
+    #     $dockerComposePath = "$Env:ProgramFiles\docker\docker-compose.exe"
+    #     Invoke-WebRequest -Uri $dockerComposeUrl -OutFile $dockerComposePath
+    #     [Environment]::SetEnvironmentVariable('Path', $Env:Path + ';' + $Env:ProgramFiles + '\docker', [EnvironmentVariableTarget]::Machine)
+    #     docker-compose --version
+    #   continue-on-error: false
+    #   shell: powershell
 
     # Install Windsor CLI on Linux/macOS
     - name: Install the Windsor CLI on Linux/macOS
