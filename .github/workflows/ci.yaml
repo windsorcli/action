@@ -39,11 +39,11 @@ jobs:
           echo "${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin" >> $GITHUB_PATH
         shell: bash
 
-      - name: Set aqua path on Windows
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          Add-Content -Path $env:GITHUB_PATH -Value "$(`{Env:AQUA_ROOT_DIR:-$(`{Env:XDG_DATA_HOME:-$Env:USERPROFILE\AppData\Local\aquaproj-aqua`})\bin`})"
-        shell: powershell
+      # - name: Set aqua path on Windows
+      #   if: ${{ runner.os == 'Windows' }}
+      #   run: |
+      #     Add-Content -Path $env:GITHUB_PATH -Value "$(`{Env:AQUA_ROOT_DIR:-$(`{Env:XDG_DATA_HOME:-$Env:USERPROFILE\AppData\Local\aquaproj-aqua`})\bin`})"
+      #   shell: powershell
 
       # Install tools
       - name: Install tools
