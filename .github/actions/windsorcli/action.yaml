@@ -43,6 +43,7 @@ runs:
         aqua_version: v2.28.0
 
     - name: Set aqua path
+      if: steps.aqua-check.outputs.aqua_installed == 'false'
       run: |
         echo "${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin" >> $GITHUB_PATH
       shell: bash
