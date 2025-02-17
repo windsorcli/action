@@ -22,8 +22,15 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      # Install Aqua
+    - name: List files
+      run: |  
+        ls -la
+      shell: bash
+
+    # Install Aqua
     - name: Install Aqua
       uses: aquaproj/aqua-installer@e2d0136abcf70b7a2f6f505720640750557c4b33 # v3.1.1
       with:
@@ -34,28 +41,10 @@ runs:
         echo "${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin" >> $GITHUB_PATH
       shell: bash
 
-    # Install Go
-    - name: Install Go
+    # Install Tools
+    - name: Install Tools
       run: |
-        aqua i golang/go@go1.23.4
-      shell: bash
-
-    # Install Docker
-    # - name: Install Docker
-    #   run: |
-    #     aqua i docker/docker@25.0.7
-    #   shell: bash
-
-    # Install Docker Compose
-    - name: Install Docker Compose
-      run: |
-        aqua i docker/compose@2.22.0
-      shell: bash
-
-    # Install Docker CLI
-    - name: Install Docker CLI
-      run: |
-        aqua i docker/cli@27.4.1
+        aqua install
       shell: bash
 
     # Install Windsor CLI on Linux/macOS
