@@ -30,33 +30,36 @@ runs:
       with:
         go-version: 1.22.x
 
-    - name: Install Docker using Docker's official script
-      if: runner.os == 'Linux' || runner.os == 'macOS'
-      run: |
-        curl -fsSL https://get.docker.com -o get-docker.sh
-        sudo sh get-docker.sh
-      continue-on-error: false
-      shell: bash
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-    - name: Install Docker on Windows
-      if: runner.os == 'Windows'
-      run: |
-        Invoke-WebRequest -Uri https://download.docker.com/win/static/stable/x86_64/docker-20.10.7.zip -OutFile docker.zip
-        Expand-Archive -Path docker.zip -DestinationPath $Env:ProgramFiles
-        Remove-Item -Force docker.zip
-        [Environment]::SetEnvironmentVariable('Path', $Env:Path + ';' + $Env:ProgramFiles + '\docker', [EnvironmentVariableTarget]::Machine)
-        docker --version
-      continue-on-error: false
-      shell: powershell
+    # - name: Install Docker using Docker's official script
+    #   if: runner.os == 'Linux' || runner.os == 'macOS'
+    #   run: |
+    #     curl -fsSL https://get.docker.com -o get-docker.sh
+    #     sudo sh get-docker.sh
+    #   continue-on-error: false
+    #   shell: bash
 
-    - name: Install Docker Compose
-      if: runner.os == 'Linux' || runner.os == 'macOS'
-      run: |
-          sudo curl -L "https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
-      continue-on-error: false
-      shell: bash
+    # - name: Install Docker on Windows
+    #   if: runner.os == 'Windows'
+    #   run: |
+    #     Invoke-WebRequest -Uri https://download.docker.com/win/static/stable/x86_64/docker-20.10.7.zip -OutFile docker.zip
+    #     Expand-Archive -Path docker.zip -DestinationPath $Env:ProgramFiles
+    #     Remove-Item -Force docker.zip
+    #     [Environment]::SetEnvironmentVariable('Path', $Env:Path + ';' + $Env:ProgramFiles + '\docker', [EnvironmentVariableTarget]::Machine)
+    #     docker --version
+    #   continue-on-error: false
+    #   shell: powershell
+
+    # - name: Install Docker Compose
+    #   if: runner.os == 'Linux' || runner.os == 'macOS'
+    #   run: |
+    #       sudo curl -L "https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    #       sudo chmod +x /usr/local/bin/docker-compose
+    #       docker-compose --version
+    #   continue-on-error: false
+    #   shell: bash
 
     # - name: Install Docker Compose on Windows
     #   if: runner.os == 'Windows'
