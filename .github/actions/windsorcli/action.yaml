@@ -50,10 +50,10 @@ runs:
     #     echo "${Env:AQUA_ROOT_DIR:-${Env:XDG_DATA_HOME:-$Env:USERPROFILE\AppData\Local\aquaproj-aqua}\bin}" >> $GITHUB_PATH
     #   shell: powershell
 
-    # Install tools
-    - name: Install tools
-      run: |
-        aqua install     
+    # # Install tools
+    # - name: Install tools
+    #   run: |
+    #     aqua install     
 
     # Install Windsor CLI on Linux/macOS
     - name: Install the Windsor CLI on Linux/macOS
