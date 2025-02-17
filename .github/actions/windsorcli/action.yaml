@@ -37,6 +37,7 @@ runs:
         echo "/usr/local/bin" >> $GITHUB_PATH
       shell: bash
 
+      
     # Install Windsor CLI on Linux/macOS
     - name: Install the Windsor CLI on Linux/macOS
       if: runner.os == 'Linux' || runner.os == 'macOS'
