@@ -25,59 +25,35 @@ runs:
     - name: Checkout code
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-    # - name: Install Go
-    #   run: |
-    #     if [[ "$RUNNER_OS" == "Windows" ]]; then
-    #       curl -sSL https://golang.org/dl/go1.23.4.windows-amd64.msi -o go.msi
-    #       msiexec /i go.msi /quiet /norestart
-    #     else
-    #       curl -sSL https://golang.org/dl/go1.23.4.linux-amd64.tar.gz -o go.tar.gz
-    #       tar -C /usr/local -xzf go.tar.gz
-    #       export PATH=$PATH:/usr/local/go/bin
-    #     fi
-    #   shell: bash
+        # Install Aqua on Linux/macOS
+    - name: Install Aqua on Linux/macOS
+      if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+      uses: aquaproj/aqua-installer@e2d0136abcf70b7a2f6f505720640750557c4b33 # v3.1.1
+      with:
+        aqua_version: v2.28.0
 
-    # - name: Install Docker CLI
-    #   run: |
-    #     if [[ "$RUNNER_OS" == "Windows" ]]; then
-    #       curl -sSL https://download.docker.com/win/static/stable/x86_64/docker-20.10.7.zip -o docker.zip
-    #       Expand-Archive -Path docker.zip -DestinationPath $Env:ProgramFiles
-    #       $Env:Path += ";$Env:ProgramFiles\docker"
-    #     else
-    #       curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-20.10.7.tgz -o docker.tgz
-    #       tar -xzf docker.tgz
-    #       sudo mv docker/* /usr/local/bin/
-    #     fi
-    #   shell: bash
-
-    # - name: Install Docker Compose
-    #   run: |
-    #     if [[ "$RUNNER_OS" == "Windows" ]]; then
-    #       curl -sSL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-Windows-x86_64.exe -o $Env:ProgramFiles\docker\docker-compose.exe
-    #     else
-    #       sudo curl -L "https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    #       sudo chmod +x /usr/local/bin/docker-compose
-    #     fi
-    #   shell: bash
-
-    # Install Aqua
-    - name: Install Aqua
-      if: runner.os == 'Linux' || runner.os == 'macOS'
+    - name: Install Aqua on Windows
+      if: ${{ runner.os == 'Windows' }}
       uses: aquaproj/aqua-installer@e2d0136abcf70b7a2f6f505720640750557c4b33 # v3.1.1
       with:
         aqua_version: v2.28.0
 
     - name: Set aqua path
-      if: runner.os == 'Linux' || runner.os == 'macOS'
+      if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
       run: |
         echo "${AQUA_ROOT_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/aquaproj-aqua}/bin" >> $GITHUB_PATH
       shell: bash
+      
+    - name: Set aqua path on Windows
+      if: ${{ runner.os == 'Windows' }}
+      run: |
+        echo "${Env:AQUA_ROOT_DIR:-${Env:XDG_DATA_HOME:-$Env:USERPROFILE\AppData\Local\aquaproj-aqua}\bin}" >> $GITHUB_PATH
+      shell: powershell
 
-    # Install Tools
-    # - name: Install Tools
-    #   run: |
-    #     aqua install
-    #   shell: bash
+    # Install tools
+    - name: Install tools
+      run: |
+        aqua install     
 
     # Install Windsor CLI on Linux/macOS
     - name: Install the Windsor CLI on Linux/macOS
