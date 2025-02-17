@@ -55,7 +55,7 @@ runs:
     # Install Docker CLI
     - name: Install Docker CLI
       run: |
-        aqua i docker/cli@25.0.7
+        aqua i docker/cli@27.4.1
       shell: bash
 
     # Install Windsor CLI on Linux/macOS
