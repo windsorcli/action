@@ -52,6 +52,12 @@ runs:
         aqua i docker/compose@2.22.0
       shell: bash
 
+    # Install Docker CLI
+    - name: Install Docker CLI
+      run: |
+        aqua i docker/cli@25.0.7
+      shell: bash
+
     # Install Windsor CLI on Linux/macOS
     - name: Install the Windsor CLI on Linux/macOS
       if: runner.os == 'Linux' || runner.os == 'macOS'
