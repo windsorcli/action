@@ -53,9 +53,16 @@ jobs:
           context: local
         
       - name: Windsor Context Get
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
           ${{ github.workspace }}/bin/windsor context get
         shell: bash
+
+      - name: Windsor Context Get (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          ${{ github.workspace }}/bin/windsor.exe context get
+        shell: powershell
 
       - name: Check environment variables (Linux/macOS)
         if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
