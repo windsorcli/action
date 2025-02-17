@@ -32,6 +32,7 @@ runs:
           echo "aqua_installed=true" >> $GITHUB_ENV
         else
           echo "aqua_installed=false" >> $GITHUB_ENV
+        fi
       shell: bash
 
     # Install Aqua
