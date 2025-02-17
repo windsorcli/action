@@ -13,4 +13,4 @@ registries:
 packages:
   - name: golang/go@go1.23.4
   - name: docker/cli@v27.4.1
-  # - name: docker/compose@v2.32.4
+  - name: docker/compose@v2.32.4
