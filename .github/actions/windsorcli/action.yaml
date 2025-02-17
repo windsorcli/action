@@ -75,7 +75,6 @@ runs:
 
     # Install Tools
     - name: Install Tools
-      if: runner.os == 'Linux' || runner.os == 'macOS'
       run: |
         aqua install
       shell: bash
