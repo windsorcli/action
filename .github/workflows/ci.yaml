@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  repository_dispatch:
+    types: 
+      - main-branch-update
+
+jobs:
+  windsorcli:
+    runs-on: ubuntu-latest
+    # runs-on: windows-latest
+  
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # Install Windsor CLI Action
+      - name: Install Windsor CLI Action
+        uses: ./.github/actions/windsorcli
+        with:
+          ref: release-0.5.0
+          version: v0.4.1
+          install_folder: ${{ github.workspace }}/bin
+          context: local
+        
+      - name: Windsor Context Get
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+        run: |
+          ${{ github.workspace }}/bin/windsor context get
+        shell: bash
+
+      - name: Windsor Context Get (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          ${{ github.workspace }}/bin/windsor.exe context get
+        shell: powershell
+
+      - name: Check environment variables (Linux/macOS)
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+        run: |
+          echo KUBECONFIG="$KUBECONFIG"
+          echo KUBE_CONFIG_PATH="$KUBE_CONFIG_PATH"
+          echo DOCKER_CONFIG="$DOCKER_CONFIG"
+          echo DOCKER_HOST="$DOCKER_HOST"
+          echo OMNICONFIG="$OMNICONFIG"
+          echo TALOSCONFIG="$TALOSCONFIG"
+          echo WINDSOR_CONTEXT="$WINDSOR_CONTEXT"
+          echo WINDSOR_PROJECT_ROOT="$WINDSOR_PROJECT_ROOT"
+        shell: bash
+
+      - name: Check environment variables (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          # Print the $windsorEnvOutput variables
+          Write-Output "windsorEnvOutput variables:"
+          $windsorEnvOutput -split "`n" | ForEach-Object {
+            Write-Output $_
+          }
+        shell: powershell
