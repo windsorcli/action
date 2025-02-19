@@ -132,30 +132,30 @@ runs:
           exit 1
         fi
 
-        # Add windsor env to GITHUB_ENV
+        # # Add windsor env to GITHUB_ENV
 
-        # Add the Windsor CLI install folder to the GitHub path
-        echo "${{ inputs.install_folder }}" >> $GITHUB_PATH
-        echo "WINDSOR_PROJECT_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
+        # # Add the Windsor CLI install folder to the GitHub path
+        # echo "${{ inputs.install_folder }}" >> $GITHUB_PATH
+        # echo "WINDSOR_PROJECT_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
 
-        export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
+        # export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
         
-        "${{ inputs.install_folder }}/windsor" init ${{ inputs.context }}
+        # "${{ inputs.install_folder }}/windsor" init ${{ inputs.context }}
 
-        # Run the Windsor env command and capture the output
-        windsor_env_output=$("${{ inputs.install_folder }}/windsor" env)
+        # # Run the Windsor env command and capture the output
+        # windsor_env_output=$("${{ inputs.install_folder }}/windsor" env)
 
-        # Check if the command was successful
-        if [ $? -ne 0 ]; then
-          echo "Failed to run the Windsor env command."
-          exit 1
-        fi
+        # # Check if the command was successful
+        # if [ $? -ne 0 ]; then
+        #   echo "Failed to run the Windsor env command."
+        #   exit 1
+        # fi
 
-        # Parse the output and add it to $GITHUB_ENV
-        while IFS= read -r line; do
-          # Remove 'export ' from the beginning of each line
-          echo "${line#export }" >> $GITHUB_ENV
-        done <<< "$windsor_env_output"
+        # # Parse the output and add it to $GITHUB_ENV
+        # while IFS= read -r line; do
+        #   # Remove 'export ' from the beginning of each line
+        #   echo "${line#export }" >> $GITHUB_ENV
+        # done <<< "$windsor_env_output"
 
       shell: bash
 
