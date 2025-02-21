@@ -163,8 +163,8 @@ runs:
 
         # Parse the output and add it to $GITHUB_ENV
         while IFS= read -r line; do
-          # Skip lines that start with 'export DOCKER'
-          if [[ $line != export\ DOCKER* ]]; then
+          # Skip lines that start with 'export DOCKER' or 'unset'
+          if [[ $line != export\ DOCKER* && $line != unset* ]]; then
             # Remove 'export ' from the beginning of each line
             echo "${line#export }" >> $GITHUB_ENV
           fi
@@ -341,8 +341,11 @@ runs:
 
         # Parse the output and add it to $GITHUB_ENV
         $windsorEnvOutput -split "`n" | ForEach-Object {
-          # Remove 'export ' from the beginning of each line
-          $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
+          # Skip lines that start with 'unset'
+          if ($_ -notmatch '^unset') {
+            # Remove 'export ' from the beginning of each line
+            $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
+          }
         }
 
       shell: powershell
