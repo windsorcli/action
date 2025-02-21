@@ -185,7 +185,7 @@ runs:
       #       sed -i "/^$var_name=/d" $GITHUB_ENV
       #     fi
       #   done <<< "$windsor_env_output"
-      # shell: bash
+      shell: bash
 
     # Install Windsor CLI on Windows
     - name: Install the Windsor CLI on Windows
