@@ -83,6 +83,9 @@ jobs:
         uses: ./.github/actions/windsorcli
         with:
           work_dir: ${{ github.workspace }}/terraform/cluster
+          version: v0.5.0
+          install_folder: ${{ github.workspace }}/bin
+          context: local
 
       - name: Check TF_ environment variables (Linux/macOS)
         if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
@@ -107,3 +110,14 @@ jobs:
             Write-Output "$($_.Name)=$($_.Value)"
           }
         shell: powershell          
+
+      # Install Windsor CLI Action
+      - name: CD to terraform test folder
+        uses: ./.github/actions/windsorcli
+        with:
+          work_dir: ${{ github.workspace }}
+          version: v0.5.0
+          install_folder: ${{ github.workspace }}/bin
+          context: local
+
+        
