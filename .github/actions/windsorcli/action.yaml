@@ -31,7 +31,7 @@ runs:
 
     # Install Windsor CLI on Linux/macOS
     - name: Install the Windsor CLI on Linux/macOS
-      if: (inputs.work_dir == "default-work-dir") && (runner.os == 'Linux' || runner.os == 'macOS')
+      if: (inputs.work_dir == 'default-work-dir') && (runner.os == 'Linux' || runner.os == 'macOS')
       run: |
         
         # Install Windsor CLI
@@ -167,7 +167,7 @@ runs:
 
     # Install Windsor CLI on Windows
     - name: Install the Windsor CLI on Windows
-      if: (inputs.work_dir == "default-work-dir") && (runner.os == 'Windows')
+      if: (inputs.work_dir == 'default-work-dir') && (runner.os == 'Windows')
       run: |
         # Convert $HOST_OS
         switch ("${{ runner.os }}") {
@@ -323,7 +323,7 @@ runs:
       shell: powershell
 
     - name: Set work directory
-      if: (inputs.work_dir != "default-work-dir") && (runner.os != 'Windows')
+      if: (inputs.work_dir != 'default-work-dir') && (runner.os != 'Windows')
       run: |
         cd ${{ inputs.work_dir }}
 
@@ -349,7 +349,7 @@ runs:
       shell: bash
       
     - name: Set work directory
-      if: (inputs.work_dir != "default-work-dir") && (runner.os == 'Windows')
+      if: (inputs.work_dir != 'default-work-dir') && (runner.os == 'Windows')
       run: |
         cd ${{ inputs.work_dir }}
 
