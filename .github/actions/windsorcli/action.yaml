@@ -153,9 +153,12 @@ runs:
         # Get the current context
         current_context=$("${{ inputs.install_folder }}/windsor" context get)
 
-        # Initialize the context if necessary
-        if [ "$current_context" != "${{ inputs.context }}" ]; then
-          "${{ inputs.install_folder }}/windsor" init ${{ inputs.context }}
+        # Check if the current context is available
+        if [[ $current_context == *"Error"* ]]; then
+          echo "No context is available. Initializing context..."
+          "${{ inputs.install_folder }}/windsor" init "${{ inputs.context }}"
+          # Re-fetch the current context after initialization
+          current_context=$("${{ inputs.install_folder }}/windsor" context get)
         fi
 
         # Run the Windsor env command and capture the output
@@ -343,10 +346,14 @@ runs:
         # Get the current context
         $current_context = & "${{ inputs.install_folder }}\windsor.exe" context get
 
-        # Initialize the context if necessary
-        if ($current_context -ne "${{ inputs.context }}") {
+        # Check if the current context is available
+        if ($current_context -match "Error") {
+          Write-Output "No context is available. Initializing context..."
           & "${{ inputs.install_folder }}\windsor.exe" init "${{ inputs.context }}"
+          # Re-fetch the current context after initialization
+          $current_context = & "${{ inputs.install_folder }}\windsor.exe" context get
         }
+
         # Run the Windsor env command and capture the output
         $windsorEnvOutput = & "${{ inputs.install_folder }}\windsor.exe" env
 
