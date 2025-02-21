@@ -341,16 +341,15 @@ runs:
 
         # Set the WINDSOR_PROJECT_ROOT environment variable
         $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
-          
-        # Get the current context
-        $current_context = & "${{ inputs.install_folder }}\windsor.exe" context get
 
-        # Check if the current context is available
-        if ($current_context -match "Error") {
-          Write-Output "No context is available. Initializing context..."
+        # Set the context
+        # Check if the desired context has been initialized by looking for the context in the contexts folder
+        if (Test-Path -Path "${{ inputs.install_folder }}\contexts\${{ inputs.context }}") {
+          Write-Output "Context ${{ inputs.context }} already initialized."
+          & "${{ inputs.install_folder }}\windsor.exe" context set "${{ inputs.context }}"
+        } else {
+          Write-Output "Context ${{ inputs.context }} not initialized. Initializing..."
           & "${{ inputs.install_folder }}\windsor.exe" init "${{ inputs.context }}"
-          # Re-fetch the current context after initialization
-          $current_context = & "${{ inputs.install_folder }}\windsor.exe" context get
         }
 
         # Run the Windsor env command and capture the output
