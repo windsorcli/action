@@ -66,24 +66,20 @@ jobs:
 
       - name: Create terraform test folder
         run: |
-          mkdir -p ${{ github.workspace }}/terraform
-          touch ${{ github.workspace }}/terraform/main.tf
-          ls -la ${{ github.workspace }}/terraform
-          echo "WINDSOR_PROJECT_ROOT=$WINDSOR_PROJECT_ROOT"
-          ls -la ${{ github.workspace }}
+          mkdir -p ${{ github.workspace }}/terraform/cluster
+          touch ${{ github.workspace }}/terraform/cluster/main.tf
         shell: bash
       
       # Install Windsor CLI Action
       - name: CD to terraform test folder
         uses: ./.github/actions/windsorcli
         with:
-          work_dir: ${{ github.workspace }}/terraform
+          work_dir: ${{ github.workspace }}/terraform/cluster
 
       - name: Check environment variables (Linux/macOS)
         if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
-          printenv | grep '^TF'
-          echo WINDSOR_PROJECT_ROOT="$WINDSOR_PROJECT_ROOT"
+          printenv | grep 'TF'
         shell: bash
 
       - name: Check environment variables (Windows)
