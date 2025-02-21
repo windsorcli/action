@@ -144,8 +144,17 @@ runs:
           echo "${{ inputs.install_folder }}" >> $GITHUB_PATH
           echo "WINDSOR_PROJECT_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
 
-          export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
-          
+        fi
+
+        # Set the WINDSOR_PROJECT_ROOT environment variable
+
+        export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
+
+        # Get the current context
+        current_context=$("${{ inputs.install_folder }}/windsor" context get)
+
+        # Initialize the context if necessary
+        if [ "$current_context" != "${{ inputs.context }}" ]; then
           "${{ inputs.install_folder }}/windsor" init ${{ inputs.context }}
         fi
 
@@ -326,12 +335,18 @@ runs:
           Add-Content -Path $env:GITHUB_PATH -Value "${{ inputs.install_folder }}"
           Add-Content -Path $env:GITHUB_ENV -Value "WINDSOR_PROJECT_ROOT=${{ github.workspace }}"
 
-          $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
-          
-          & "${{ inputs.install_folder }}\windsor.exe" init ${{ inputs.context }}
         }
 
+        # Set the WINDSOR_PROJECT_ROOT environment variable
+        $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
+          
+        # Get the current context
+        $current_context = & "${{ inputs.install_folder }}\windsor.exe" context get
 
+        # Initialize the context if necessary
+        if ($current_context -ne "${{ inputs.context }}") {
+          & "${{ inputs.install_folder }}\windsor.exe" init "${{ inputs.context }}"
+        }
         # Run the Windsor env command and capture the output
         $windsorEnvOutput = & "${{ inputs.install_folder }}\windsor.exe" env
 
