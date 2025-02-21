@@ -153,6 +153,8 @@ runs:
         # Get the current context
         current_context=$("${{ inputs.install_folder }}/windsor" context get)
 
+        echo "Current context: $current_context"
+        
         # Check if the current context is available
         if [[ $current_context == *"Error"* ]]; then
           echo "No context is available. Initializing context..."
