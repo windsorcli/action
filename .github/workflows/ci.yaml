@@ -14,8 +14,8 @@ on:
 
 jobs:
   windsorcli:
-    runs-on: ubuntu-latest
-    # runs-on: windows-latest
+    # runs-on: ubuntu-latest
+    runs-on: windows-latest
   
     steps:
       - name: Checkout code
@@ -76,7 +76,7 @@ jobs:
         with:
           work_dir: ${{ github.workspace }}/terraform/cluster
 
-      - name: Check environment variables (Linux/macOS)
+      - name: Check TF_ environment variables (Linux/macOS)
         if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
           windsor env
@@ -86,7 +86,7 @@ jobs:
           done
         shell: bash
 
-      - name: Check environment variables (Windows)
+      - name: Check TF_ environment variables (Windows)
         if: ${{ runner.os == 'Windows' }}
         run: |
           # Print the $windsorEnvOutput variables
