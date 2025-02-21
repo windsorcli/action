@@ -79,7 +79,7 @@ jobs:
       - name: Check environment variables (Linux/macOS)
         if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
-          printenv | grep 'TF'
+          env
         shell: bash
 
       - name: Check environment variables (Windows)
