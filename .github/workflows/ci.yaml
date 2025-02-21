@@ -24,8 +24,7 @@ jobs:
       - name: Install Windsor CLI Action
         uses: ./.github/actions/windsorcli
         with:
-          ref: release-0.5.0
-          version: v0.4.1
+          version: v0.5.0
           install_folder: ${{ github.workspace }}/bin
           context: local
         
@@ -63,3 +62,32 @@ jobs:
             Write-Output $_
           }
         shell: powershell
+
+      - name: Create terraform test folder
+        run: |
+          mkdir -p ${{ github.workspace }}/terraform
+          touch ${{ github.workspace }}/terraform/main.tf
+        shell: bash
+      
+      # Install Windsor CLI Action
+      - name: CD to terraform test folder
+        uses: ./.github/actions/windsorcli
+        with:
+          work_dir: ${{ github.workspace }}/terraform
+
+      - name: Check environment variables (Linux/macOS)
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+        run: |
+          printenv | grep '^TF'
+          echo WINDSOR_PROJECT_ROOT="$WINDSOR_PROJECT_ROOT"
+        shell: bash
+
+      - name: Check environment variables (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          # Print the $windsorEnvOutput variables
+          Write-Output "windsorEnvOutput variables:"
+          $windsorEnvOutput -split "`n" | ForEach-Object {
+            Write-Output $_
+          }
+        shell: powershell          
