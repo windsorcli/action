@@ -35,6 +35,7 @@ runs:
       run: |
         
         cd ${{ inputs.work_dir }}
+
         if [ -f "${{ inputs.install_folder }}/windsor" ]; then
           echo "Windsor CLI already installed in ${{ inputs.install_folder }}"
         else
@@ -152,8 +153,6 @@ runs:
 
         # Run the Windsor env command and capture the output
         windsor_env_output=$("${{ inputs.install_folder }}/windsor" env)
-
-        echo "windsor_env_output=$windsor_env_output"
 
         # Check if the command was successful
         if [ $? -ne 0 ]; then

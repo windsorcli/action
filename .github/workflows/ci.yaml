@@ -80,6 +80,10 @@ jobs:
         if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
           windsor env
+          # Print all environment variables that start with TF_
+          env | grep '^TF_' | while IFS= read -r line; do
+            echo "$line"
+          done
         shell: bash
 
       - name: Check environment variables (Windows)
@@ -89,5 +93,9 @@ jobs:
           Write-Output "windsorEnvOutput variables:"
           $windsorEnvOutput -split "`n" | ForEach-Object {
             Write-Output $_
+          }
+          # Print all environment variables that start with TF_
+          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
+            Write-Output "$($_.Name)=$($_.Value)"
           }
         shell: powershell          
