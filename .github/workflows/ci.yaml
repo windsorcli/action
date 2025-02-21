@@ -64,11 +64,19 @@ jobs:
           }
         shell: powershell
 
-      - name: Create terraform test folder
+      - name: Create terraform test folder (Linux/macOS)
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
           mkdir -p ${{ github.workspace }}/terraform/cluster
           touch ${{ github.workspace }}/terraform/cluster/main.tf
         shell: bash
+
+      - name: Create terraform test folder (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          New-Item -ItemType Directory -Path ${{ github.workspace }}\terraform\cluster -Force
+          New-Item -ItemType File -Path ${{ github.workspace }}\terraform\cluster\main.tf -Force
+        shell: powershell
       
       # Install Windsor CLI Action
       - name: CD to terraform test folder
