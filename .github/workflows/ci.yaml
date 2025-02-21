@@ -68,6 +68,9 @@ jobs:
         run: |
           mkdir -p ${{ github.workspace }}/terraform
           touch ${{ github.workspace }}/terraform/main.tf
+          ls -la ${{ github.workspace }}/terraform
+          echo "WINDSOR_PROJECT_ROOT=$WINDSOR_PROJECT_ROOT"
+          ls -la ${{ github.workspace }}
         shell: bash
       
       # Install Windsor CLI Action
