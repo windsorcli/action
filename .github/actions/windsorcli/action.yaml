@@ -336,13 +336,28 @@ runs:
           exit 1
         }
 
-        # Parse the output and add it to $GITHUB_ENV
+        # Print the $windsorEnvOutput variables
+        Write-Output "windsorEnvOutput variables:"
         $windsorEnvOutput -split "`n" | ForEach-Object {
-          # Skip lines that start with 'Remove-Item'
-          if ($_ -notmatch '^Remove-Item') {
-            # Remove 'export ' from the beginning of each line
-            $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
-          }
+          Write-Output $_
         }
+
+        # # Parse the output and add it to $GITHUB_ENV
+        # $windsorEnvOutput -split "`n" | ForEach-Object {
+        #   # Skip lines that start with 'Remove-Item'
+        #   if ($_ -notmatch '^Remove-Item') {
+        #     # Remove 'export ' from the beginning of each line
+        #     $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
+        #   }
+        # }
+
+        # # Parse the output and add it to $GITHUB_ENV
+        # $windsorEnvOutput -split "`n" | ForEach-Object {
+        #   # Skip lines that start with 'Remove-Item'
+        #   if ($_ -notmatch '^Remove-Item') {
+        #     # Remove 'export ' from the beginning of each line
+        #     $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
+        #   }
+        # }
 
       shell: powershell
