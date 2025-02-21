@@ -18,7 +18,7 @@ inputs:
     required: false
     type: string
     default: local
-  work_dir:
+  workdir:
     required: false
     type: string
     default: ${{ github.workspace }}
@@ -32,7 +32,7 @@ runs:
       if: runner.os == 'Linux' || runner.os == 'macOS'
       run: |
         
-        cd ${{ inputs.work_dir }}
+        cd ${{ inputs.workdir }}
 
         if [ -f "${{ inputs.install_folder }}/windsor" ]; then
           echo "Windsor CLI already installed in ${{ inputs.install_folder }}"
@@ -189,7 +189,7 @@ runs:
       if: runner.os == 'Windows'
       run: |
 
-        cd ${{ inputs.work_dir }}
+        cd ${{ inputs.workdir }}
 
         if (Test-Path -Path "${{ inputs.install_folder }}\windsor.exe") {
           Write-Output "Windsor CLI already installed in ${{ inputs.install_folder }}"

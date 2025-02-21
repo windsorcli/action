@@ -82,7 +82,7 @@ jobs:
       - name: CD to terraform test folder
         uses: ./.github/actions/windsorcli
         with:
-          work_dir: ${{ github.workspace }}/terraform/cluster
+          workdir: ${{ github.workspace }}/terraform/cluster
           version: v0.5.0
           install_folder: ${{ github.workspace }}/bin
           context: local
@@ -115,7 +115,7 @@ jobs:
       - name: CD to terraform test folder
         uses: ./.github/actions/windsorcli
         with:
-          work_dir: ${{ github.workspace }}
+          workdir: ${{ github.workspace }}
           version: v0.5.0
           install_folder: ${{ github.workspace }}/bin
           context: local
@@ -151,7 +151,7 @@ jobs:
       - name: CD to terraform test folder
         uses: ./.github/actions/windsorcli
         with:
-          work_dir: ${{ github.workspace }}/terraform/cluster
+          workdir: ${{ github.workspace }}/terraform/cluster
           version: v0.5.0
           install_folder: ${{ github.workspace }}/bin
           context: staging
@@ -184,7 +184,7 @@ jobs:
       - name: CD to terraform test folder
         uses: ./.github/actions/windsorcli
         with:
-          work_dir: ${{ github.workspace }}
+          workdir: ${{ github.workspace }}
           version: v0.5.0
           install_folder: ${{ github.workspace }}/bin
           context: staging
