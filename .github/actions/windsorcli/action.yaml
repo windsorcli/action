@@ -160,10 +160,15 @@ runs:
 
         # Parse the output and add it to $GITHUB_ENV
         while IFS= read -r line; do
-          # Skip lines that start with 'export DOCKER' or 'unset'
-          if [[ $line != export\ DOCKER* && $line != unset* ]]; then
+          # Add lines that start with 'export' and remove lines that start with 'unset'
+          if [[ $line == export* ]]; then
             # Remove 'export ' from the beginning of each line
             echo "${line#export }" >> $GITHUB_ENV
+          elif [[ $line == unset* ]]; then
+            # Extract the variable name from the unset command
+            var_name="${line#unset }"
+            # Remove the variable from $GITHUB_ENV
+            sed -i "/^$var_name=/d" $GITHUB_ENV
           fi
         done <<< "$windsor_env_output"
       shell: bash
@@ -342,22 +347,18 @@ runs:
           Write-Output $_
         }
 
-        # # Parse the output and add it to $GITHUB_ENV
-        # $windsorEnvOutput -split "`n" | ForEach-Object {
-        #   # Skip lines that start with 'Remove-Item'
-        #   if ($_ -notmatch '^Remove-Item') {
-        #     # Remove 'export ' from the beginning of each line
-        #     $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
-        #   }
-        # }
-
-        # # Parse the output and add it to $GITHUB_ENV
-        # $windsorEnvOutput -split "`n" | ForEach-Object {
-        #   # Skip lines that start with 'Remove-Item'
-        #   if ($_ -notmatch '^Remove-Item') {
-        #     # Remove 'export ' from the beginning of each line
-        #     $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
-        #   }
-        # }
+        # Parse the output and update $GITHUB_ENV
+        $windsorEnvOutput -split "`n" | ForEach-Object {
+          # Check for 'Remove-Item Env' to remove variables
+          if ($_ -match '^Remove-Item Env\s+(\S+)') {
+            $varName = $matches[1]
+            # Remove the variable from $GITHUB_ENV
+            (Get-Content -Path $env:GITHUB_ENV) -notmatch "^$varName=" | Set-Content -Path $env:GITHUB_ENV
+          }
+          # Add lines that start with '$env:' to $GITHUB_ENV
+          elseif ($_ -match '^\$env:') {
+            $_ | Add-Content -Path $env:GITHUB_ENV
+          }
+        }
 
       shell: powershell
