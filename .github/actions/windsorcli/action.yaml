@@ -151,7 +151,11 @@ runs:
         export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
 
         # Get the current context
-        current_context=$("${{ inputs.install_folder }}/windsor" context get)
+        current_context=$("${{ inputs.install_folder }}/windsor" context get 2>&1)
+        if [ $? -ne 0 ]; then
+          echo "Failed to get the current context: $current_context"
+          exit 1
+        fi
 
         echo "Current context: $current_context"
         
