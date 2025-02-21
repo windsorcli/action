@@ -5,7 +5,7 @@ inputs:
   version:
     required: false
     type: string
-    default: v0.4.1
+    default: v0.5.0
   ref:
     required: false
     type: string
@@ -18,6 +18,10 @@ inputs:
     required: false
     type: string
     default: local
+  work_dir:
+    required: false
+    type: string
+    default: "default-work-dir"
 
 runs:
   using: 'composite'
@@ -27,7 +31,7 @@ runs:
 
     # Install Windsor CLI on Linux/macOS
     - name: Install the Windsor CLI on Linux/macOS
-      if: runner.os == 'Linux' || runner.os == 'macOS'
+      if: (inputs.work_dir == "default-work-dir") && (runner.os == 'Linux' || runner.os == 'macOS')
       run: |
         
         # Install Windsor CLI
@@ -163,7 +167,7 @@ runs:
 
     # Install Windsor CLI on Windows
     - name: Install the Windsor CLI on Windows
-      if: runner.os == 'Windows'
+      if: (inputs.work_dir == "default-work-dir") && (runner.os == 'Windows')
       run: |
         # Convert $HOST_OS
         switch ("${{ runner.os }}") {
@@ -318,3 +322,51 @@ runs:
 
       shell: powershell
 
+    - name: Set work directory
+      if: (inputs.work_dir != "default-work-dir") && (runner.os != 'Windows')
+      run: |
+        cd ${{ inputs.work_dir }}
+
+        export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
+        
+        # Run the Windsor env command and capture the output
+        windsor_env_output=$("${{ inputs.install_folder }}/windsor" env)
+
+        # Check if the command was successful
+        if [ $? -ne 0 ]; then
+          echo "Failed to run the Windsor env command."
+          exit 1
+        fi
+
+        # Parse the output and add it to $GITHUB_ENV
+        while IFS= read -r line; do
+          # Skip lines that start with 'export DOCKER'
+          if [[ $line != export\ DOCKER* ]]; then
+            # Remove 'export ' from the beginning of each line
+            echo "${line#export }" >> $GITHUB_ENV
+          fi
+        done <<< "$windsor_env_output"
+      shell: bash
+      
+    - name: Set work directory
+      if: (inputs.work_dir != "default-work-dir") && (runner.os == 'Windows')
+      run: |
+        cd ${{ inputs.work_dir }}
+
+        $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
+        
+        # Run the Windsor env command and capture the output
+        $windsorEnvOutput = & "${{ inputs.install_folder }}\windsor.exe" env
+
+        # Check if the command was successful
+        if ($LASTEXITCODE -ne 0) {
+          Write-Output "Failed to run the Windsor env command."
+          exit 1
+        }
+
+        # Parse the output and add it to $GITHUB_ENV
+        $windsorEnvOutput -split "`n" | ForEach-Object {
+          # Remove 'export ' from the beginning of each line
+          $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
+        }
+      shell: powershell
