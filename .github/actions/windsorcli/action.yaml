@@ -341,6 +341,12 @@ runs:
           exit 1
         }
 
+        # Print the $windsorEnvOutput variables
+        Write-Output "windsorEnvOutput variables:"
+        $windsorEnvOutput -split "`n" | ForEach-Object {
+          Write-Output $_
+        }
+
         # Parse the output and update $GITHUB_ENV
         $windsorEnvOutput -split "`n" | ForEach-Object {
           # Check for 'Remove-Item Env' to remove variables
