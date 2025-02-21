@@ -21,7 +21,7 @@ inputs:
   work_dir:
     required: false
     type: string
-    default: "default-work-dir"
+    default: ${{ github.workspace }}
 
 runs:
   using: 'composite'
@@ -31,120 +31,124 @@ runs:
 
     # Install Windsor CLI on Linux/macOS
     - name: Install the Windsor CLI on Linux/macOS
-      if: (inputs.work_dir == 'default-work-dir') && (runner.os == 'Linux' || runner.os == 'macOS')
+      if: runner.os == 'Linux' || runner.os == 'macOS'
       run: |
         
-        # Install Windsor CLI
-        
-        case "${{ runner.arch }}" in
-          "ARM64")
-            TMP_HOST_ARCH="arm64"
-            ;;
-          "X64")
-            TMP_HOST_ARCH="amd64"
-            ;;
-          *)
-            echo "Unsupported HOST_ARCH: ${{ runner.arch }}"
-            exit 1
-            ;;
-        esac
-
-        # Convert HOST_OS to TMP_OS
-        case "${{ runner.os }}" in
-          "Windows")
-            TMP_HOST_OS="windows"
-            ;;
-          "Linux")
-            TMP_HOST_OS="linux"
-            ;;
-          "macOS")
-            TMP_HOST_OS="darwin"
-            ;;
-          *)
-            echo "Unsupported HOST_OS: ${{ runner.os }}"
-            exit 1
-            ;;
-        esac
-
-        numeric_version=$(echo "${{ inputs.version }}" | sed 's/^v//')
-        LOCAL_FILE_NAME="windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
-        DOWNLOAD_FILE_NAME="https://github.com/windsorcli/cli/releases/download/${{ inputs.version }}/${LOCAL_FILE_NAME}"
-
-        expected_version="dev"
-
-        if [ "${{ inputs.ref }}" == "" ]; then
-          
-          # Install the release version on Linux/macOS
-          
-          echo "Installing Windsor CLI using release (${{ inputs.version }})..."
-          curl -L -o "$LOCAL_FILE_NAME" "$DOWNLOAD_FILE_NAME"
-
-          mkdir -p "${{ inputs.install_folder }}"
-
-          echo "tar -xzf $LOCAL_FILE_NAME -C ${{inputs.install_folder}}"
-          tar -xzf "$LOCAL_FILE_NAME" -C "${{ inputs.install_folder }}"
-          chmod +x "${{ inputs.install_folder }}/windsor"
-          rm -rf "$LOCAL_FILE_NAME"
-          expected_version="${{ inputs.version }}"
-
+        cd ${{ inputs.work_dir }}
+        if [ -f "${{ inputs.install_folder }}/windsor" ]; then
+          echo "Windsor CLI already installed in ${{ inputs.install_folder }}"
         else
+          # Install Windsor CLI
           
-          # Install the ref version on Linux/macOS
+          case "${{ runner.arch }}" in
+            "ARM64")
+              TMP_HOST_ARCH="arm64"
+              ;;
+            "X64")
+              TMP_HOST_ARCH="amd64"
+              ;;
+            *)
+              echo "Unsupported HOST_ARCH: ${{ runner.arch }}"
+              exit 1
+              ;;
+          esac
+
+          # Convert HOST_OS to TMP_OS
+          case "${{ runner.os }}" in
+            "Windows")
+              TMP_HOST_OS="windows"
+              ;;
+            "Linux")
+              TMP_HOST_OS="linux"
+              ;;
+            "macOS")
+              TMP_HOST_OS="darwin"
+              ;;
+            *)
+              echo "Unsupported HOST_OS: ${{ runner.os }}"
+              exit 1
+              ;;
+          esac
+
+          numeric_version=$(echo "${{ inputs.version }}" | sed 's/^v//')
+          LOCAL_FILE_NAME="windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
+          DOWNLOAD_FILE_NAME="https://github.com/windsorcli/cli/releases/download/${{ inputs.version }}/${LOCAL_FILE_NAME}"
+
+          expected_version="dev"
+
+          if [ "${{ inputs.ref }}" == "" ]; then
             
-          echo "Installing Windsor CLI from ref (${{ inputs.ref }})..."
-          if [ -z "${{ inputs.ref }}" ]; then
-            echo "inputs.ref is not set."
-            exit 1
+            # Install the release version on Linux/macOS
+            
+            echo "Installing Windsor CLI using release (${{ inputs.version }})..."
+            curl -L -o "$LOCAL_FILE_NAME" "$DOWNLOAD_FILE_NAME"
+
+            mkdir -p "${{ inputs.install_folder }}"
+
+            echo "tar -xzf $LOCAL_FILE_NAME -C ${{inputs.install_folder}}"
+            tar -xzf "$LOCAL_FILE_NAME" -C "${{ inputs.install_folder }}"
+            chmod +x "${{ inputs.install_folder }}/windsor"
+            rm -rf "$LOCAL_FILE_NAME"
+            expected_version="${{ inputs.version }}"
+
+          else
+            
+            # Install the ref version on Linux/macOS
+              
+            echo "Installing Windsor CLI from ref (${{ inputs.ref }})..."
+            if [ -z "${{ inputs.ref }}" ]; then
+              echo "inputs.ref is not set."
+              exit 1
+            fi
+            if ! git clone https://github.com/windsorcli/cli.git; then
+              echo "Failed to clone the repository. Please check the branch name and network connection."
+              exit 1
+            fi
+
+            pushd cli
+
+            if ! git checkout "${{ inputs.ref }}"; then
+              echo "Failed to clone the repository. Please check the branch name and network connection."
+              exit 1
+            fi
+
+            popd
+
+            if ! cd cli/cmd/windsor; then
+              echo "Failed to navigate to the Windsor CLI directory."
+              exit 1
+            fi
+
+            if ! go build -o "${{ inputs.install_folder }}/windsor"; then
+              echo "Failed to build the Windsor CLI. Please ensure Go is installed and properly configured."
+              exit 1
+            fi
           fi
-          if ! git clone https://github.com/windsorcli/cli.git; then
-            echo "Failed to clone the repository. Please check the branch name and network connection."
+
+          echo "Installation complete."
+        
+          # Verify the installation on Linux/macOS
+          
+          installed_version=$("${{ inputs.install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
+          installed_version="v${installed_version}"
+
+          if [ "$installed_version" == "$expected_version" ] || [ "$installed_version" == "v$expected_version" ]; then
+            echo "Installed version: $expected_version"
+          else
+            echo "Version mismatch: expected $expected_version, got $installed_version"
             exit 1
           fi
 
-          pushd cli
+          # Add windsor env to GITHUB_ENV
 
-          if ! git checkout "${{ inputs.ref }}"; then
-            echo "Failed to clone the repository. Please check the branch name and network connection."
-            exit 1
-          fi
+          # Add the Windsor CLI install folder to the GitHub path
+          echo "${{ inputs.install_folder }}" >> $GITHUB_PATH
+          echo "WINDSOR_PROJECT_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
 
-          popd
-
-          if ! cd cli/cmd/windsor; then
-            echo "Failed to navigate to the Windsor CLI directory."
-            exit 1
-          fi
-
-          if ! go build -o "${{ inputs.install_folder }}/windsor"; then
-            echo "Failed to build the Windsor CLI. Please ensure Go is installed and properly configured."
-            exit 1
-          fi
+          export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
+          
+          "${{ inputs.install_folder }}/windsor" init ${{ inputs.context }}
         fi
-
-        echo "Installation complete."
-
-        
-        # Verify the installation on Linux/macOS
-        
-        installed_version=$("${{ inputs.install_folder }}/windsor" version | grep "Version:" | awk '{print $2}')
-        installed_version="v${installed_version}"
-
-        if [ "$installed_version" == "$expected_version" ] || [ "$installed_version" == "v$expected_version" ]; then
-          echo "Installed version: $expected_version"
-        else
-          echo "Version mismatch: expected $expected_version, got $installed_version"
-          exit 1
-        fi
-
-        # Add windsor env to GITHUB_ENV
-
-        # Add the Windsor CLI install folder to the GitHub path
-        echo "${{ inputs.install_folder }}" >> $GITHUB_PATH
-        echo "WINDSOR_PROJECT_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
-
-        export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
-        
-        "${{ inputs.install_folder }}/windsor" init ${{ inputs.context }}
 
         # Run the Windsor env command and capture the output
         windsor_env_output=$("${{ inputs.install_folder }}/windsor" env)
@@ -167,143 +171,162 @@ runs:
 
     # Install Windsor CLI on Windows
     - name: Install the Windsor CLI on Windows
-      if: (inputs.work_dir == 'default-work-dir') && (runner.os == 'Windows')
+      if: runner.os == 'Windows'
       run: |
-        # Convert $HOST_OS
-        switch ("${{ runner.os }}") {
-          "Windows" {
-            $TMP_HOST_OS = "windows"
-          }
-        }
 
-        # Convert $HOST_ARCH
-        switch ("${{ runner.arch }}") {
-          "ARM64" {
-            $TMP_HOST_ARCH = "arm64"
+        cd ${{ inputs.work_dir }}
+
+        if (Test-Path -Path "${{ inputs.install_folder }}\windsor.exe") {
+          Write-Output "Windsor CLI already installed in ${{ inputs.install_folder }}"
+        } else {
+
+          # Ensure the install folder exists before proceeding
+          if (-Not (Test-Path -Path "${{ inputs.install_folder }}")) {
+            try {
+              New-Item -Path ${{ inputs.install_folder }} -ItemType Directory -Force -ErrorAction Stop
+            } catch {
+              Write-Output "Failed to create directory: ${{ inputs.install_folder }}"
+              exit 1
+            }
           }
-          "X64" {
-            $TMP_HOST_ARCH = "amd64"
+
+          # Convert $HOST_OS
+          switch ("${{ runner.os }}") {
+            "Windows" {
+              $TMP_HOST_OS = "windows"
+            }
           }
-          default {
-            Write-Output "Unsupported HOST_ARCH: ${{ runner.arch }}"
+
+          # Convert $HOST_ARCH
+          switch ("${{ runner.arch }}") {
+            "ARM64" {
+              $TMP_HOST_ARCH = "arm64"
+            }
+            "X64" {
+              $TMP_HOST_ARCH = "amd64"
+            }
+            default {
+              Write-Output "Unsupported HOST_ARCH: ${{ runner.arch }}"
+              exit 1
+            }
+          }
+
+          # Create bin directory
+          Write-Output "Creating directory on Windows: ${{ inputs.install_folder }}"
+          try {
+              New-Item -Path ${{ inputs.install_folder }} -ItemType Directory -Force -ErrorAction Stop
+          } catch {
+              Write-Output "Failed to create directory: ${{ inputs.install_folder }}"
+              exit 1
+          }
+
+          # Install Windsor CLI
+          if ("${{ inputs.ref }}" -eq "") {
+            
+              # Install the release version on Windows
+            
+              Write-Output "Installing Windsor CLI on Windows from release (${{ inputs.version }})..."
+              # Assign the version string to a variable
+              $versionString = "${{ inputs.version }}"
+              $expected_version="${{  inputs.version }}"
+              # Trim the 'v' from the start of the version string
+              $numeric_version = $versionString.TrimStart('v')
+              $url = "https://github.com/windsorcli/cli/releases/download/${{ inputs.version }}/windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
+              $outputFile = "windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
+              
+              # Download the release
+              try {
+                  Invoke-WebRequest -Uri $url -Headers @{"Accept"="application/octet-stream"} -OutFile $outputFile -ErrorAction Stop
+              } catch {
+                  Write-Output "Failed to download Windsor CLI from $url"
+                  exit 1
+              }
+              
+              # Extract the tar.gz file
+              try {
+                  tar -xzf $outputFile -C ${{ inputs.install_folder }}
+              } catch {
+                  Write-Output "Failed to extract $outputFile"
+                  exit 1
+              }
+              
+              # Verify installation
+              $windsorExePath = Join-Path -Path ${{ inputs.install_folder }} -ChildPath "windsor.exe"
+              if (Test-Path -Path $windsorExePath) {
+                  Write-Output "Windsor CLI installed at $windsorExePath"
+              } else {
+                  Write-Output "Failed to install Windsor CLI at $windsorExePath"
+                  exit 1
+              }
+          } else {
+            
+              # Install the ref version on Windows
+            
+              $expected_version = "vdev"
+            
+              Write-Output "Installing Windsor CLI on Windows from ref (${{ inputs.ref }})..."
+              try {
+                  git clone https://github.com/windsorcli/cli.git
+              } catch {
+                  Write-Output "Failed to clone the repository from branch ${{ inputs.ref }}"
+                  exit 1
+              }
+
+              try {
+                Push-Location cli
+                git checkout ${{ inputs.ref }}
+                Pop-Location
+              } catch {
+                  Write-Output "Failed to checkout the branch ${{ inputs.ref }}"
+                  exit 1
+              }
+            
+              try {
+                  Set-Location -Path "cli" -ErrorAction Stop
+              } catch {
+                  Write-Output "Failed to navigate to the Windsor CLI directory"
+                  exit 1
+              }
+              
+              try {
+                  # Ensure the correct path to the main.go file
+                  go build -o "${{ inputs.install_folder }}\windsor.exe" ./cmd/windsor/main.go
+              } catch {
+                  Write-Output "Failed to build the Windsor CLI"
+                  exit 1
+              }
+          }
+
+          Write-Output "Installation complete."
+
+          
+          # Verify the installation on Windows
+          
+          $installedVersionOutput = & "${{ inputs.install_folder }}\windsor.exe" version
+          # Extract only the version number from the output
+          $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1'
+          $installedVersion = $installedVersion.Trim()
+          $installedVersion = "v" + $installedVersion 
+
+          # Compare only the version number          
+          if ($installedVersion -like "$expected_version*") {
+            Write-Output "Version match: $installedVersion"
+          } else {
+            Write-Error "Version mismatch: $installedVersion does not equal $expected_version"
             exit 1
           }
+
+          # Add windsor env to GITHUB_ENV
+
+          # Add the Windsor CLI install folder to the GitHub path
+          Add-Content -Path $env:GITHUB_PATH -Value "${{ inputs.install_folder }}"
+          Add-Content -Path $env:GITHUB_ENV -Value "WINDSOR_PROJECT_ROOT=${{ github.workspace }}"
+
+          $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
+          
+          & "${{ inputs.install_folder }}\windsor.exe" init ${{ inputs.context }}
         }
 
-        # Create bin directory
-        Write-Output "Creating directory on Windows: ${{ inputs.install_folder }}"
-        try {
-            New-Item -Path ${{ inputs.install_folder }} -ItemType Directory -Force -ErrorAction Stop
-        } catch {
-            Write-Output "Failed to create directory: ${{ inputs.install_folder }}"
-            exit 1
-        }
-
-        # Install Windsor CLI
-        if ("${{ inputs.ref }}" -eq "") {
-          
-            # Install the release version on Windows
-          
-            Write-Output "Installing Windsor CLI on Windows from release (${{ inputs.version }})..."
-            # Assign the version string to a variable
-            $versionString = "${{ inputs.version }}"
-            $expected_version="${{  inputs.version }}"
-            # Trim the 'v' from the start of the version string
-            $numeric_version = $versionString.TrimStart('v')
-            $url = "https://github.com/windsorcli/cli/releases/download/${{ inputs.version }}/windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
-            $outputFile = "windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
-            
-            # Download the release
-            try {
-                Invoke-WebRequest -Uri $url -Headers @{"Accept"="application/octet-stream"} -OutFile $outputFile -ErrorAction Stop
-            } catch {
-                Write-Output "Failed to download Windsor CLI from $url"
-                exit 1
-            }
-            
-            # Extract the tar.gz file
-            try {
-                tar -xzf $outputFile -C ${{ inputs.install_folder }}
-            } catch {
-                Write-Output "Failed to extract $outputFile"
-                exit 1
-            }
-            
-            # Verify installation
-            $windsorExePath = Join-Path -Path ${{ inputs.install_folder }} -ChildPath "windsor.exe"
-            if (Test-Path -Path $windsorExePath) {
-                Write-Output "Windsor CLI installed at $windsorExePath"
-            } else {
-                Write-Output "Failed to install Windsor CLI at $windsorExePath"
-                exit 1
-            }
-        } else {
-          
-            # Install the ref version on Windows
-          
-            $expected_version = "vdev"
-          
-            Write-Output "Installing Windsor CLI on Windows from ref (${{ inputs.ref }})..."
-            try {
-                git clone https://github.com/windsorcli/cli.git
-            } catch {
-                Write-Output "Failed to clone the repository from branch ${{ inputs.ref }}"
-                exit 1
-            }
-
-            try {
-              Push-Location cli
-              git checkout ${{ inputs.ref }}
-              Pop-Location
-            } catch {
-                Write-Output "Failed to checkout the branch ${{ inputs.ref }}"
-                exit 1
-            }
-           
-            try {
-                Set-Location -Path "cli" -ErrorAction Stop
-            } catch {
-                Write-Output "Failed to navigate to the Windsor CLI directory"
-                exit 1
-            }
-            
-            try {
-                # Ensure the correct path to the main.go file
-                go build -o "${{ inputs.install_folder }}\windsor.exe" ./cmd/windsor/main.go
-            } catch {
-                Write-Output "Failed to build the Windsor CLI"
-                exit 1
-            }
-        }
-
-        Write-Output "Installation complete."
-
-        
-        # Verify the installation on Windows
-        
-        $installedVersionOutput = & "${{ inputs.install_folder }}\windsor.exe" version
-        # Extract only the version number from the output
-        $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1'
-        $installedVersion = $installedVersion.Trim()
-        $installedVersion = "v" + $installedVersion 
-
-        # Compare only the version number          
-        if ($installedVersion -like "$expected_version*") {
-          Write-Output "Version match: $installedVersion"
-        } else {
-          Write-Error "Version mismatch: $installedVersion does not equal $expected_version"
-          exit 1
-        }
-
-        # Add windsor env to GITHUB_ENV
-
-        # Add the Windsor CLI install folder to the GitHub path
-        Add-Content -Path $env:GITHUB_PATH -Value "${{ inputs.install_folder }}"
-        Add-Content -Path $env:GITHUB_ENV -Value "WINDSOR_PROJECT_ROOT=${{ github.workspace }}"
-
-        $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
-        
-        & "${{ inputs.install_folder }}\windsor.exe" init ${{ inputs.context }}
 
         # Run the Windsor env command and capture the output
         $windsorEnvOutput = & "${{ inputs.install_folder }}\windsor.exe" env
@@ -322,51 +345,51 @@ runs:
 
       shell: powershell
 
-    - name: Set work directory
-      if: (inputs.work_dir != 'default-work-dir') && (runner.os != 'Windows')
-      run: |
-        cd ${{ inputs.work_dir }}
+    # - name: Set work directory
+    #   if: (inputs.work_dir != 'default-work-dir') && (runner.os != 'Windows')
+    #   run: |
+    #     cd ${{ inputs.work_dir }}
 
-        export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
+    #     export WINDSOR_PROJECT_ROOT=${{ github.workspace }}
         
-        # Run the Windsor env command and capture the output
-        windsor_env_output=$("${{ inputs.install_folder }}/windsor" env)
+    #     # Run the Windsor env command and capture the output
+    #     windsor_env_output=$("${{ inputs.install_folder }}/windsor" env)
 
-        # Check if the command was successful
-        if [ $? -ne 0 ]; then
-          echo "Failed to run the Windsor env command."
-          exit 1
-        fi
+    #     # Check if the command was successful
+    #     if [ $? -ne 0 ]; then
+    #       echo "Failed to run the Windsor env command."
+    #       exit 1
+    #     fi
 
-        # Parse the output and add it to $GITHUB_ENV
-        while IFS= read -r line; do
-          # Skip lines that start with 'export DOCKER'
-          if [[ $line != export\ DOCKER* ]]; then
-            # Remove 'export ' from the beginning of each line
-            echo "${line#export }" >> $GITHUB_ENV
-          fi
-        done <<< "$windsor_env_output"
-      shell: bash
+    #     # Parse the output and add it to $GITHUB_ENV
+    #     while IFS= read -r line; do
+    #       # Skip lines that start with 'export DOCKER'
+    #       if [[ $line != export\ DOCKER* ]]; then
+    #         # Remove 'export ' from the beginning of each line
+    #         echo "${line#export }" >> $GITHUB_ENV
+    #       fi
+    #     done <<< "$windsor_env_output"
+    #   shell: bash
       
-    - name: Set work directory
-      if: (inputs.work_dir != 'default-work-dir') && (runner.os == 'Windows')
-      run: |
-        cd ${{ inputs.work_dir }}
+    # - name: Set work directory
+    #   if: (inputs.work_dir != 'default-work-dir') && (runner.os == 'Windows')
+    #   run: |
+    #     cd ${{ inputs.work_dir }}
 
-        $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
+    #     $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
         
-        # Run the Windsor env command and capture the output
-        $windsorEnvOutput = & "${{ inputs.install_folder }}\windsor.exe" env
+    #     # Run the Windsor env command and capture the output
+    #     $windsorEnvOutput = & "${{ inputs.install_folder }}\windsor.exe" env
 
-        # Check if the command was successful
-        if ($LASTEXITCODE -ne 0) {
-          Write-Output "Failed to run the Windsor env command."
-          exit 1
-        }
+    #     # Check if the command was successful
+    #     if ($LASTEXITCODE -ne 0) {
+    #       Write-Output "Failed to run the Windsor env command."
+    #       exit 1
+    #     }
 
-        # Parse the output and add it to $GITHUB_ENV
-        $windsorEnvOutput -split "`n" | ForEach-Object {
-          # Remove 'export ' from the beginning of each line
-          $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
-        }
-      shell: powershell
+    #     # Parse the output and add it to $GITHUB_ENV
+    #     $windsorEnvOutput -split "`n" | ForEach-Object {
+    #       # Remove 'export ' from the beginning of each line
+    #       $_ -replace '^export ', '' | Add-Content -Path $env:GITHUB_ENV
+    #     }
+    #   shell: powershell
