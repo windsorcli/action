@@ -24,8 +24,7 @@ jobs:
       - name: Install Windsor CLI Action
         uses: ./.github/actions/windsorcli
         with:
-          ref: release-0.5.0
-          version: v0.4.1
+          version: v0.5.0
           install_folder: ${{ github.workspace }}/bin
           context: local
         
@@ -61,5 +60,152 @@ jobs:
           Write-Output "windsorEnvOutput variables:"
           $windsorEnvOutput -split "`n" | ForEach-Object {
             Write-Output $_
+          }
+        shell: powershell
+
+      - name: Create terraform test folder (Linux/macOS)
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+        run: |
+          mkdir -p ${{ github.workspace }}/terraform/cluster
+          touch ${{ github.workspace }}/terraform/cluster/main.tf
+        shell: bash
+
+      - name: Create terraform test folder (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          New-Item -ItemType Directory -Path ${{ github.workspace }}\terraform\cluster -Force
+          New-Item -ItemType File -Path ${{ github.workspace }}\terraform\cluster\main.tf -Force
+        shell: powershell
+      
+      # CD Windsor CLI - local context
+      - name: CD to terraform test folder
+        uses: ./.github/actions/windsorcli
+        with:
+          workdir: ${{ github.workspace }}/terraform/cluster
+          version: v0.5.0
+          install_folder: ${{ github.workspace }}/bin
+          context: local
+
+      - name: Check TF_ environment variables (Linux/macOS)
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+        run: |
+          windsor env
+          # Print all environment variables that start with TF_
+          env | grep '^TF_' | while IFS= read -r line; do
+            echo "$line"
+          done
+        shell: bash
+
+      - name: Check TF_ environment variables (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          # Print the $windsorEnvOutput variables
+          Write-Output "windsorEnvOutput variables:"
+          $windsorEnvOutput -split "`n" | ForEach-Object {
+            Write-Output $_
+          }
+          # Print all environment variables that start with TF_
+          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
+            Write-Output "$($_.Name)=$($_.Value)"
+          }
+        shell: powershell          
+
+      # Install Windsor CLI Action
+      - name: CD to terraform test folder
+        uses: ./.github/actions/windsorcli
+        with:
+          workdir: ${{ github.workspace }}
+          version: v0.5.0
+          install_folder: ${{ github.workspace }}/bin
+          context: local
+
+      - name: Check TF_ environment variables (Linux/macOS)
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+        run: |
+          windsor env
+          # Print all environment variables that start with TF_
+          env | grep '^TF_' | while IFS= read -r line; do
+            echo "$line"
+          done
+        shell: bash
+
+      - name: Check TF_ environment variables (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          # Print the $windsorEnvOutput variables
+          Write-Output "windsorEnvOutput variables:"
+          $windsorEnvOutput -split "`n" | ForEach-Object {
+            Write-Output $_
+          }
+          # Print all environment variables that start with TF_
+          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
+            Write-Output "$($_.Name)=$($_.Value)"
+          }
+        shell: powershell          
+          
+      # Staging Testing
+      # CD Windsor CLI - staging context
+      - name: CD to terraform test folder
+        uses: ./.github/actions/windsorcli
+        with:
+          workdir: ${{ github.workspace }}/terraform/cluster
+          version: v0.5.0
+          install_folder: ${{ github.workspace }}/bin
+          context: staging
+
+      - name: Check TF_ environment variables (Linux/macOS)
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+        run: |
+          windsor env
+          # Print all environment variables that start with TF_
+          env | grep '^TF_' | while IFS= read -r line; do
+            echo "$line"
+          done
+        shell: bash
+
+      - name: Check TF_ environment variables (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          # Print the $windsorEnvOutput variables
+          Write-Output "windsorEnvOutput variables:"
+          $windsorEnvOutput -split "`n" | ForEach-Object {
+            Write-Output $_
+          }
+          # Print all environment variables that start with TF_
+          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
+            Write-Output "$($_.Name)=$($_.Value)"
+          }
+        shell: powershell          
+
+      # Install Windsor CLI Action
+      - name: CD to terraform test folder
+        uses: ./.github/actions/windsorcli
+        with:
+          workdir: ${{ github.workspace }}
+          version: v0.5.0
+          install_folder: ${{ github.workspace }}/bin
+          context: staging
+
+      - name: Check TF_ environment variables (Linux/macOS)
+        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
+        run: |
+          windsor env
+          # Print all environment variables that start with TF_
+          env | grep '^TF_' | while IFS= read -r line; do
+            echo "$line"
+          done
+        shell: bash
+
+      - name: Check TF_ environment variables (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          # Print the $windsorEnvOutput variables
+          Write-Output "windsorEnvOutput variables:"
+          $windsorEnvOutput -split "`n" | ForEach-Object {
+            Write-Output $_
+          }
+          # Print all environment variables that start with TF_
+          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
+            Write-Output "$($_.Name)=$($_.Value)"
           }
         shell: powershell
