@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - cd-action
   pull_request:
     branches:
       - main
@@ -144,9 +143,7 @@ jobs:
           }
         shell: powershell          
           
-##
-## STAGING TESTING
-##
+      # Staging Testing
       # CD Windsor CLI - staging context
       - name: CD to terraform test folder
         uses: ./.github/actions/windsorcli
