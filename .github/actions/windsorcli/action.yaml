@@ -171,6 +171,10 @@ runs:
 
         # Parse the output and add it to $GITHUB_ENV
         while IFS= read -r line; do
+          # Skip lines that contain 'DOCKER'
+          if [[ $line == *DOCKER* ]]; then
+            continue
+          fi
           # Add lines that start with 'export' and remove lines that start with 'unset'
           if [[ $line == export* ]]; then
             # Remove 'export ' from the beginning of each line
@@ -363,6 +367,10 @@ runs:
 
         # Parse the output and update $GITHUB_ENV
         $windsorEnvOutput -split "`n" | ForEach-Object {
+          # Skip lines that include 'DOCKER'
+          if ($_ -match 'DOCKER') {
+            return
+          }
           # Check for 'Remove-Item Env' to remove variables
           if ($_ -match '^Remove-Item Env\s+(\S+)') {
             $varName = $matches[1]
