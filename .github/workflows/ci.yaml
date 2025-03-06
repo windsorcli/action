@@ -20,7 +20,7 @@ jobs:
 
       # Install Windsor CLI Action
       - name: Install Windsor CLI Action
-        uses: .
+        uses: ./
         with:
           version: v0.5.2
           install_folder: ${{ github.workspace }}/bin
@@ -77,7 +77,7 @@ jobs:
       
       # CD Windsor CLI - local context
       - name: CD to terraform test folder
-        uses: .
+        uses: ./
         with:
           workdir: ${{ github.workspace }}/terraform/cluster
           version: v0.5.2
@@ -110,7 +110,7 @@ jobs:
 
       # Install Windsor CLI Action
       - name: CD to terraform test folder
-        uses: .
+        uses: ./
         with:
           workdir: ${{ github.workspace }}
           version: v0.5.2
@@ -144,7 +144,7 @@ jobs:
       # Staging Testing
       # CD Windsor CLI - staging context
       - name: CD to terraform test folder
-        uses: .
+        uses: ./
         with:
           workdir: ${{ github.workspace }}/terraform/cluster
           version: v0.5.2
@@ -177,7 +177,7 @@ jobs:
 
       # Install Windsor CLI Action
       - name: CD to terraform test folder
-        uses: .
+        uses: ./
         with:
           workdir: ${{ github.workspace }}
           version: v0.5.2
