@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - refactor
   pull_request:
     branches:
       - main
@@ -22,9 +22,9 @@ jobs:
 
       # Install Windsor CLI Action
       - name: Install Windsor CLI Action
-        uses: ./.github/actions/windsorcli
+        uses: ./.github
         with:
-          version: v0.5.0
+          version: v0.5.2
           install_folder: ${{ github.workspace }}/bin
           context: local
         
@@ -79,10 +79,10 @@ jobs:
       
       # CD Windsor CLI - local context
       - name: CD to terraform test folder
-        uses: ./.github/actions/windsorcli
+        uses: ./.github
         with:
           workdir: ${{ github.workspace }}/terraform/cluster
-          version: v0.5.0
+          version: v0.5.2
           install_folder: ${{ github.workspace }}/bin
           context: local
 
@@ -112,10 +112,10 @@ jobs:
 
       # Install Windsor CLI Action
       - name: CD to terraform test folder
-        uses: ./.github/actions/windsorcli
+        uses: ./.github
         with:
           workdir: ${{ github.workspace }}
-          version: v0.5.0
+          version: v0.5.2
           install_folder: ${{ github.workspace }}/bin
           context: local
 
@@ -146,10 +146,10 @@ jobs:
       # Staging Testing
       # CD Windsor CLI - staging context
       - name: CD to terraform test folder
-        uses: ./.github/actions/windsorcli
+        uses: ./.github
         with:
           workdir: ${{ github.workspace }}/terraform/cluster
-          version: v0.5.0
+          version: v0.5.2
           install_folder: ${{ github.workspace }}/bin
           context: staging
 
@@ -179,10 +179,10 @@ jobs:
 
       # Install Windsor CLI Action
       - name: CD to terraform test folder
-        uses: ./.github/actions/windsorcli
+        uses: ./.github
         with:
           workdir: ${{ github.workspace }}
-          version: v0.5.0
+          version: v0.5.2
           install_folder: ${{ github.workspace }}/bin
           context: staging
 
