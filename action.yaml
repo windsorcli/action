@@ -37,7 +37,7 @@ runs:
           const path = require('path');
 
           const installFolder = path.join(process.env.GITHUB_WORKSPACE, '${{ inputs.install_folder }}');
-          const version = '${{ inputs.version }}';
+          let version = '${{ inputs.version }}';
           const ref = '${{ inputs.ref }}';
           const input_context = '${{ inputs.context }}';
 
@@ -62,6 +62,7 @@ runs:
               execCommand(`git clone https://github.com/windsorcli/cli.git`);
               execCommand(`cd cli && git checkout ${ref}`);
               execCommand(`cd cli/cmd/windsor && go build -o ${path.join(installFolder, 'windsor')}`);
+              version = 'vdev';  // Set expected version to vdev when building from source
             } else {
               const numericVersion = version.replace(/^v/, '');
               const localFileName = `windsor_${numericVersion}_${os}_${arch}.tar.gz`;
