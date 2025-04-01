@@ -68,9 +68,14 @@ runs:
             execCommand(`rm -rf ${localFileName}`);
 
             const installedVersion = execSync(`${path.join(installFolder, 'windsor')} version`).toString().trim();
+            installedVersion = installedVersion.replace(/^Version:\s*/, '');
+            installedVersion = `v${installedVersion}`;
+
             if (installedVersion !== version) {
               console.error(`Version mismatch: expected ${version}, got ${installedVersion}`);
               process.exit(1);
+            } else {
+              console.log(`Installed version: ${installedVersion}`);
             }
 
             console.log('Windsor CLI installation complete.');
