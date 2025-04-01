@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-  pull_request:
-    branches:
-      - main
-  repository_dispatch:
-    types: 
-      - main-branch-update
+  # pull_request:
+  #   branches:
+  #     - main
+  # repository_dispatch:
+  #   types: 
+  #     - main-branch-update
 
 jobs:
   windsorcli:
