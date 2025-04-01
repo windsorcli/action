@@ -100,14 +100,14 @@ runs:
           fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
           fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${process.env.GITHUB_WORKSPACE}\n`);
 
-          const contextPath = path.join(installFolder, 'contexts', input_context);
-          if (!fs.existsSync(contextPath)) {
-            console.log(`Context ${input_context} not initialized. Initializing...`);
-            execCommand(`${path.join(installFolder, 'windsor')} init ${input_context}`);
-          } else {
-            console.log(`Context ${input_context} already initialized.`);
-            execCommand(`${path.join(installFolder, 'windsor')} context set ${input_context}`);
-          }
+          # const contextPath = path.join(installFolder, 'contexts', input_context);
+          # if (!fs.existsSync(contextPath)) {
+          #   console.log(`Context ${input_context} not initialized. Initializing...`);
+          #   execCommand(`${path.join(installFolder, 'windsor')} init ${input_context}`);
+          # } else {
+          #   console.log(`Context ${input_context} already initialized.`);
+          #   execCommand(`${path.join(installFolder, 'windsor')} context set ${input_context}`);
+          # }
 
     # # Install Windsor CLI on Windows
     # - name: Install the Windsor CLI on Windows
