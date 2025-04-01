@@ -36,7 +36,7 @@ runs:
           const fs = require('fs');
           const path = require('path');
 
-          const installFolder = path.join(process.env.GITHUB_WORKSPACE, '${{ inputs.install_folder }}');
+          const installFolder = '${{ inputs.install_folder }}'
           let version = '${{ inputs.version }}';
           const ref = '${{ inputs.ref }}';
           const input_context = '${{ inputs.context }}';
