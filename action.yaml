@@ -68,8 +68,11 @@ runs:
             execCommand(`rm -rf ${localFileName}`);
 
             let installedVersion = execSync(`${path.join(installFolder, 'windsor')} version`).toString().trim();
-            installedVersion = installedVersion.replace(/^Version:\s*/, '');
-            installedVersion = `v${installedVersion}`;
+            installedVersion = installedVersion.replace(/^Version:\s*/, '').trim();
+            installedVersion = `v${installedVersion}`.trim();
+
+            console.log(`Expected version: "${version}"`);
+            console.log(`Installed version: "${installedVersion}"`);
 
             if (installedVersion !== version) {
               console.error(`Version mismatch: expected ${version}, got ${installedVersion}`);
