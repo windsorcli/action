@@ -67,9 +67,11 @@ runs:
             execCommand(`chmod +x ${path.join(installFolder, 'windsor')}`);
             execCommand(`rm -rf ${localFileName}`);
 
-            let installedVersion = execSync(`${path.join(installFolder, 'windsor')} version`).toString().trim();
-            installedVersion = installedVersion.replace(/^Version:\s*/, '').trim();
-            installedVersion = `v${installedVersion}`.trim();
+            let installedVersionOutput = execSync(`${path.join(installFolder, 'windsor')} version`).toString().trim();
+
+            // Extract the version number from the output
+            let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
+            let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
 
             console.log(`Expected version: "${version}"`);
             console.log(`Installed version: "${installedVersion}"`);
