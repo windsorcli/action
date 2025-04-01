@@ -24,6 +24,7 @@ jobs:
         with:
           # version: v0.5.2
           ref: main
+          version: ""
           install_folder: ${{ github.workspace }}/bin
           context: local
         
