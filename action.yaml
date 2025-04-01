@@ -57,15 +57,22 @@ runs:
             const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
             const os = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
-            const numericVersion = version.replace(/^v/, '');
-            const localFileName = `windsor_${numericVersion}_${os}_${arch}.tar.gz`;
-            const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
+            if (ref) {
+              console.log(`Installing Windsor CLI from ref (${ref})...`);
+              execCommand(`git clone https://github.com/windsorcli/cli.git`);
+              execCommand(`cd cli && git checkout ${ref}`);
+              execCommand(`cd cli/cmd/windsor && go build -o ${path.join(installFolder, 'windsor')}`);
+            } else {
+              const numericVersion = version.replace(/^v/, '');
+              const localFileName = `windsor_${numericVersion}_${os}_${arch}.tar.gz`;
+              const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
 
-            execCommand(`curl -L -o ${localFileName} ${downloadUrl}`);
-            execCommand(`mkdir -p ${installFolder}`);
-            execCommand(`tar -xzf ${localFileName} -C ${installFolder}`);
-            execCommand(`chmod +x ${path.join(installFolder, 'windsor')}`);
-            execCommand(`rm -rf ${localFileName}`);
+              execCommand(`curl -L -o ${localFileName} ${downloadUrl}`);
+              execCommand(`mkdir -p ${installFolder}`);
+              execCommand(`tar -xzf ${localFileName} -C ${installFolder}`);
+              execCommand(`chmod +x ${path.join(installFolder, 'windsor')}`);
+              execCommand(`rm -rf ${localFileName}`);
+            }
 
             let installedVersionOutput = execSync(`${path.join(installFolder, 'windsor')} version`).toString().trim();
 
