@@ -22,9 +22,8 @@ jobs:
       - name: Install Windsor CLI Action
         uses: ./
         with:
-          # version: v0.5.2
-          ref: main
-          version: ""
+          version: v0.5.3
+          # ref: main
           install_folder: ${{ github.workspace }}/bin
           context: local
         
@@ -111,30 +110,29 @@ jobs:
           install_folder: ${{ github.workspace }}/bin
           context: local
 
-      - name: Check TF_ environment variables (Linux/macOS)
-        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-        run: |
-          windsor env
-          # Print all environment variables that start with TF_
-          env | grep '^TF_' | while IFS= read -r line; do
-            echo "$line"
-          done
-        shell: bash
+      - name: Check TF_ environment variables using GitHub Script
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
 
-      - name: Check TF_ environment variables (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          # Print the $windsorEnvOutput variables
-          Write-Output "windsorEnvOutput variables:"
-          $windsorEnvOutput -split "`n" | ForEach-Object {
-            Write-Output $_
-          }
-          # Print all environment variables that start with TF_
-          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
-            Write-Output "$($_.Name)=$($_.Value)"
-          }
-        shell: powershell          
-          
+            // Execute the windsor env command and capture its output
+            try {
+              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
+              console.log("windsor env output:");
+              console.log(windsorEnvOutput);
+            } catch (error) {
+              console.error("Error executing windsor env:", error.message);
+            }
+
+            // Log all environment variables that start with TF_
+            console.log("TF_ environment variables:");
+            Object.keys(process.env).forEach(key => {
+              if (key.startsWith('TF_')) {
+                console.log(`${key}=${process.env[key]}`);
+              }
+            });
+            
       # Staging Testing
       # CD Windsor CLI - staging context
       - name: CD to terraform test folder
@@ -146,30 +144,29 @@ jobs:
           install_folder: ${{ github.workspace }}/bin
           context: staging
 
-      - name: Check TF_ environment variables (Linux/macOS)
-        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-        run: |
-          windsor env
-          # Print all environment variables that start with TF_
-          env | grep '^TF_' | while IFS= read -r line; do
-            echo "$line"
-          done
-        shell: bash
+      - name: Check TF_ environment variables using GitHub Script
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
 
-      - name: Check TF_ environment variables (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          # Print the $windsorEnvOutput variables
-          Write-Output "windsorEnvOutput variables:"
-          $windsorEnvOutput -split "`n" | ForEach-Object {
-            Write-Output $_
-          }
-          # Print all environment variables that start with TF_
-          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
-            Write-Output "$($_.Name)=$($_.Value)"
-          }
-        shell: powershell          
+            // Execute the windsor env command and capture its output
+            try {
+              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
+              console.log("windsor env output:");
+              console.log(windsorEnvOutput);
+            } catch (error) {
+              console.error("Error executing windsor env:", error.message);
+            }
 
+            // Log all environment variables that start with TF_
+            console.log("TF_ environment variables:");
+            Object.keys(process.env).forEach(key => {
+              if (key.startsWith('TF_')) {
+                console.log(`${key}=${process.env[key]}`);
+              }
+            });
+  
       # Install Windsor CLI Action
       - name: CD to terraform test folder
         uses: ./
@@ -180,26 +177,25 @@ jobs:
           install_folder: ${{ github.workspace }}/bin
           context: staging
 
-      - name: Check TF_ environment variables (Linux/macOS)
-        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-        run: |
-          windsor env
-          # Print all environment variables that start with TF_
-          env | grep '^TF_' | while IFS= read -r line; do
-            echo "$line"
-          done
-        shell: bash
+      - name: Check TF_ environment variables using GitHub Script
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
 
-      - name: Check TF_ environment variables (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          # Print the $windsorEnvOutput variables
-          Write-Output "windsorEnvOutput variables:"
-          $windsorEnvOutput -split "`n" | ForEach-Object {
-            Write-Output $_
-          }
-          # Print all environment variables that start with TF_
-          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
-            Write-Output "$($_.Name)=$($_.Value)"
-          }
-        shell: powershell
+            // Execute the windsor env command and capture its output
+            try {
+              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
+              console.log("windsor env output:");
+              console.log(windsorEnvOutput);
+            } catch (error) {
+              console.error("Error executing windsor env:", error.message);
+            }
+
+            // Log all environment variables that start with TF_
+            console.log("TF_ environment variables:");
+            Object.keys(process.env).forEach(key => {
+              if (key.startsWith('TF_')) {
+                console.log(`${key}=${process.env[key]}`);
+              }
+            });
