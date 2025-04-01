@@ -67,7 +67,7 @@ runs:
             execCommand(`chmod +x ${path.join(installFolder, 'windsor')}`);
             execCommand(`rm -rf ${localFileName}`);
 
-            const installedVersion = execSync(`${path.join(installFolder, 'windsor')} version`).toString().trim();
+            let installedVersion = execSync(`${path.join(installFolder, 'windsor')} version`).toString().trim();
             installedVersion = installedVersion.replace(/^Version:\s*/, '');
             installedVersion = `v${installedVersion}`;
 
