@@ -39,7 +39,7 @@ runs:
           const installFolder = path.join(process.env.GITHUB_WORKSPACE, '${{ inputs.install_folder }}');
           const version = '${{ inputs.version }}';
           const ref = '${{ inputs.ref }}';
-          const context = '${{ inputs.context }}';
+          const input_context = '${{ inputs.context }}';
 
           const execCommand = (command) => {
             try {
@@ -82,13 +82,13 @@ runs:
           fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
           fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${process.env.GITHUB_WORKSPACE}\n`);
 
-          const contextPath = path.join(installFolder, 'contexts', context);
+          const contextPath = path.join(installFolder, 'contexts', input_context);
           if (!fs.existsSync(contextPath)) {
-            console.log(`Context ${context} not initialized. Initializing...`);
-            execCommand(`${path.join(installFolder, 'windsor')} init ${context}`);
+            console.log(`Context ${input_context} not initialized. Initializing...`);
+            execCommand(`${path.join(installFolder, 'windsor')} init ${input_context}`);
           } else {
-            console.log(`Context ${context} already initialized.`);
-            execCommand(`${path.join(installFolder, 'windsor')} context set ${context}`);
+            console.log(`Context ${input_context} already initialized.`);
+            execCommand(`${path.join(installFolder, 'windsor')} context set ${input_context}`);
           }
 
     # # Install Windsor CLI on Windows
