@@ -22,7 +22,8 @@ jobs:
       - name: Install Windsor CLI Action
         uses: ./
         with:
-          version: v0.5.2
+          # version: v0.5.2
+          ref: main
           install_folder: ${{ github.workspace }}/bin
           context: local
         
@@ -104,7 +105,8 @@ jobs:
         uses: ./
         with:
           workdir: ${{ github.workspace }}
-          version: v0.5.2
+          # version: v0.5.2
+          ref: main
           install_folder: ${{ github.workspace }}/bin
           context: local
 
@@ -138,7 +140,8 @@ jobs:
         uses: ./
         with:
           workdir: ${{ github.workspace }}/terraform/cluster
-          version: v0.5.2
+          # version: v0.5.2
+          ref: main
           install_folder: ${{ github.workspace }}/bin
           context: staging
 
@@ -171,7 +174,8 @@ jobs:
         uses: ./
         with:
           workdir: ${{ github.workspace }}
-          version: v0.5.2
+          # version: v0.5.2
+          ref: main
           install_folder: ${{ github.workspace }}/bin
           context: staging
 
