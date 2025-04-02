@@ -27,7 +27,6 @@ runs:
   using: 'composite'
   steps:
 
-    # Install Windsor CLI
     - name: Install Windsor CLI
       uses: actions/github-script@v7
       with:
@@ -102,6 +101,7 @@ runs:
           fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${process.env.GITHUB_WORKSPACE}\n`);
 
           if (input_context !== "") {
+            console.log(`Setting context to ${input_context}`);
             execCommand(`cd ${workdir} && ${installFolder}/windsor init ${input_context}`);
           }
 
