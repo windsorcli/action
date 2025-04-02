@@ -98,17 +98,10 @@ runs:
 
           console.log(`Setting environment variables for Windsor CLI.`);
           fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
-          fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${process.env.GITHUB_WORKSPACE}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${workdir}\n`);
 
           if (input_context !== "") {
             console.log(`Setting context to ${input_context}`);
-            
-            // Check if the .git directory exists
-            if (!fs.existsSync(`${workdir}/.git`)) {
-              console.log(`Initializing a new Git repository in ${workdir}`);
-              execCommand(`cd ${workdir} && git init`);
-            }
-
             execCommand(`cd ${workdir} && ${installFolder}/windsor init ${input_context}`);
           }
 
