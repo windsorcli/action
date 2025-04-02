@@ -17,7 +17,7 @@ inputs:
   context:
     required: false
     type: string
-    default: local
+    default: ""
   workdir:
     required: false
     type: string
@@ -27,8 +27,8 @@ runs:
   using: 'composite'
   steps:
 
-    # Install Windsor CLI using GitHub Script
-    - name: Install Windsor CLI using GitHub Script
+    # Install Windsor CLI
+    - name: Install Windsor CLI
       uses: actions/github-script@v7
       with:
         script: |
@@ -37,6 +37,7 @@ runs:
           const path = require('path');
 
           const installFolder = '${{ inputs.install_folder }}'
+          const workdir = '${{ inputs.workdir }}'
           let version = '${{ inputs.version }}';
           const ref = '${{ inputs.ref }}';
           const input_context = '${{ inputs.context }}';
@@ -100,6 +101,9 @@ runs:
           fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
           fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${process.env.GITHUB_WORKSPACE}\n`);
 
+          if (input_context !== "") {
+            execCommand(`cd ${workdir} && ${installFolder}/windsor init ${input_context}`);
+          }
 
     # # Install Windsor CLI on Windows
     # - name: Install the Windsor CLI on Windows
