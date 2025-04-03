@@ -76,9 +76,9 @@ runs:
               const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
 
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
-              const mkdirCommand = isWindows ? `mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
+              const mkdirCommand = isWindows ? `mkdir "${installFolder.replace(/\\/g, '/')}"` : `mkdir -p "${installFolder}"`;
               const extractCommand = isWindows 
-                ? `7z x ${localFileName} -so | 7z x -aoa -si -ttar -o"${installFolder}"` 
+                ? `7z x ${localFileName} -so | 7z x -aoa -si -ttar -o"${installFolder.replace(/\\/g, '/')}"` 
                 : `tar -xzf ${localFileName} -C "${installFolder}"`;
               const chmodCommand = isWindows 
                 ? `icacls "${path.join(installFolder, 'windsor')}" /grant Everyone:F` 
