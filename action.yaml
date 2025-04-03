@@ -27,85 +27,109 @@ runs:
   using: 'composite'
   steps:
 
-    # - name: Install Windsor CLI
-    #   uses: actions/github-script@v7
-    #   with:
-    #     script: |
-    #       const { execSync } = require('child_process');
-    #       const fs = require('fs');
-    #       const path = require('path');
+    - name: Install Windsor CLI
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { execSync } = require('child_process');
+          const fs = require('fs');
+          const path = require('path');
+          const os = require('os');
 
-    #       const installFolder = '${{ inputs.install_folder }}'
-    #       const workdir = '${{ inputs.workdir }}'
-    #       let version = '${{ inputs.version }}';
-    #       const ref = '${{ inputs.ref }}';
-    #       const input_context = '${{ inputs.context }}';
+          const installFolder = path.resolve('${{ inputs.install_folder }}');
+          const workdir = path.resolve('${{ inputs.workdir }}');
+          let version = '${{ inputs.version }}';
+          const ref = '${{ inputs.ref }}';
+          const input_context = '${{ inputs.context }}';
 
-    #       const execCommand = (command) => {
-    #         try {
-    #           console.log(`Executing: ${command}`);
-    #           execSync(command, { stdio: 'inherit' });
-    #         } catch (error) {
-    #           console.error(`Error executing command: ${command}`);
-    #           process.exit(1);
-    #         }
-    #       };
+          const isWindows = os.platform() === 'win32';
 
-    #       if (!fs.existsSync(path.join(installFolder, 'windsor'))) {
-    #         console.log('Windsor CLI not found, proceeding with installation.');
+          const execCommand = (command) => {
+            try {
+              console.log(`Executing: ${command}`);
+              execSync(command, { stdio: 'inherit' });
+            } catch (error) {
+              console.error(`Error executing command: ${command}`);
+              console.error(error.message);
+              process.exit(1);
+            }
+          };
 
-    #         const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
-    #         const os = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
+          console.log(`Install folder: ${installFolder}`);
+          console.log(`Workdir: ${workdir}`);
 
-    #         if (ref) {
-    #           console.log(`Installing Windsor CLI from ref (${ref})...`);
-    #           execCommand(`git clone https://github.com/windsorcli/cli.git`);
-    #           execCommand(`cd cli && git checkout ${ref}`);
-    #           execCommand(`cd cli/cmd/windsor && go build -o ${path.join(installFolder, 'windsor')}`);
-    #           version = 'vdev';  // Set expected version to vdev when building from source
-    #         } else {
-    #           const numericVersion = version.replace(/^v/, '');
-    #           const localFileName = `windsor_${numericVersion}_${os}_${arch}.tar.gz`;
-    #           const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
+          if (!fs.existsSync(path.join(installFolder, isWindows ? 'windsor.exe' : 'windsor'))) {
+            console.log('Windsor CLI not found, proceeding with installation.');
 
-    #           execCommand(`curl -L -o ${localFileName} ${downloadUrl}`);
-    #           execCommand(`mkdir -p ${installFolder}`);
-    #           execCommand(`tar -xzf ${localFileName} -C ${installFolder}`);
-    #           execCommand(`chmod +x ${path.join(installFolder, 'windsor')}`);
-    #           execCommand(`rm -rf ${localFileName}`);
-    #         }
+            const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
+            const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
-    #         let installedVersionOutput = execSync(`${path.join(installFolder, 'windsor')} version`).toString().trim();
+            if (ref) {
+              console.log(`Installing Windsor CLI from ref (${ref})...`);
+              execCommand(`git clone https://github.com/windsorcli/cli.git`);
+              execCommand(`cd cli && git checkout ${ref}`);
+              execCommand(`cd cli/cmd/windsor && go build -o ${path.join(installFolder, isWindows ? 'windsor.exe' : 'windsor')}`);
+              version = 'vdev';  // Set expected version to vdev when building from source
+            } else {
+              const numericVersion = version.replace(/^v/, '');
+              const localFileName = `windsor_${numericVersion}_${osType}_${arch}.tar.gz`;
+              const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
 
-    #         // Extract the version number from the output
-    #         let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
-    #         let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
+              const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
+              const mkdirCommand = `mkdir -p "${installFolder}"`;
+              const extractCommand = isWindows 
+                ? `7z x ${localFileName} -so | 7z x -aoa -si -ttar -o"${installFolder}"`
+                : `tar -xzf ${localFileName} -C "${installFolder}"`;
+              const chmodCommand = isWindows 
+                ? `icacls "${path.join(installFolder, 'windsor.exe')}" /grant Everyone:F`
+                : `chmod +x "${path.join(installFolder, 'windsor')}"`;
+              const rmCommand = isWindows ? `del ${localFileName}` : `rm -rf ${localFileName}`;
 
-    #         console.log(`Expected version: "${version}"`);
-    #         console.log(`Installed version: "${installedVersion}"`);
+              try {
+                execCommand(curlCommand);
+                execCommand(mkdirCommand);
+                execCommand(extractCommand);
+                execCommand(chmodCommand);
+                execCommand(rmCommand);
+              } catch (error) {
+                console.error('Error executing commands:', error.message);
+                process.exit(1);
+              }
 
-    #         if (installedVersion !== version) {
-    #           console.error(`Version mismatch: expected ${version}, got ${installedVersion}`);
-    #           process.exit(1);
-    #         } else {
-    #           console.log(`Installed version: ${installedVersion}`);
-    #         }
+              let installedVersionOutput = execSync(`${path.join(installFolder, isWindows ? 'windsor.exe' : 'windsor')} version`).toString().trim();
 
-    #         console.log('Windsor CLI installation complete.');
-    #       } else {
-    #         console.log('Windsor CLI already installed.');
-    #       }
+              // Extract the version number from the output
+              let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
+              let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
 
-    #       console.log(`Setting environment variables for Windsor CLI.`);
-    #       fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
-    #       fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${process.env.GITHUB_WORKSPACE}\n`);
+              console.log(`Expected version: "${version}"`);
+              console.log(`Installed version: "${installedVersion}"`);
 
-    #       process.env.WINDSOR_PROJECT_ROOT = process.env.GITHUB_WORKSPACE;
+              if (installedVersion !== version) {
+                console.error(`Version mismatch: expected ${version}, got ${installedVersion}`);
+                process.exit(1);
+              } else {
+                console.log(`Installed version: ${installedVersion}`);
+              }
 
-    #       if (input_context !== "") {
-    #         console.log(`Setting context to ${input_context}`);
-    #         execCommand(`cd ${workdir} && ${installFolder}/windsor init ${input_context}`);
-    #       }
+              console.log('Windsor CLI installation complete.');
+            }
+
+            console.log(`Setting environment variables for Windsor CLI.`);
+            fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
+            fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${workdir}\n`);
+
+            // Set the environment variable in the current process
+            process.env.WINDSOR_PROJECT_ROOT = workdir;
+
+            console.log(`workdir=${workdir}`);
+            console.log(`WINDSOR_PROJECT_ROOT value: ${process.env.WINDSOR_PROJECT_ROOT}`);
+
+            if (input_context !== "") {
+              console.log(`Setting context to ${input_context}`);
+              execCommand(`cd ${workdir} && ${path.join(installFolder, isWindows ? 'windsor.exe' : 'windsor')} init ${input_context}`);
+            }
+          }
 
     # Install Windsor CLI on Windows
     - name: Install the Windsor CLI on Windows
@@ -302,3 +326,204 @@ runs:
         }
 
       shell: powershell
+
+
+
+
+####### ARCHIVE AREA BELOW #######
+
+    # # Install Windsor CLI on Windows
+    # - name: Install the Windsor CLI on Windows
+    #   run: |
+
+    #     cd ${{ inputs.workdir }}
+
+    #     if (Test-Path -Path "${{ inputs.install_folder }}\windsor.exe") {
+    #       Write-Output "Windsor CLI already installed in ${{ inputs.install_folder }}"
+    #     } else {
+
+    #       # Ensure the install folder exists before proceeding
+    #       if (-Not (Test-Path -Path "${{ inputs.install_folder }}")) {
+    #         try {
+    #           New-Item -Path ${{ inputs.install_folder }} -ItemType Directory -Force -ErrorAction Stop
+    #         } catch {
+    #           Write-Output "Failed to create directory: ${{ inputs.install_folder }}"
+    #           exit 1
+    #         }
+    #       }
+
+    #       # Convert $HOST_OS
+    #       switch ("${{ runner.os }}") {
+    #         "Windows" {
+    #           $TMP_HOST_OS = "windows"
+    #         }
+    #       }
+
+    #       # Convert $HOST_ARCH
+    #       switch ("${{ runner.arch }}") {
+    #         "ARM64" {
+    #           $TMP_HOST_ARCH = "arm64"
+    #         }
+    #         "X64" {
+    #           $TMP_HOST_ARCH = "amd64"
+    #         }
+    #         default {
+    #           Write-Output "Unsupported HOST_ARCH: ${{ runner.arch }}"
+    #           exit 1
+    #         }
+    #       }
+
+    #       # Create bin directory
+    #       Write-Output "Creating directory on Windows: ${{ inputs.install_folder }}"
+    #       try {
+    #           New-Item -Path ${{ inputs.install_folder }} -ItemType Directory -Force -ErrorAction Stop
+    #       } catch {
+    #           Write-Output "Failed to create directory: ${{ inputs.install_folder }}"
+    #           exit 1
+    #       }
+
+    #       # Install Windsor CLI
+    #       if ("${{ inputs.ref }}" -eq "") {
+            
+    #           # Install the release version on Windows
+            
+    #           Write-Output "Installing Windsor CLI on Windows from release (${{ inputs.version }})..."
+    #           # Assign the version string to a variable
+    #           $versionString = "${{ inputs.version }}"
+    #           $expected_version="${{  inputs.version }}"
+    #           # Trim the 'v' from the start of the version string
+    #           $numeric_version = $versionString.TrimStart('v')
+    #           $url = "https://github.com/windsorcli/cli/releases/download/${{ inputs.version }}/windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
+    #           $outputFile = "windsor_${numeric_version}_${TMP_HOST_OS}_${TMP_HOST_ARCH}.tar.gz"
+              
+    #           # Download the release
+    #           try {
+    #               Invoke-WebRequest -Uri $url -Headers @{"Accept"="application/octet-stream"} -OutFile $outputFile -ErrorAction Stop
+    #           } catch {
+    #               Write-Output "Failed to download Windsor CLI from $url"
+    #               exit 1
+    #           }
+              
+    #           # Extract the tar.gz file
+    #           try {
+    #               tar -xzf $outputFile -C ${{ inputs.install_folder }}
+    #           } catch {
+    #               Write-Output "Failed to extract $outputFile"
+    #               exit 1
+    #           }
+              
+    #           # Verify installation
+    #           $windsorExePath = Join-Path -Path ${{ inputs.install_folder }} -ChildPath "windsor.exe"
+    #           if (Test-Path -Path $windsorExePath) {
+    #               Write-Output "Windsor CLI installed at $windsorExePath"
+    #           } else {
+    #               Write-Output "Failed to install Windsor CLI at $windsorExePath"
+    #               exit 1
+    #           }
+    #       } else {
+            
+    #           # Install the ref version on Windows
+            
+    #           $expected_version = "vdev"
+            
+    #           Write-Output "Installing Windsor CLI on Windows from ref (${{ inputs.ref }})..."
+    #           try {
+    #               git clone https://github.com/windsorcli/cli.git
+    #           } catch {
+    #               Write-Output "Failed to clone the repository from branch ${{ inputs.ref }}"
+    #               exit 1
+    #           }
+
+    #           try {
+    #             Push-Location cli
+    #             git checkout ${{ inputs.ref }}
+    #             Pop-Location
+    #           } catch {
+    #               Write-Output "Failed to checkout the branch ${{ inputs.ref }}"
+    #               exit 1
+    #           }
+            
+    #           try {
+    #               Set-Location -Path "cli" -ErrorAction Stop
+    #           } catch {
+    #               Write-Output "Failed to navigate to the Windsor CLI directory"
+    #               exit 1
+    #           }
+              
+    #           try {
+    #               # Ensure the correct path to the main.go file
+    #               go build -o "${{ inputs.install_folder }}\windsor.exe" ./cmd/windsor/main.go
+    #           } catch {
+    #               Write-Output "Failed to build the Windsor CLI"
+    #               exit 1
+    #           }
+    #       }
+
+    #       Write-Output "Installation complete."
+
+          
+    #       # Verify the installation on Windows
+          
+    #       $installedVersionOutput = & "${{ inputs.install_folder }}\windsor.exe" version
+    #       # Extract only the version number from the output
+    #       $installedVersion = $installedVersionOutput -replace 'Version: ([^\s]+).*', '$1'
+    #       $installedVersion = $installedVersion.Trim()
+    #       $installedVersion = "v" + $installedVersion 
+
+    #       # Compare only the version number          
+    #       if ($installedVersion -like "$expected_version*") {
+    #         Write-Output "Version match: $installedVersion"
+    #       } else {
+    #         Write-Error "Version mismatch: $installedVersion does not equal $expected_version"
+    #         exit 1
+    #       }
+
+    #       # Add windsor env to GITHUB_ENV
+
+    #       # Add the Windsor CLI install folder to the GitHub path
+    #       Add-Content -Path $env:GITHUB_PATH -Value "${{ inputs.install_folder }}"
+    #       Add-Content -Path $env:GITHUB_ENV -Value "WINDSOR_PROJECT_ROOT=${{ github.workspace }}"
+
+    #     }
+
+    #     # Set the WINDSOR_PROJECT_ROOT environment variable
+    #     $env:WINDSOR_PROJECT_ROOT = "${{ github.workspace }}"
+
+    #     # Set the context
+    #     # Check if the desired context has been initialized by looking for the context in the contexts folder
+    #     if (Test-Path -Path "${{ inputs.install_folder }}\contexts\${{ inputs.context }}") {
+    #       Write-Output "Context ${{ inputs.context }} already initialized."
+    #       & "${{ inputs.install_folder }}\windsor.exe" context set "${{ inputs.context }}"
+    #     } else {
+    #       Write-Output "Context ${{ inputs.context }} not initialized. Initializing..."
+    #       & "${{ inputs.install_folder }}\windsor.exe" init "${{ inputs.context }}"
+    #     }
+
+    #     # Run the Windsor env command and capture the output
+    #     $windsorEnvOutput = & "${{ inputs.install_folder }}\windsor.exe" env
+
+    #     # Check if the command was successful
+    #     if ($LASTEXITCODE -ne 0) {
+    #       Write-Output "Failed to run the Windsor env command."
+    #       exit 1
+    #     }
+
+    #     # Parse the output and update $GITHUB_ENV
+    #     $windsorEnvOutput -split "`n" | ForEach-Object {
+    #       # Skip lines that include 'DOCKER'
+    #       if ($_ -match 'DOCKER') {
+    #         return
+    #       }
+    #       # Check for 'Remove-Item Env' to remove variables
+    #       if ($_ -match '^Remove-Item Env\s+(\S+)') {
+    #         $varName = $matches[1]
+    #         # Remove the variable from $GITHUB_ENV
+    #         (Get-Content -Path $env:GITHUB_ENV) -notmatch "^$varName=" | Set-Content -Path $env:GITHUB_ENV
+    #       }
+    #       # Add lines that start with '$env:' to $GITHUB_ENV
+    #       elseif ($_ -match '^\$env:') {
+    #         $_ | Add-Content -Path $env:GITHUB_ENV
+    #       }
+    #     }
+
+    #   shell: powershell
