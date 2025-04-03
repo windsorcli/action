@@ -58,7 +58,7 @@ runs:
             console.log('Windsor CLI not found, proceeding with installation.');
 
             const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
-            const os = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
+            const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
             if (ref) {
               console.log(`Installing Windsor CLI from ref (${ref})...`);
@@ -68,15 +68,15 @@ runs:
               version = 'vdev';  // Set expected version to vdev when building from source
             } else {
               const numericVersion = version.replace(/^v/, '');
-              const localFileName = `windsor_${numericVersion}_${os}_${arch}.tar.gz`;
+              const localFileName = `windsor_${numericVersion}_${osType}_${arch}.tar.gz`;
               const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
 
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
               const mkdirCommand = isWindows ? `mkdir "${installFolder.replace(/\\/g, '\\\\')}"` : `mkdir -p "${installFolder}"`;
-              const tarCommand = `tar -xzf ${localFileName} -C ${installFolder}`;
+              const tarCommand = `tar -xzf ${localFileName} -C "${installFolder.replace(/\\/g, '\\\\')}"`;
               const chmodCommand = isWindows 
-                ? `icacls ${path.join(installFolder, 'windsor')} /grant Everyone:F` 
-                : `chmod +x ${path.join(installFolder, 'windsor')}`;
+                ? `icacls "${path.join(installFolder, 'windsor').replace(/\\/g, '\\\\')}" /grant Everyone:F` 
+                : `chmod +x "${path.join(installFolder, 'windsor')}"`;
               const rmCommand = isWindows ? `del ${localFileName}` : `rm -rf ${localFileName}`;
 
               try {
