@@ -36,8 +36,8 @@ runs:
           const path = require('path');
           const os = require('os');
 
-          const installFolder = path.join('${{ inputs.install_folder }}');
-          const workdir = path.join('${{ inputs.workdir }}');
+          const installFolder = path.resolve('${{ inputs.install_folder }}');
+          const workdir = path.resolve('${{ inputs.workdir }}');
           let version = '${{ inputs.version }}';
           const ref = '${{ inputs.ref }}';
           const input_context = '${{ inputs.context }}';
@@ -50,9 +50,13 @@ runs:
               execSync(command, { stdio: 'inherit' });
             } catch (error) {
               console.error(`Error executing command: ${command}`);
+              console.error(error.message);
               process.exit(1);
             }
           };
+
+          console.log(`Install folder: ${installFolder}`);
+          console.log(`Workdir: ${workdir}`);
 
           if (!fs.existsSync(path.join(installFolder, 'windsor'))) {
             console.log('Windsor CLI not found, proceeding with installation.');
@@ -72,12 +76,12 @@ runs:
               const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
 
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
-              const mkdirCommand = isWindows ? `mkdir "${installFolder.replace(/\\/g, '/')}"` : `mkdir -p "${installFolder}"`;
+              const mkdirCommand = isWindows ? `mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
               const extractCommand = isWindows 
-                ? `7z x ${localFileName} -so | 7z x -aoa -si -ttar -o"${installFolder.replace(/\\/g, '/')}"` 
+                ? `7z x ${localFileName} -so | 7z x -aoa -si -ttar -o"${installFolder}"` 
                 : `tar -xzf ${localFileName} -C "${installFolder}"`;
               const chmodCommand = isWindows 
-                ? `icacls "${path.join(installFolder, 'windsor').replace(/\\/g, '/')}" /grant Everyone:F` 
+                ? `icacls "${path.join(installFolder, 'windsor')}" /grant Everyone:F` 
                 : `chmod +x "${path.join(installFolder, 'windsor')}"`;
               const rmCommand = isWindows ? `del ${localFileName}` : `rm -rf ${localFileName}`;
 
@@ -123,6 +127,6 @@ runs:
 
             if (input_context !== "") {
               console.log(`Setting context to ${input_context}`);
-              execCommand(`cd ${workdir} && ${installFolder}/windsor init ${input_context}`);
+              execCommand(`cd ${workdir} && ${path.join(installFolder, 'windsor')} init ${input_context}`);
             }
           }
