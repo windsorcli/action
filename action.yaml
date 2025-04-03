@@ -37,7 +37,7 @@ runs:
           const os = require('os');
 
           const installFolder = path.join('${{ inputs.install_folder }}');
-          const workdir = '${{ inputs.workdir }}';
+          const workdir = path.join('${{ inputs.workdir }}');
           let version = '${{ inputs.version }}';
           const ref = '${{ inputs.ref }}';
           const input_context = '${{ inputs.context }}';
@@ -72,12 +72,12 @@ runs:
               const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
 
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
-              const mkdirCommand = isWindows ? `mkdir "${installFolder.replace(/\\/g, '\\\\')}"` : `mkdir -p "${installFolder}"`;
+              const mkdirCommand = isWindows ? `mkdir "${installFolder.replace(/\\/g, '/')}"` : `mkdir -p "${installFolder}"`;
               const extractCommand = isWindows 
-                ? `7z x ${localFileName} -so | 7z x -aoa -si -ttar -o"${installFolder.replace(/\\/g, '\\\\')}"` 
+                ? `7z x ${localFileName} -so | 7z x -aoa -si -ttar -o"${installFolder.replace(/\\/g, '/')}"` 
                 : `tar -xzf ${localFileName} -C "${installFolder}"`;
               const chmodCommand = isWindows 
-                ? `icacls "${path.join(installFolder, 'windsor').replace(/\\/g, '\\\\')}" /grant Everyone:F` 
+                ? `icacls "${path.join(installFolder, 'windsor').replace(/\\/g, '/')}" /grant Everyone:F` 
                 : `chmod +x "${path.join(installFolder, 'windsor')}"`;
               const rmCommand = isWindows ? `del ${localFileName}` : `rm -rf ${localFileName}`;
 
