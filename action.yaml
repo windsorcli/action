@@ -100,6 +100,9 @@ runs:
           fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
           fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${workdir}\n`);
 
+          // Set the environment variable in the current process
+          process.env.WINDSOR_PROJECT_ROOT = workdir;
+
           console.log(`workdir=${workdir}`);
           console.log(`WINDSOR_PROJECT_ROOT value: ${process.env.WINDSOR_PROJECT_ROOT}`);
 
