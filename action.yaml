@@ -27,109 +27,85 @@ runs:
   using: 'composite'
   steps:
 
-    - name: Install Windsor CLI
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const { execSync } = require('child_process');
-          const fs = require('fs');
-          const path = require('path');
-          const os = require('os');
+    # - name: Install Windsor CLI
+    #   uses: actions/github-script@v7
+    #   with:
+    #     script: |
+    #       const { execSync } = require('child_process');
+    #       const fs = require('fs');
+    #       const path = require('path');
 
-          const installFolder = path.resolve('${{ inputs.install_folder }}');
-          const workdir = path.resolve('${{ inputs.workdir }}');
-          let version = '${{ inputs.version }}';
-          const ref = '${{ inputs.ref }}';
-          const input_context = '${{ inputs.context }}';
+    #       const installFolder = '${{ inputs.install_folder }}'
+    #       const workdir = '${{ inputs.workdir }}'
+    #       let version = '${{ inputs.version }}';
+    #       const ref = '${{ inputs.ref }}';
+    #       const input_context = '${{ inputs.context }}';
 
-          const isWindows = os.platform() === 'win32';
+    #       const execCommand = (command) => {
+    #         try {
+    #           console.log(`Executing: ${command}`);
+    #           execSync(command, { stdio: 'inherit' });
+    #         } catch (error) {
+    #           console.error(`Error executing command: ${command}`);
+    #           process.exit(1);
+    #         }
+    #       };
 
-          const execCommand = (command) => {
-            try {
-              console.log(`Executing: ${command}`);
-              execSync(command, { stdio: 'inherit' });
-            } catch (error) {
-              console.error(`Error executing command: ${command}`);
-              console.error(error.message);
-              process.exit(1);
-            }
-          };
+    #       if (!fs.existsSync(path.join(installFolder, 'windsor'))) {
+    #         console.log('Windsor CLI not found, proceeding with installation.');
 
-          console.log(`Install folder: ${installFolder}`);
-          console.log(`Workdir: ${workdir}`);
+    #         const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
+    #         const os = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
-          if (!fs.existsSync(path.join(installFolder, isWindows ? 'windsor.exe' : 'windsor'))) {
-            console.log('Windsor CLI not found, proceeding with installation.');
+    #         if (ref) {
+    #           console.log(`Installing Windsor CLI from ref (${ref})...`);
+    #           execCommand(`git clone https://github.com/windsorcli/cli.git`);
+    #           execCommand(`cd cli && git checkout ${ref}`);
+    #           execCommand(`cd cli/cmd/windsor && go build -o ${path.join(installFolder, 'windsor')}`);
+    #           version = 'vdev';  // Set expected version to vdev when building from source
+    #         } else {
+    #           const numericVersion = version.replace(/^v/, '');
+    #           const localFileName = `windsor_${numericVersion}_${os}_${arch}.tar.gz`;
+    #           const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
 
-            const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
-            const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
+    #           execCommand(`curl -L -o ${localFileName} ${downloadUrl}`);
+    #           execCommand(`mkdir -p ${installFolder}`);
+    #           execCommand(`tar -xzf ${localFileName} -C ${installFolder}`);
+    #           execCommand(`chmod +x ${path.join(installFolder, 'windsor')}`);
+    #           execCommand(`rm -rf ${localFileName}`);
+    #         }
 
-            if (ref) {
-              console.log(`Installing Windsor CLI from ref (${ref})...`);
-              execCommand(`git clone https://github.com/windsorcli/cli.git`);
-              execCommand(`cd cli && git checkout ${ref}`);
-              execCommand(`cd cli/cmd/windsor && go build -o ${path.join(installFolder, isWindows ? 'windsor.exe' : 'windsor')}`);
-              version = 'vdev';  // Set expected version to vdev when building from source
-            } else {
-              const numericVersion = version.replace(/^v/, '');
-              const localFileName = `windsor_${numericVersion}_${osType}_${arch}.tar.gz`;
-              const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
+    #         let installedVersionOutput = execSync(`${path.join(installFolder, 'windsor')} version`).toString().trim();
 
-              const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
-              const mkdirCommand = `mkdir -p "${installFolder}"`;
-              const extractCommand = isWindows 
-                ? `7z x ${localFileName} -so | 7z x -aoa -si -ttar -o"${installFolder}"`
-                : `tar -xzf ${localFileName} -C "${installFolder}"`;
-              const chmodCommand = isWindows 
-                ? `icacls "${path.join(installFolder, 'windsor.exe')}" /grant Everyone:F`
-                : `chmod +x "${path.join(installFolder, 'windsor')}"`;
-              const rmCommand = isWindows ? `del ${localFileName}` : `rm -rf ${localFileName}`;
+    #         // Extract the version number from the output
+    #         let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
+    #         let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
 
-              try {
-                execCommand(curlCommand);
-                execCommand(mkdirCommand);
-                execCommand(extractCommand);
-                execCommand(chmodCommand);
-                execCommand(rmCommand);
-              } catch (error) {
-                console.error('Error executing commands:', error.message);
-                process.exit(1);
-              }
+    #         console.log(`Expected version: "${version}"`);
+    #         console.log(`Installed version: "${installedVersion}"`);
 
-              let installedVersionOutput = execSync(`${path.join(installFolder, isWindows ? 'windsor.exe' : 'windsor')} version`).toString().trim();
+    #         if (installedVersion !== version) {
+    #           console.error(`Version mismatch: expected ${version}, got ${installedVersion}`);
+    #           process.exit(1);
+    #         } else {
+    #           console.log(`Installed version: ${installedVersion}`);
+    #         }
 
-              // Extract the version number from the output
-              let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
-              let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
+    #         console.log('Windsor CLI installation complete.');
+    #       } else {
+    #         console.log('Windsor CLI already installed.');
+    #       }
 
-              console.log(`Expected version: "${version}"`);
-              console.log(`Installed version: "${installedVersion}"`);
+    #       console.log(`Setting environment variables for Windsor CLI.`);
+    #       fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
+    #       fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${process.env.GITHUB_WORKSPACE}\n`);
 
-              if (installedVersion !== version) {
-                console.error(`Version mismatch: expected ${version}, got ${installedVersion}`);
-                process.exit(1);
-              } else {
-                console.log(`Installed version: ${installedVersion}`);
-              }
+    #       process.env.WINDSOR_PROJECT_ROOT = process.env.GITHUB_WORKSPACE;
 
-              console.log('Windsor CLI installation complete.');
-            }
-
-            console.log(`Setting environment variables for Windsor CLI.`);
-            fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
-            fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${workdir}\n`);
-
-            // Set the environment variable in the current process
-            process.env.WINDSOR_PROJECT_ROOT = workdir;
-
-            console.log(`workdir=${workdir}`);
-            console.log(`WINDSOR_PROJECT_ROOT value: ${process.env.WINDSOR_PROJECT_ROOT}`);
-
-            if (input_context !== "") {
-              console.log(`Setting context to ${input_context}`);
-              execCommand(`cd ${workdir} && ${path.join(installFolder, isWindows ? 'windsor.exe' : 'windsor')} init ${input_context}`);
-            }
-          }
+    #       if (input_context !== "") {
+    #         console.log(`Setting context to ${input_context}`);
+    #         execCommand(`cd ${workdir} && ${installFolder}/windsor init ${input_context}`);
+    #       }
 
     # Install Windsor CLI on Windows
     - name: Install the Windsor CLI on Windows
