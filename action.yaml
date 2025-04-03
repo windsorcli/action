@@ -36,14 +36,13 @@ runs:
           const path = require('path');
           const os = require('os');
 
-          const installFolder = '${{ inputs.install_folder }}';
+          const installFolder = path.join('${{ inputs.install_folder }}');
           const workdir = '${{ inputs.workdir }}';
           let version = '${{ inputs.version }}';
           const ref = '${{ inputs.ref }}';
           const input_context = '${{ inputs.context }}';
 
-          const platform = os.platform();
-          const isWindows = platform === 'win32';
+          const isWindows = os.platform() === 'win32';
 
           const execCommand = (command) => {
             try {
@@ -73,7 +72,7 @@ runs:
               const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
 
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
-              const mkdirCommand = isWindows ? `mkdir ${installFolder}` : `mkdir -p ${installFolder}`;
+              const mkdirCommand = isWindows ? `mkdir "${installFolder.replace(/\\/g, '\\\\')}"` : `mkdir -p "${installFolder}"`;
               const tarCommand = `tar -xzf ${localFileName} -C ${installFolder}`;
               const chmodCommand = isWindows 
                 ? `icacls ${path.join(installFolder, 'windsor')} /grant Everyone:F` 
