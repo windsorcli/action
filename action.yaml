@@ -73,8 +73,8 @@ runs:
 
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
               const mkdirCommand = isWindows ? `mkdir "${installFolder.replace(/\\/g, '\\\\')}"` : `mkdir -p "${installFolder}"`;
-              const tarCommand = isWindows 
-                ? `7z x ${localFileName} -o"${installFolder.replace(/\\/g, '\\\\')}"` 
+              const extractCommand = isWindows 
+                ? `7z x ${localFileName} -so | 7z x -aoa -si -ttar -o"${installFolder.replace(/\\/g, '\\\\')}"` 
                 : `tar -xzf ${localFileName} -C "${installFolder}"`;
               const chmodCommand = isWindows 
                 ? `icacls "${path.join(installFolder, 'windsor').replace(/\\/g, '\\\\')}" /grant Everyone:F` 
@@ -84,7 +84,7 @@ runs:
               try {
                 execCommand(curlCommand);
                 execCommand(mkdirCommand);
-                execCommand(tarCommand);
+                execCommand(extractCommand);
                 execCommand(chmodCommand);
                 execCommand(rmCommand);
               } catch (error) {
