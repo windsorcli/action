@@ -27,6 +27,23 @@ runs:
   using: 'composite'
   steps:
 
+    - name: Install Git (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { execSync } = require('child_process');
+
+          try {
+            console.log('Checking if Git is installed...');
+            execSync('git --version', { stdio: 'inherit' });
+            console.log('Git is already installed.');
+          } catch (error) {
+            console.log('Git is not installed. Installing Git...');
+            execSync('choco install git -y', { stdio: 'inherit' });
+            console.log('Git installed successfully.');
+          }
+
     - name: Install Windsor CLI
       uses: actions/github-script@v7
       with:
