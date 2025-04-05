@@ -50,6 +50,11 @@ runs:
             execSync(downloadCommand, { shell: 'powershell.exe', stdio: 'inherit' });
             execSync(installCommand, { shell: 'powershell.exe', stdio: 'inherit' });
             console.log('Git installed successfully.');
+
+            // Add Git to PATH
+            const gitPath = 'C:\\Program Files\\Git\\bin'; // Default installation path
+            process.env.PATH = `${gitPath};${process.env.PATH}`;
+            console.log(`Added Git to PATH: ${gitPath}`);
           }
 
     - name: Install Windsor CLI
