@@ -33,14 +33,22 @@ runs:
       with:
         script: |
           const { execSync } = require('child_process');
+          const fs = require('fs');
+          const path = require('path');
 
           try {
             console.log('Checking if Git is installed...');
             execSync('git --version', { stdio: 'inherit' });
             console.log('Git is already installed.');
           } catch (error) {
-            console.log('Git is not installed. Installing Git...');
-            execSync('choco install git -y', { stdio: 'inherit' });
+            console.log('Git is not installed. Installing Git manually...');
+            const gitInstaller = 'Git-2.33.0-64-bit.exe'; // Update to the latest version as needed
+            const gitDownloadUrl = `https://github.com/git-for-windows/git/releases/download/v2.33.0.windows.1/${gitInstaller}`;
+            const downloadCommand = `Invoke-WebRequest -Uri ${gitDownloadUrl} -OutFile ${gitInstaller}`;
+            const installCommand = `Start-Process -FilePath .\\${gitInstaller} -ArgumentList '/VERYSILENT', '/NORESTART' -Wait`;
+
+            execSync(downloadCommand, { shell: 'powershell.exe', stdio: 'inherit' });
+            execSync(installCommand, { shell: 'powershell.exe', stdio: 'inherit' });
             console.log('Git installed successfully.');
           }
 
