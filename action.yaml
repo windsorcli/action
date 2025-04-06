@@ -58,10 +58,10 @@ runs:
           core.setOutput('git_path', gitPath);
           console.log(`Set Git path as output: ${gitPath}`);
 
-    # - name: Add Git to PATH
-    #   needs: install-git
-    #   if: runner.os == 'Windows'
-    #   run: echo "${{ needs.install-git.outputs.git_path }}" >> $GITHUB_PATH
+    - name: Add Git to PATH
+      needs: install-git
+      if: runner.os == 'Windows'
+      run: echo "${{ needs.install-git.outputs.git_path }}" >> $GITHUB_PATH
 
     - name: Install Windsor CLI
       uses: actions/github-script@v7
