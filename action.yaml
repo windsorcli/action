@@ -83,8 +83,21 @@ runs:
             console.log('Go installed successfully.');
           }
 
-          const ref = process.env.INPUT_REF;
+          const ref = '${{ inputs.ref }}';
           console.log(`Go is required because a source build was selected for branch (${ref})`);
+          
+          // Update the GitHub PATH with the path to where Go was installed
+          if (platform === 'win32') {
+            console.log('Updating PATH for Windows...');
+            execSync(`echo "::add-path::C:\\Go\\bin"`);
+          } else if (platform === 'darwin') {
+            console.log('Updating PATH for macOS...');
+            execSync(`echo "::add-path::/usr/local/go/bin"`);
+          } else {
+            console.log('Updating PATH for Linux...');
+            execSync(`echo "::add-path::/usr/local/go/bin"`);
+          }
+
 
     - name: Install Windsor CLI
       uses: actions/github-script@v7
