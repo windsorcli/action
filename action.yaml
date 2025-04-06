@@ -97,13 +97,17 @@ runs:
           const path = require('path');
           const os = require('os');
 
-          const installFolder = path.resolve('C:\\actions-runner\\_work\\windsortest\\windsortest\\bin');
-          const workdir = path.resolve('C:\\actions-runner\\_work\\windsortest\\windsortest');
-          let version = 'v0.5.3';
-          const ref = '';
+          const isWindows = os.platform() === 'win32';
+          const installFolder = isWindows 
+            ? path.resolve('C:\\actions-runner\\_work\\windsortest\\windsortest\\bin')
+            : path.resolve('/home/windsortest/actions-runner/_work/windsortest/windsortest/bin');
+          const workdir = isWindows 
+            ? path.resolve('C:\\actions-runner\\_work\\windsortest\\windsortest')
+            : path.resolve('/home/windsortest/actions-runner/_work/windsortest/windsortest');
+          let version = '${{ inputs.version }}';
+          const ref = '${{ inputs.ref }}';
           const input_context = 'local';
 
-          const isWindows = os.platform() === 'win32';
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
 
           const execCommand = (command) => {
@@ -170,8 +174,6 @@ runs:
               if (installedVersion !== version) {
                 console.error(`Version mismatch: expected ${version}, got ${installedVersion}`);
                 process.exit(1);
-              } else {
-                console.log(`Installed version: ${installedVersion}`);
               }
 
               console.log('Windsor CLI installation complete.');
