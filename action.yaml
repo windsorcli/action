@@ -93,9 +93,13 @@ runs:
       with:
         script: |
           const { execSync } = require('child_process');
+          const os = require('os');
 
           try {
-            const goPath = execSync('which go').toString().trim();
+            const isWindows = os.platform() === 'win32';
+            const goPathCommand = isWindows ? 'where go' : 'which go';
+
+            const goPath = execSync(goPathCommand).toString().trim();
             console.log(`Go binary path: ${goPath}`);
 
             const goVersion = execSync('go version').toString().trim();
