@@ -43,6 +43,7 @@ runs:
             console.error('Git is not installed. Please install Git to proceed.');
             process.exit(1);
           }
+          
     - name: Check if Go is installed (if building from source)
       if: ${{ inputs.ref != '' }}
       uses: actions/github-script@v7
@@ -79,7 +80,9 @@ runs:
             console.log('Go installed successfully.');
           }
 
-          console.log(`Go is required because a source build was selected for branch (${inputs.ref})`);
+          // Access the input using the environment variable
+          const ref = process.env.INPUT_REF;
+          console.log(`Go is required because a source build was selected for branch (${ref})`);
 
     - name: Install Windsor CLI
       uses: actions/github-script@v7
