@@ -68,7 +68,7 @@ runs:
             if (platform === 'win32') {
               goDownloadUrl = `https://golang.org/dl/go1.16.5.windows-${arch}.zip`;
               execSync(`curl -L -o go.zip ${goDownloadUrl}`, { stdio: 'inherit' });
-              execSync('powershell -Command "Expand-Archive -Path go.zip -DestinationPath C:\\Go"', { stdio: 'inherit' });
+              execSync('powershell -Command "Expand-Archive -Path go.zip -DestinationPath C:\\Go -Force"', { stdio: 'inherit' });
               process.env.PATH = `C:\\Go\\bin;${process.env.PATH}`;
             } else if (platform === 'darwin') {
               goDownloadUrl = `https://golang.org/dl/go1.16.5.darwin-${arch}.pkg`;
