@@ -69,16 +69,17 @@ runs:
               goDownloadUrl = `https://golang.org/dl/go1.16.5.windows-${arch}.zip`;
               execSync(`curl -L -o go.zip ${goDownloadUrl}`, { stdio: 'inherit' });
               execSync('powershell -Command "Expand-Archive -Path go.zip -DestinationPath C:\\Go -Force"', { stdio: 'inherit' });
-              process.env.PATH = `C:\\Go\\bin;${process.env.PATH}`;
+              fs.appendFileSync(process.env.GITHUB_PATH, `C:\\Go\\bin\n`);
             } else if (platform === 'darwin') {
               goDownloadUrl = `https://golang.org/dl/go1.16.5.darwin-${arch}.pkg`;
               execSync(`curl -L -o go.pkg ${goDownloadUrl}`, { stdio: 'inherit' });
               execSync('sudo installer -pkg go.pkg -target /', { stdio: 'inherit' });
+              fs.appendFileSync(process.env.GITHUB_PATH, `/usr/local/go/bin\n`);
             } else {
               goDownloadUrl = `https://golang.org/dl/go1.16.5.linux-${arch}.tar.gz`;
               execSync(`curl -L -o go.tar.gz ${goDownloadUrl}`, { stdio: 'inherit' });
               execSync('sudo tar -C /usr/local -xzf go.tar.gz', { stdio: 'inherit' });
-              process.env.PATH = `/usr/local/go/bin:${process.env.PATH}`;
+              fs.appendFileSync(process.env.GITHUB_PATH, `/usr/local/go/bin\n`);
             }
 
             console.log('Go installed successfully.');
@@ -87,19 +88,6 @@ runs:
           const ref = '${{ inputs.ref }}';
           console.log(`Go is required because a source build was selected for branch (${ref})`);
           
-          // Update the GitHub PATH with the path to where Go was installed
-          if (platform === 'win32') {
-            console.log('Updating PATH for Windows...');
-            execSync(`echo "::add-path::C:\\Go\\bin"`);
-          } else if (platform === 'darwin') {
-            console.log('Updating PATH for macOS...');
-            execSync(`echo "::add-path::/usr/local/go/bin"`);
-          } else {
-            console.log('Updating PATH for Linux...');
-            execSync(`echo "::add-path::/usr/local/go/bin"`);
-          }
-
-
     - name: Install Windsor CLI
       uses: actions/github-script@v7
       with:
