@@ -97,11 +97,11 @@ runs:
           const path = require('path');
           const os = require('os');
 
-          const installFolder = path.resolve('${{ inputs.install_folder }}');
-          const workdir = path.resolve('${{ inputs.workdir }}');
-          let version = '${{ inputs.version }}';
-          const ref = '${{ inputs.ref }}';
-          const input_context = '${{ inputs.context }}';
+          const installFolder = path.resolve('C:\\actions-runner\\_work\\windsortest\\windsortest\\bin');
+          const workdir = path.resolve('C:\\actions-runner\\_work\\windsortest\\windsortest');
+          let version = 'v0.5.3';
+          const ref = '';
+          const input_context = 'local';
 
           const isWindows = os.platform() === 'win32';
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
@@ -140,7 +140,7 @@ runs:
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
               const mkdirCommand = `mkdir -p "${installFolder}"`;
               const extractCommand = isWindows 
-                ? `7z x ${localFileName} -so | 7z x -aoa -si -ttar -o"${installFolder}"`
+                ? `powershell -Command "tar -xzf ${localFileName} -C ${installFolder}"`
                 : `tar -xzf ${localFileName} -C "${installFolder}"`;
               const chmodCommand = isWindows 
                 ? `icacls "${path.join(installFolder, windsorExecutable)}" /grant Everyone:F`
