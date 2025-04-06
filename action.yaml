@@ -38,7 +38,8 @@ runs:
             // Check if Git is installed by attempting to get its version
             execSync('git --version', { stdio: 'inherit' });
             console.log('Git is installed.');
-          } catch (error) {
+          } catch (error) {          
+            console.log(`Current PATH: ${process.env.PATH}`);
             console.error('Git is not installed. Please install Git to proceed.');
             process.exit(1);
           }
