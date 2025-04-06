@@ -88,6 +88,23 @@ runs:
           const ref = '${{ inputs.ref }}';
           console.log(`Go is required because a source build was selected for branch (${ref})`);
           
+    - name: Print Go Path and Version
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { execSync } = require('child_process');
+
+          try {
+            const goPath = execSync('which go').toString().trim();
+            console.log(`Go binary path: ${goPath}`);
+
+            const goVersion = execSync('go version').toString().trim();
+            console.log(`Go version: ${goVersion}`);
+          } catch (error) {
+            console.error('Error retrieving Go path or version:', error.message);
+            process.exit(1);
+          }
+          
     - name: Install Windsor CLI
       uses: actions/github-script@v7
       with:
