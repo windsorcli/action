@@ -43,6 +43,43 @@ runs:
             console.error('Git is not installed. Please install Git to proceed.');
             process.exit(1);
           }
+    - name: Check if Go is installed (if building from source)
+      if: ${{ inputs.ref != '' }}
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { execSync } = require('child_process');
+
+          try {
+            // Check if Go is installed by attempting to get its version
+            execSync('go version', { stdio: 'inherit' });
+            console.log('Go is installed.');
+          } catch (error) {
+            console.log('Go is not installed. Installing Go...');
+            const os = require('os');
+            const platform = os.platform();
+            const arch = os.arch() === 'x64' ? 'amd64' : os.arch();
+            let goDownloadUrl = '';
+
+            if (platform === 'win32') {
+              goDownloadUrl = `https://golang.org/dl/go1.16.5.windows-${arch}.msi`;
+              execSync(`curl -L -o go.msi ${goDownloadUrl}`, { stdio: 'inherit' });
+              execSync('msiexec /i go.msi /quiet /norestart', { stdio: 'inherit' });
+            } else if (platform === 'darwin') {
+              goDownloadUrl = `https://golang.org/dl/go1.16.5.darwin-${arch}.pkg`;
+              execSync(`curl -L -o go.pkg ${goDownloadUrl}`, { stdio: 'inherit' });
+              execSync('sudo installer -pkg go.pkg -target /', { stdio: 'inherit' });
+            } else {
+              goDownloadUrl = `https://golang.org/dl/go1.16.5.linux-${arch}.tar.gz`;
+              execSync(`curl -L -o go.tar.gz ${goDownloadUrl}`, { stdio: 'inherit' });
+              execSync('sudo tar -C /usr/local -xzf go.tar.gz', { stdio: 'inherit' });
+              execSync('export PATH=$PATH:/usr/local/go/bin', { stdio: 'inherit' });
+            }
+
+            console.log('Go installed successfully.');
+          }
+
+          console.log(`Go is required because a source build was selected for branch (${inputs.ref})`);
 
     - name: Install Windsor CLI
       uses: actions/github-script@v7
