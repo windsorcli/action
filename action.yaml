@@ -36,7 +36,6 @@ runs:
           const { execSync } = require('child_process');
           const fs = require('fs');
           const path = require('path');
-          const core = require('@actions/core');
 
           try {
             console.log('Checking if Git is installed...');
