@@ -114,7 +114,7 @@ runs:
               const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
 
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
-              const mkdirCommand = `mkdir -p "${installFolder}"`;
+              const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
               const extractCommand = isWindows 
                 ? `powershell -Command "tar -xzf ${localFileName} -C ${installFolder}"`
                 : `tar -xzf ${localFileName} -C "${installFolder}"`;
