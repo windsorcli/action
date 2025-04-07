@@ -9,201 +9,226 @@ on:
     types: 
       - main-branch-update
 
+env:
+  WINDSOR_VERSION: v0.5.5
+
 jobs:
   windsorcli:
-    runs-on: ubuntu-latest
-    # runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
   
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      # Install Windsor CLI Action
-      - name: Install Windsor CLI Action
+      - name: Install Windsor CLI
         uses: ./
         with:
-          version: v0.5.2
-          install_folder: ${{ github.workspace }}/bin
-          context: local
-        
+          version: ${{ env.WINDSOR_VERSION }}
+
+      - name: Initialize Windsor Context
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const path = require('path');
+
+            try {
+              console.log('Initializing Windsor context...');
+              execSync(`windsor init local`, { stdio: 'inherit' });
+              console.log('Windsor context initialized successfully.');
+            } catch (error) {
+              console.error('Error initializing Windsor context:', error);
+              process.exit(1);
+            }
+
+      - name: Verify Windsor Context
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const path = require('path');
+
+            try {
+              console.log('Getting Windsor context...');
+              const contextOutput = execSync(`windsor context get`, { stdio: 'pipe' }).toString().trim();
+              console.log(`Current Windsor context: ${contextOutput}`);
+              if (contextOutput !== 'local') {
+                console.error(`Error: Windsor context is not 'local'. Current context: ${contextOutput}`);
+                process.exit(1);
+              } else {
+                console.log('Windsor context is correctly set to local.');
+              }
+            } catch (error) {
+              console.error('Error getting Windsor context:', error);
+              process.exit(1);
+            }
+
       - name: Windsor Context Get
-        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
         run: |
-          ${{ github.workspace }}/bin/windsor context get
+          windsor context get
         shell: bash
 
-      - name: Windsor Context Get (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          ${{ github.workspace }}/bin/windsor.exe context get
-        shell: powershell
-
-      - name: Check environment variables (Linux/macOS)
-        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-        run: |
-          echo KUBECONFIG="$KUBECONFIG"
-          echo KUBE_CONFIG_PATH="$KUBE_CONFIG_PATH"
-          echo DOCKER_CONFIG="$DOCKER_CONFIG"
-          echo DOCKER_HOST="$DOCKER_HOST"
-          echo OMNICONFIG="$OMNICONFIG"
-          echo TALOSCONFIG="$TALOSCONFIG"
-          echo WINDSOR_CONTEXT="$WINDSOR_CONTEXT"
-          echo WINDSOR_PROJECT_ROOT="$WINDSOR_PROJECT_ROOT"
-        shell: bash
-
-      - name: Check environment variables (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          # Print the $windsorEnvOutput variables
-          Write-Output "windsorEnvOutput variables:"
-          $windsorEnvOutput -split "`n" | ForEach-Object {
-            Write-Output $_
-          }
-        shell: powershell
-
-      - name: Create terraform test folder (Linux/macOS)
-        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-        run: |
-          mkdir -p ${{ github.workspace }}/terraform/cluster
-          touch ${{ github.workspace }}/terraform/cluster/main.tf
-        shell: bash
-
-      - name: Create terraform test folder (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          New-Item -ItemType Directory -Path ${{ github.workspace }}\terraform\cluster -Force
-          New-Item -ItemType File -Path ${{ github.workspace }}\terraform\cluster\main.tf -Force
-        shell: powershell
-      
-      # CD Windsor CLI - local context
-      - name: CD to terraform test folder
-        uses: ./
+      - name: Check environment variables
+        uses: actions/github-script@v7
         with:
-          workdir: ${{ github.workspace }}/terraform/cluster
-          version: v0.5.2
-          install_folder: ${{ github.workspace }}/bin
-          context: local
+          script: |
+            const envVars = [
+              'KUBECONFIG',
+              'KUBE_CONFIG_PATH',
+              'DOCKER_CONFIG',
+              'DOCKER_HOST',
+              'OMNICONFIG',
+              'TALOSCONFIG',
+              'WINDSOR_CONTEXT',
+              'WINDSOR_PROJECT_ROOT'
+            ];
 
-      - name: Check TF_ environment variables (Linux/macOS)
-        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-        run: |
-          windsor env
-          # Print all environment variables that start with TF_
-          env | grep '^TF_' | while IFS= read -r line; do
-            echo "$line"
-          done
-        shell: bash
+            envVars.forEach(varName => {
+              console.log(`${varName}="${process.env[varName] || ''}"`);
+            });
 
-      - name: Check TF_ environment variables (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          # Print the $windsorEnvOutput variables
-          Write-Output "windsorEnvOutput variables:"
-          $windsorEnvOutput -split "`n" | ForEach-Object {
-            Write-Output $_
-          }
-          # Print all environment variables that start with TF_
-          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
-            Write-Output "$($_.Name)=$($_.Value)"
-          }
-        shell: powershell          
+      - name: Create terraform test folder
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const terraformDir = path.join(process.env.GITHUB_WORKSPACE, 'terraform', 'cluster');
+            const mainTfPath = path.join(terraformDir, 'main.tf');
+
+            // Create the directory if it doesn't exist
+            if (!fs.existsSync(terraformDir)) {
+              fs.mkdirSync(terraformDir, { recursive: true });
+              console.log(`Created directory: ${terraformDir}`);
+            } else {
+              console.log(`Directory already exists: ${terraformDir}`);
+            }
+
+            // Create the main.tf file if it doesn't exist
+            if (!fs.existsSync(mainTfPath)) {
+              fs.writeFileSync(mainTfPath, '');
+              console.log(`Created file: ${mainTfPath}`);
+            } else {
+              console.log(`File already exists: ${mainTfPath}`);
+            }
+
+      - name: Check TF_ environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+
+            // Execute the windsor env command and capture its output
+            try {
+              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
+              console.log("windsor env output:");
+              console.log(windsorEnvOutput);
+            } catch (error) {
+              console.error("Error executing windsor env:", error.message);
+            }
+
+            // Log all environment variables that start with TF_
+            console.log("TF_ environment variables:");
+            Object.keys(process.env).forEach(key => {
+              if (key.startsWith('TF_')) {
+                console.log(`${key}=${process.env[key]}`);
+              }
+            });
 
       # Install Windsor CLI Action
       - name: CD to terraform test folder
         uses: ./
         with:
           workdir: ${{ github.workspace }}
-          version: v0.5.2
-          install_folder: ${{ github.workspace }}/bin
+          version: ${{ env.WINDSOR_VERSION }}
           context: local
 
-      - name: Check TF_ environment variables (Linux/macOS)
-        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-        run: |
-          windsor env
-          # Print all environment variables that start with TF_
-          env | grep '^TF_' | while IFS= read -r line; do
-            echo "$line"
-          done
-        shell: bash
+      - name: Check TF_ environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
 
-      - name: Check TF_ environment variables (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          # Print the $windsorEnvOutput variables
-          Write-Output "windsorEnvOutput variables:"
-          $windsorEnvOutput -split "`n" | ForEach-Object {
-            Write-Output $_
-          }
-          # Print all environment variables that start with TF_
-          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
-            Write-Output "$($_.Name)=$($_.Value)"
-          }
-        shell: powershell          
-          
+            // Execute the windsor env command and capture its output
+            try {
+              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
+              console.log("windsor env output:");
+              console.log(windsorEnvOutput);
+            } catch (error) {
+              console.error("Error executing windsor env:", error.message);
+            }
+
+            // Log all environment variables that start with TF_
+            console.log("TF_ environment variables:");
+            Object.keys(process.env).forEach(key => {
+              if (key.startsWith('TF_')) {
+                console.log(`${key}=${process.env[key]}`);
+              }
+            });
+            
       # Staging Testing
       # CD Windsor CLI - staging context
       - name: CD to terraform test folder
         uses: ./
         with:
           workdir: ${{ github.workspace }}/terraform/cluster
-          version: v0.5.2
-          install_folder: ${{ github.workspace }}/bin
+          version: ${{ env.WINDSOR_VERSION }}
           context: staging
 
-      - name: Check TF_ environment variables (Linux/macOS)
-        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-        run: |
-          windsor env
-          # Print all environment variables that start with TF_
-          env | grep '^TF_' | while IFS= read -r line; do
-            echo "$line"
-          done
-        shell: bash
+      - name: Check TF_ environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
 
-      - name: Check TF_ environment variables (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          # Print the $windsorEnvOutput variables
-          Write-Output "windsorEnvOutput variables:"
-          $windsorEnvOutput -split "`n" | ForEach-Object {
-            Write-Output $_
-          }
-          # Print all environment variables that start with TF_
-          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
-            Write-Output "$($_.Name)=$($_.Value)"
-          }
-        shell: powershell          
+            // Execute the windsor env command and capture its output
+            try {
+              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
+              console.log("windsor env output:");
+              console.log(windsorEnvOutput);
+            } catch (error) {
+              console.error("Error executing windsor env:", error.message);
+            }
 
+            // Log all environment variables that start with TF_
+            console.log("TF_ environment variables:");
+            Object.keys(process.env).forEach(key => {
+              if (key.startsWith('TF_')) {
+                console.log(`${key}=${process.env[key]}`);
+              }
+            });
+  
       # Install Windsor CLI Action
       - name: CD to terraform test folder
         uses: ./
         with:
           workdir: ${{ github.workspace }}
-          version: v0.5.2
-          install_folder: ${{ github.workspace }}/bin
+          version: v0.5.5
           context: staging
 
-      - name: Check TF_ environment variables (Linux/macOS)
-        if: ${{ runner.os == 'Linux' || runner.os == 'macOS' }}
-        run: |
-          windsor env
-          # Print all environment variables that start with TF_
-          env | grep '^TF_' | while IFS= read -r line; do
-            echo "$line"
-          done
-        shell: bash
+      - name: Check TF_ environment variables
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
 
-      - name: Check TF_ environment variables (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: |
-          # Print the $windsorEnvOutput variables
-          Write-Output "windsorEnvOutput variables:"
-          $windsorEnvOutput -split "`n" | ForEach-Object {
-            Write-Output $_
-          }
-          # Print all environment variables that start with TF_
-          Get-ChildItem Env: | Where-Object { $_.Name -like 'TF_*' } | ForEach-Object {
-            Write-Output "$($_.Name)=$($_.Value)"
-          }
-        shell: powershell
+            // Execute the windsor env command and capture its output
+            try {
+              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
+              console.log("windsor env output:");
+              console.log(windsorEnvOutput);
+            } catch (error) {
+              console.error("Error executing windsor env:", error.message);
+            }
+
+            // Log all environment variables that start with TF_
+            console.log("TF_ environment variables:");
+            Object.keys(process.env).forEach(key => {
+              if (key.startsWith('TF_')) {
+                console.log(`${key}=${process.env[key]}`);
+              }
+            });

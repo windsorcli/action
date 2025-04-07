@@ -1,6 +1,88 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":dependencyDashboard",
     "config:recommended"
+  ],
+  "repositories": [
+    "windsorcli/cli",
+    "windsorcli/action",
+    "windsorcli/blueprint"
+  ],
+  "branchPrefix": "renovate/",
+  "packageRules": [
+    {
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Pin GitHub Actions to specific commit SHAs",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "versioning": "github-tags",
+      "pinDigests": true,
+      "enabled": true,
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "matchPackageNames": [
+        "/.*/"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch"
+      ],
+      "enabled": true,
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "labels": [
+        "dependencies"
+      ]
+    },
+    {
+      "description": "Update pyproject.toml dependencies",
+      "matchFileNames": [
+        "pyproject.toml"
+      ],
+      "matchManagers": [
+        "poetry"
+      ],
+      "enabled": true,
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "labels": [
+        "python",
+        "dependencies"
+      ]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "^\\.github/workflows/ci\\.yaml$"
+      ],
+      "matchStrings": [
+        "(^|\\s)WINDSOR_VERSION:\\s*(?<currentValue>v[\\d\\.]+)"
+      ],
+      "depNameTemplate": "WINDSOR_VERSION",
+      "datasourceTemplate": "github-tags",
+      "packageNameTemplate": "windsorcli/cli",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "labels": [
+    "dependencies"
   ]
 }
