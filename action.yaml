@@ -80,6 +80,9 @@ runs:
           const ref = '${{ inputs.ref }}';
           const input_context = 'local';
 
+          console.log(`Install folder: ${installFolder}`);
+          console.log(`Workdir: ${workdir}`);
+
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
 
           const execCommand = (command) => {
@@ -92,10 +95,6 @@ runs:
               process.exit(1);
             }
           };
-
-          console.log(`Install folder: ${installFolder}`);
-          console.log(`Workdir: ${workdir}`);
-          console.log('Inputs.workdir: ${{inputs.workdir}}');
 
           if (!fs.existsSync(path.join(installFolder, windsorExecutable))) {
             console.log('Windsor CLI not found, proceeding with installation.');
