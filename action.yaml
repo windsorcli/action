@@ -10,10 +10,6 @@ inputs:
     required: false
     type: string
     default: ""
-  install_folder:
-    required: false
-    type: string
-    default: ${{ github.workspace }}/bin
   context:
     required: false
     type: string
@@ -21,7 +17,7 @@ inputs:
   workdir:
     required: false
     type: string
-    default: ${{ github.workspace }}
+    default: ""
 
 runs:
   using: 'composite'
@@ -79,7 +75,7 @@ runs:
           const isWindows = os.platform() === 'win32';
           // const installFolder = '${{ inputs.install_folder }}';
           // const workdir = '${{ inputs.workdir }}';
-          const installFolder = path.resolve('${{ inputs.install_folder }}');
+          const installFolder = path.resolve(process.cwd(), 'bin');
           const workdir = path.resolve('${{ inputs.workdir }}');
           const githubWorkspace = process.env.GITHUB_WORKSPACE;
           let version = '${{ inputs.version }}';
@@ -100,7 +96,6 @@ runs:
           };
 
           console.log(`Install folder: ${installFolder}`);
-          console.log('Inputs.install_folder: ${{inputs.install_folder}}');
           console.log(`Workdir: ${workdir}`);
           console.log('Inputs.workdir: ${{inputs.workdir}}');
 
