@@ -9,6 +9,9 @@ on:
   #   types: 
   #     - main-branch-update
 
+env:
+  WINDSOR_VERSION: v0.5.5
+
 jobs:
   windsorcli:
     runs-on: ubuntu-latest
@@ -22,7 +25,7 @@ jobs:
       - name: Install Windsor CLI
         uses: ./
         with:
-          version: v0.5.6
+          version: ${{ env.WINDSOR_VERSION }}
 
       - name: Initialize Windsor Context
         uses: actions/github-script@v7
@@ -145,7 +148,7 @@ jobs:
         uses: ./
         with:
           workdir: ${{ github.workspace }}
-          version: v0.5.6
+          version: ${{ env.WINDSOR_VERSION }}
           context: local
 
       - name: Check TF_ environment variables using GitHub Script
@@ -177,7 +180,7 @@ jobs:
         uses: ./
         with:
           workdir: ${{ github.workspace }}/terraform/cluster
-          version: v0.5.6
+          version: ${{ env.WINDSOR_VERSION }}
           context: staging
 
       - name: Check TF_ environment variables using GitHub Script
@@ -208,7 +211,7 @@ jobs:
         uses: ./
         with:
           workdir: ${{ github.workspace }}
-          version: v0.5.6
+          version: v0.5.5
           context: staging
 
       - name: Check TF_ environment variables using GitHub Script
