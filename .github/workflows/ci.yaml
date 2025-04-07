@@ -22,10 +22,7 @@ jobs:
       - name: Install Windsor CLI
         uses: ./
         with:
-          # version: v0.5.3
-          ref: main
-          install_folder: ${{ github.workspace }}/bin
-          context: local
+          version: v0.5.6
 
       - name: Initialize Windsor Context
         uses: actions/github-script@v7
@@ -148,9 +145,7 @@ jobs:
         uses: ./
         with:
           workdir: ${{ github.workspace }}
-          # version: v0.5.2
-          ref: main
-          install_folder: ${{ github.workspace }}/bin
+          version: v0.5.6
           context: local
 
       - name: Check TF_ environment variables using GitHub Script
@@ -182,9 +177,7 @@ jobs:
         uses: ./
         with:
           workdir: ${{ github.workspace }}/terraform/cluster
-          # version: v0.5.2
-          ref: main
-          install_folder: ${{ github.workspace }}/bin
+          version: v0.5.6
           context: staging
 
       - name: Check TF_ environment variables using GitHub Script
@@ -215,9 +208,7 @@ jobs:
         uses: ./
         with:
           workdir: ${{ github.workspace }}
-          # version: v0.5.2
-          ref: main
-          install_folder: ${{ github.workspace }}/bin
+          version: v0.5.6
           context: staging
 
       - name: Check TF_ environment variables using GitHub Script
