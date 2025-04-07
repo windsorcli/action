@@ -34,12 +34,9 @@ jobs:
             const { execSync } = require('child_process');
             const path = require('path');
 
-            const installFolder = '${{ github.workspace }}/bin';
-            const windsorPath = path.join(installFolder, 'windsor');
-
             try {
               console.log('Initializing Windsor context...');
-              execSync(`${windsorPath} init local`, { stdio: 'inherit' });
+              execSync(`windsor init local`, { stdio: 'inherit' });
               console.log('Windsor context initialized successfully.');
             } catch (error) {
               console.error('Error initializing Windsor context:', error);
@@ -53,12 +50,9 @@ jobs:
             const { execSync } = require('child_process');
             const path = require('path');
 
-            const installFolder = '${{ github.workspace }}/bin';
-            const windsorPath = path.join(installFolder, 'windsor');
-
             try {
               console.log('Getting Windsor context...');
-              const contextOutput = execSync(`${windsorPath} context get`, { stdio: 'pipe' }).toString().trim();
+              const contextOutput = execSync(`windsor context get`, { stdio: 'pipe' }).toString().trim();
               console.log(`Current Windsor context: ${contextOutput}`);
               if (contextOutput !== 'local') {
                 console.error(`Error: Windsor context is not 'local'. Current context: ${contextOutput}`);
@@ -73,7 +67,7 @@ jobs:
 
       - name: Windsor Context Get
         run: |
-          ${{ github.workspace }}/bin/windsor context get
+          windsor context get
         shell: bash
 
       - name: Check environment variables using GitHub Script
