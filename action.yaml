@@ -98,8 +98,10 @@ runs:
           };
 
           console.log(`Install folder: ${installFolder}`);
+          console.log('Inputs.install_folder: ${inputs.install_folder}');
           console.log(`Workdir: ${workdir}`);
-
+          console.log('Inputs.workdir: ${inputs.workdir}');
+          
           if (!fs.existsSync(path.join(installFolder, windsorExecutable))) {
             console.log('Windsor CLI not found, proceeding with installation.');
 
