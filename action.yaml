@@ -77,10 +77,10 @@ runs:
           const os = require('os');
 
           const isWindows = os.platform() === 'win32';
-          const installFolder = '${{ inputs.install_folder }}';
-          const workdir = '${{ inputs.workdir }}';
-          // const installFolder = path.resolve('${{ inputs.install_folder }}');
-          // const workdir = path.resolve('${{ inputs.workdir }}');
+          // const installFolder = '${{ inputs.install_folder }}';
+          // const workdir = '${{ inputs.workdir }}';
+          const installFolder = path.resolve('${{ inputs.install_folder }}');
+          const workdir = path.resolve('${{ inputs.workdir }}');
           const githubWorkspace = process.env.GITHUB_WORKSPACE;
           let version = '${{ inputs.version }}';
           const ref = '${{ inputs.ref }}';
@@ -100,9 +100,9 @@ runs:
           };
 
           console.log(`Install folder: ${installFolder}`);
-          console.log('Inputs.install_folder: ${inputs.install_folder}');
+          console.log('Inputs.install_folder: ${{inputs.install_folder}}');
           console.log(`Workdir: ${workdir}`);
-          console.log('Inputs.workdir: ${inputs.workdir}');
+          console.log('Inputs.workdir: ${{inputs.workdir}}');
 
           if (!fs.existsSync(path.join(installFolder, windsorExecutable))) {
             console.log('Windsor CLI not found, proceeding with installation.');
