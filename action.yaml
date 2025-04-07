@@ -73,10 +73,8 @@ runs:
           const os = require('os');
 
           const isWindows = os.platform() === 'win32';
-          // const installFolder = '${{ inputs.install_folder }}';
-          // const workdir = '${{ inputs.workdir }}';
           const installFolder = path.resolve(process.cwd(), 'bin');
-          const workdir = path.resolve('${{ inputs.workdir }}');
+          const workdir = '${{ inputs.workdir }}' === '' ? process.cwd() : path.resolve('${{ inputs.workdir }}');
           const githubWorkspace = process.env.GITHUB_WORKSPACE;
           let version = '${{ inputs.version }}';
           const ref = '${{ inputs.ref }}';
