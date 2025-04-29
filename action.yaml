@@ -71,17 +71,21 @@ runs:
           const fs = require('fs');
           const path = require('path');
           const os = require('os');
+          
+          const cleanInput = (input) => input.replace(/^"(.*)"$/, '$1');
 
           const isWindows = os.platform() === 'win32';
-          const workdir = '${{ inputs.workdir }}' === '' ? process.cwd() : path.resolve('${{ inputs.workdir }}');
+          const rawWorkdir = cleanInput('${{ inputs.workdir }}');
+          const workdir = rawWorkdir === '' ? process.cwd() : path.resolve(rawWorkdir);
           const installFolder = path.resolve(workdir, 'bin');
           const githubWorkspace = process.env.GITHUB_WORKSPACE;
-          let version = '${{ inputs.version }}';
-          const ref = '${{ inputs.ref }}';
-          const input_context = 'local';
+          let version = cleanInput('${{ inputs.version }}');
+          const ref = cleanInput('${{ inputs.ref }}');
+          const input_context = cleanInput('${{ inputs.context }}');
 
           console.log(`Workdir: ${workdir}`);
           console.log(`Install folder: ${installFolder}`);
+          console.log(`Context: ${input_context}`);
 
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
 
