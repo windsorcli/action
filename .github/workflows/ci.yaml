@@ -10,7 +10,7 @@ on:
       - main-branch-update
 
 env:
-  WINDSOR_VERSION: v0.5.5
+  WINDSOR_VERSION: v0.5.6
 
 jobs:
   windsorcli:
