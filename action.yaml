@@ -109,7 +109,7 @@ runs:
             if (ref) {
               console.log(`Installing Windsor CLI from ref (${ref})...`);
               execCommand(`git clone https://github.com/windsorcli/cli.git ${githubWorkspace}/cli`);
-              execCommand(`cd ${githubWorkspace}/cli && git checkout ${ref}`);
+              execCommand(`cd ${githubWorkspace}/cli && git pull && git checkout ${ref}`);
               execCommand(`cd ${githubWorkspace}/cli/cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
               version = 'vdev';  // Set expected version to vdev when building from source
             } else {
