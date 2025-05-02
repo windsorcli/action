@@ -81,7 +81,7 @@ jobs:
             const path = require('path');
             
             // Change to the working directory
-            const rawWorkdir = cleanInput('${{ inputs.workdir }}');
+            const rawWorkdir = '${{ inputs.workdir }}';
             let workdir = rawWorkdir === '' ? process.cwd() : rawWorkdir;
             if (!path.isAbsolute(workdir)) {
               workdir = path.resolve(process.env.GITHUB_WORKSPACE || process.cwd(), workdir);

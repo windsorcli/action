@@ -77,7 +77,7 @@ runs:
           const path = require('path');
           const os = require('os');
           
-          const cleanInput = (input) => typeof input === 'string' ? input.replace(/^"(.*)"$/, '$1') : input;
+          const cleanInput = (input) => typeof input === 'string' ? input.replace(/\r?\n|\r/g, '') : input;
 
           const isWindows = os.platform() === 'win32';
           const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
