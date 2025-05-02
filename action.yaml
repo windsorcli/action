@@ -187,14 +187,25 @@ runs:
             console.log(`Setting Windsor context to: ${input_context}`);
             try {
               // Run init with full output capture
+              console.log(`Running: ${windsorExecutable} init ${input_context}`);
               const initOutput = execSync(`${windsorExecutable} init ${input_context}`, { 
-                encoding: 'utf-8'
+                encoding: 'utf-8',
+                stdio: 'pipe'
               });
               console.log('Windsor init output:', initOutput);
               
+              // Check if context directory exists
+              const contextDir = path.join(process.cwd(), 'contexts', input_context);
+              console.log('Checking context directory:', contextDir);
+              if (!fs.existsSync(contextDir)) {
+                throw new Error(`Context directory not created: ${contextDir}`);
+              }
+              
               // Verify the context was set
+              console.log(`Running: ${windsorExecutable} context get`);
               const contextOutput = execSync(`${windsorExecutable} context get`, { 
-                encoding: 'utf-8'
+                encoding: 'utf-8',
+                stdio: 'pipe'
               });
               console.log('Current Windsor context:', contextOutput);
               
@@ -216,7 +227,11 @@ runs:
             console.log('Windsor executable path:', whichOutput);
 
             // Run windsor env with full output capture
-            const envOutput = execSync(`${windsorExecutable} env`, { encoding: 'utf-8' });
+            console.log(`Running: ${windsorExecutable} env`);
+            const envOutput = execSync(`${windsorExecutable} env`, { 
+              encoding: 'utf-8',
+              stdio: 'pipe'
+            });
             console.log('Raw windsor env output:', envOutput);
 
             if (!envOutput) {
