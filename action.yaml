@@ -90,8 +90,13 @@ runs:
             console.log(`Raw workdir input: ${rawWorkdir}`);
             console.log(`GitHub workspace: ${githubWorkspace}`);
             
-            // Simple path join - let Node handle the path normalization
-            workdir = path.join(githubWorkspace, rawWorkdir);
+            // If the path is absolute, use it as is
+            if (path.isAbsolute(rawWorkdir)) {
+              workdir = rawWorkdir;
+            } else {
+              // If relative, join with workspace
+              workdir = path.join(githubWorkspace, rawWorkdir);
+            }
             
             console.log(`Constructed workdir: ${workdir}`);
           } else {
