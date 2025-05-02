@@ -187,14 +187,14 @@ runs:
             console.log(`Setting Windsor context to: ${input_context}`);
             try {
               // Run with stdio: 'inherit' to see the output
-              const initOutput = execSync(`${path.join(installFolder, windsorExecutable)} init ${input_context}`, { 
+              const initOutput = execSync(`${windsorExecutable} init ${input_context}`, { 
                 stdio: 'inherit',
                 encoding: 'utf-8'
               });
               console.log('Windsor init output:', initOutput);
               
               // Verify the context was set
-              const contextOutput = execSync(`${path.join(installFolder, windsorExecutable)} context get`, { 
+              const contextOutput = execSync(`${windsorExecutable} context get`, { 
                 encoding: 'utf-8'
               }).toString().trim();
               console.log('Current Windsor context:', contextOutput);
