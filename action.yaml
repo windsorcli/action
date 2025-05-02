@@ -192,6 +192,14 @@ runs:
           if (input_context) {
             console.log(`Setting Windsor context to: ${input_context}`);
             try {
+              // Create workdir structure and change to it first
+              if (workdir) {
+                console.log(`Creating workdir structure: ${workdir}`);
+                fs.mkdirSync(workdir, { recursive: true });
+                console.log(`Changing to workdir: ${workdir}`);
+                process.chdir(workdir);
+              }
+
               // Run init with full output capture
               console.log(`Running: ${windsorExecutable} init ${input_context}`);
               const initOutput = execSync(`${windsorExecutable} init ${input_context}`, { 
@@ -231,12 +239,6 @@ runs:
             // First verify windsor is in PATH
             const whichOutput = execSync(`which ${windsorExecutable}`, { encoding: 'utf-8' });
             console.log('Windsor executable path:', whichOutput);
-
-            // Change to workdir if specified
-            if (workdir) {
-              console.log(`Changing to workdir: ${workdir}`);
-              process.chdir(workdir);
-            }
 
             // Run windsor env with full output capture
             console.log(`Running: ${windsorExecutable} env`);
