@@ -25,7 +25,7 @@ runs:
 
     - name: Check if Git is installed
       id: check-git
-      uses: actions/github-script@v7
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
       with:
         script: |
           const { execSync } = require('child_process');
@@ -34,15 +34,15 @@ runs:
             // Check if Git is installed by attempting to get its version
             execSync('git --version', { stdio: 'inherit' });
             console.log('Git is installed.');
-          } catch (error) {          
+          } catch (error) {
             console.log(`Current PATH: ${process.env.PATH}`);
             console.error('Git is not installed. Please install Git to proceed.');
             process.exit(1);
           }
-                    
+
     - name: Check Go Installation
       if: ${{ inputs.ref != '' }}
-      uses: actions/github-script@v7
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
       with:
         script: |
           const { execSync } = require('child_process');
@@ -62,9 +62,9 @@ runs:
             console.error('Go is not installed or not found in PATH:', error.message);
             process.exit(1);
           }
-          
+
     - name: Install Windsor CLI
-      uses: actions/github-script@v7
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
       with:
         script: |
           const { execSync } = require('child_process');
@@ -154,52 +154,53 @@ runs:
 
               console.log('Windsor CLI installation complete.');
             }
+          }
 
-            console.log(`Setting environment variables for Windsor CLI.`);
-            fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
-            fs.appendFileSync(process.env.GITHUB_ENV, `WINDSOR_PROJECT_ROOT=${workdir}\n`);
+    - name: Set Windsor CLI environment variables
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      with:
+        script: |
+          const { execSync } = require('child_process');
+          const fs = require('fs');
+          const path = require('path');
+          const os = require('os');
 
-            // Set the environment variable in the current process
-            process.env.WINDSOR_PROJECT_ROOT = workdir;
+          const cleanInput = (input) => input.replace(/^"(.*)"$/, '$1');
+          const isWindows = os.platform() === 'win32';
+          const rawWorkdir = cleanInput('${{ inputs.workdir }}');
+          const workdir = rawWorkdir === '' ? process.cwd() : path.resolve(rawWorkdir);
+          const installFolder = path.resolve(workdir, 'bin');
+          const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
 
-            console.log(`workdir=${workdir}`);
-            console.log(`WINDSOR_PROJECT_ROOT value: ${process.env.WINDSOR_PROJECT_ROOT}`);
+          // Inject Windsor CLI environment variables
+          const githubEnv = process.env.GITHUB_ENV;
+          let envOutput, envLines = [];
 
-            if (input_context !== "") {
-              console.log(`Setting context to ${input_context}`);
-              execCommand(`cd ${workdir} && ${path.join(installFolder, windsorExecutable)} init ${input_context}`);
-            }
-
-            // Inject Windsor CLI environment variables into GitHub Actions environment
-            const githubEnv = process.env.GITHUB_ENV;
-            let envOutput, envLines = [];
-
+          try {
+            // Run 'windsor env' and capture output for bash
+            envOutput = execSync(`${path.join(installFolder, windsorExecutable)} env`, { encoding: 'utf-8' });
+            envLines = envOutput.split('\n').filter(line => line.startsWith('export '));
+            envLines.forEach(line => {
+              // export FOO=bar
+              const assignment = line.replace(/^export /, '');
+              fs.appendFileSync(githubEnv, assignment + '\n');
+            });
+          } catch (e) {
+            // Try PowerShell format if bash export fails
             try {
-              // Run 'windsor env' and capture output for bash
-              envOutput = execSync(`${path.join(installFolder, windsorExecutable)} env`, { encoding: 'utf-8' });
-              envLines = envOutput.split('\n').filter(line => line.startsWith('export '));
+              envOutput = execSync(`${path.join(installFolder, windsorExecutable)} env --shell powershell`, { encoding: 'utf-8' });
+              envLines = envOutput.split('\n').filter(line => line.trim().startsWith('$env:'));
               envLines.forEach(line => {
-                // export FOO=bar
-                const assignment = line.replace(/^export /, '');
-                fs.appendFileSync(githubEnv, assignment + '\n');
+                // $env:FOO = "bar"
+                const match = line.match(/^\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*["']?([^"']+)["']?/);
+                if (match) {
+                  const key = match[1];
+                  const val = match[2];
+                  fs.appendFileSync(githubEnv, `${key}=${val}\n`);
+                }
               });
-            } catch (e) {
-              // Try PowerShell format if bash export fails
-              try {
-                envOutput = execSync(`${path.join(installFolder, windsorExecutable)} env --shell powershell`, { encoding: 'utf-8' });
-                envLines = envOutput.split('\n').filter(line => line.trim().startsWith('$env:'));
-                envLines.forEach(line => {
-                  // $env:FOO = "bar"
-                  const match = line.match(/^\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*["']?([^"']+)["']?/);
-                  if (match) {
-                    const key = match[1];
-                    const val = match[2];
-                    fs.appendFileSync(githubEnv, `${key}=${val}\n`);
-                  }
-                });
-              } catch (e2) {
-                console.error('Failed to inject Windsor environment variables from both bash and PowerShell output.');
-                process.exit(1);
-              }
+            } catch (e2) {
+              console.error('Failed to inject Windsor environment variables from both bash and PowerShell output.');
+              process.exit(1);
             }
           }
