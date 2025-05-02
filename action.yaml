@@ -87,11 +87,15 @@ runs:
           const ref = cleanInput('${{ inputs.ref }}');
           const input_context = cleanInput('${{ inputs.context }}');
           let rawWorkdir = cleanInput('${{ inputs.workdir }}');
+          
+          // Handle workdir path construction
+          let workdir;
           if (rawWorkdir) {
-            if (!path.isAbsolute(rawWorkdir)) {
-              rawWorkdir = path.resolve(githubWorkspace, rawWorkdir);
+            if (path.isAbsolute(rawWorkdir)) {
+              workdir = path.normalize(rawWorkdir);
+            } else {
+              workdir = path.normalize(path.resolve(githubWorkspace, rawWorkdir));
             }
-            workdir = path.normalize(rawWorkdir);
           } else {
             workdir = process.cwd();
           }
