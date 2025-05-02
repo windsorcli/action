@@ -95,11 +95,18 @@ runs:
               .replace(/^[A-Za-z]:/, '')  // Remove any drive letter
               .replace(/\//g, path.sep);  // Convert to platform-specific separators
             
-            // If the path is absolute (starts with / or \), use it as is
-            if (path.isAbsolute(normalizedPath)) {
-              workdir = path.join(githubWorkspace, normalizedPath);
+            // Check if path is absolute (handles both Windows and Unix)
+            const isAbsolute = path.isAbsolute(normalizedPath) || normalizedPath.startsWith(path.sep);
+            
+            if (isAbsolute) {
+              // For absolute paths, use the path as is on Unix, or join with workspace on Windows
+              if (process.platform === 'win32') {
+                workdir = path.join(githubWorkspace, normalizedPath);
+              } else {
+                workdir = normalizedPath;
+              }
             } else {
-              // If relative, join with workspace
+              // For relative paths, always join with workspace
               workdir = path.join(githubWorkspace, normalizedPath);
             }
             
