@@ -87,10 +87,14 @@ runs:
           const ref = cleanInput('${{ inputs.ref }}');
           const input_context = cleanInput('${{ inputs.context }}');
           let rawWorkdir = cleanInput('${{ inputs.workdir }}');
-          if (rawWorkdir && !path.isAbsolute(rawWorkdir)) {
-            rawWorkdir = path.resolve(process.env.GITHUB_WORKSPACE || process.cwd(), rawWorkdir);
+          if (rawWorkdir) {
+            if (!path.isAbsolute(rawWorkdir)) {
+              rawWorkdir = path.resolve(githubWorkspace, rawWorkdir);
+            }
+            workdir = path.normalize(rawWorkdir);
+          } else {
+            workdir = process.cwd();
           }
-          let workdir = rawWorkdir ? path.normalize(rawWorkdir) : process.cwd();
 
           console.log(`Workdir: ${workdir}`);
           console.log(`Install folder: ${installFolder}`);
