@@ -174,6 +174,14 @@ runs:
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = process.env.INPUT_CONTEXT || '';
 
+          // Verify PATH is set correctly
+          console.log('Current PATH:', process.env.PATH);
+          console.log('Install folder:', installFolder);
+          if (!process.env.PATH.includes(installFolder)) {
+            console.error(`Install folder ${installFolder} not in PATH`);
+            process.exit(1);
+          }
+
           // First, ensure context is set if provided
           if (input_context) {
             console.log(`Setting Windsor context to: ${input_context}`);
@@ -204,14 +212,26 @@ runs:
           // Run windsor env and capture output
           let envOutput;
           try {
-            envOutput = execSync(`${path.join(installFolder, windsorExecutable)} env`, { 
+            // First verify windsor is in PATH
+            const whichOutput = execSync(`which ${windsorExecutable}`, { encoding: 'utf-8' }).trim();
+            console.log('Windsor executable path:', whichOutput);
+
+            // Run windsor env with error handling
+            envOutput = execSync(`${windsorExecutable} env`, { 
               encoding: 'utf-8',
-              stdio: 'inherit'
+              stdio: ['inherit', 'pipe', 'pipe']
             });
+            
+            if (!envOutput) {
+              throw new Error('windsor env returned no output');
+            }
+            
             console.log('Raw windsor env output:', envOutput);
           } catch (error) {
             console.error('Error running windsor env:', error.message);
             console.error('Error details:', error);
+            console.error('Error stdout:', error.stdout);
+            console.error('Error stderr:', error.stderr);
             process.exit(1);
           }
 
