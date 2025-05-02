@@ -51,11 +51,12 @@ jobs:
               console.log('Getting Windsor context...');
               const contextOutput = execSync(`windsor context get`, { stdio: 'pipe' }).toString().trim();
               console.log(`Current Windsor context: ${contextOutput}`);
-              if (contextOutput !== '${process.env.WINDSOR_CONTEXT}') {
-                console.error(`Error: Windsor context is not '${process.env.WINDSOR_CONTEXT}'. Current context: ${contextOutput}`);
+              const expectedContext = process.env.WINDSOR_CONTEXT;
+              if (contextOutput !== expectedContext) {
+                console.error(`Error: Windsor context is not '${expectedContext}'. Current context: ${contextOutput}`);
                 process.exit(1);
               } else {
-                console.log('Windsor context is correctly set to ${process.env.WINDSOR_CONTEXT}.');
+                console.log(`Windsor context is correctly set to ${expectedContext}.`);
               }
             } catch (error) {
               console.error('Error getting Windsor context:', error);
