@@ -77,22 +77,24 @@ runs:
           const path = require('path');
           const os = require('os');
           
-          const cleanInput = (input) => input.replace(/^"(.*)"$/, '$1');
+          const cleanInput = (input) => typeof input === 'string' ? input.replace(/^"(.*)"$/, '$1') : input;
 
           const isWindows = os.platform() === 'win32';
-          const rawWorkdir = cleanInput('${{ inputs.workdir }}');
-          const workdir = rawWorkdir === '' ? process.cwd() : path.resolve(rawWorkdir);
           const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
+          const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubWorkspace = process.env.GITHUB_WORKSPACE;
           let version = cleanInput('${{ inputs.version }}');
           const ref = cleanInput('${{ inputs.ref }}');
           const input_context = cleanInput('${{ inputs.context }}');
+          let rawWorkdir = cleanInput('${{ inputs.workdir }}');
+          if (rawWorkdir && !path.isAbsolute(rawWorkdir)) {
+            rawWorkdir = path.resolve(process.env.GITHUB_WORKSPACE || process.cwd(), rawWorkdir);
+          }
+          let workdir = rawWorkdir ? path.normalize(rawWorkdir) : process.cwd();
 
           console.log(`Workdir: ${workdir}`);
           console.log(`Install folder: ${installFolder}`);
           console.log(`Context: ${input_context}`);
-
-          const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
 
           const execCommand = (command) => {
             try {
@@ -163,6 +165,14 @@ runs:
 
           // Always add installFolder to PATH for all subsequent steps
           fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
+
+          // When changing directories, always check existence
+          if (workdir && fs.existsSync(workdir)) {
+            process.chdir(workdir);
+          } else if (workdir) {
+            console.error(`Workdir does not exist: ${workdir}`);
+            process.exit(1);
+          }
 
     - name: Set Windsor CLI environment variables
       uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
