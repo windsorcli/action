@@ -77,7 +77,7 @@ runs:
           const isWindows = os.platform() === 'win32';
           const rawWorkdir = cleanInput('${{ inputs.workdir }}');
           const workdir = rawWorkdir === '' ? process.cwd() : path.resolve(rawWorkdir);
-          const installFolder = path.resolve(workdir, 'bin');
+          const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
           const githubWorkspace = process.env.GITHUB_WORKSPACE;
           let version = cleanInput('${{ inputs.version }}');
           const ref = cleanInput('${{ inputs.ref }}');
@@ -156,6 +156,9 @@ runs:
             }
           }
 
+          // Always add installFolder to PATH for all subsequent steps
+          fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
+
     - name: Set Windsor CLI environment variables
       uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
       with:
@@ -165,11 +168,8 @@ runs:
           const path = require('path');
           const os = require('os');
 
-          const cleanInput = (input) => input.replace(/^"(.*)"$/, '$1');
           const isWindows = os.platform() === 'win32';
-          const rawWorkdir = cleanInput('${{ inputs.workdir }}');
-          const workdir = rawWorkdir === '' ? process.cwd() : path.resolve(rawWorkdir);
-          const installFolder = path.resolve(workdir, 'bin');
+          const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
 
           // Inject Windsor CLI environment variables
