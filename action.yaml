@@ -192,15 +192,7 @@ runs:
           if (input_context) {
             console.log(`Setting Windsor context to: ${input_context}`);
             try {
-              // Create workdir structure and change to it first
-              if (workdir) {
-                console.log(`Creating workdir structure: ${workdir}`);
-                fs.mkdirSync(workdir, { recursive: true });
-                console.log(`Changing to workdir: ${workdir}`);
-                process.chdir(workdir);
-              }
-
-              // Run init with full output capture including stderr
+              // Run init in default directory first
               console.log(`Running: ${windsorExecutable} init ${input_context}`);
               const initOutput = execSync(`${windsorExecutable} init ${input_context}`, { 
                 encoding: 'utf-8',
@@ -209,11 +201,11 @@ runs:
               console.log('Windsor init stdout:', initOutput.stdout);
               console.log('Windsor init stderr:', initOutput.stderr);
               
-              // Check if context directory exists
-              const contextDir = path.join(process.cwd(), 'contexts', input_context);
-              console.log('Checking context directory:', contextDir);
-              if (!fs.existsSync(contextDir)) {
-                throw new Error(`Context directory not created: ${contextDir}`);
+              // Check if context directory exists in default location
+              const defaultContextDir = path.join(process.cwd(), 'contexts', input_context);
+              console.log('Checking default context directory:', defaultContextDir);
+              if (!fs.existsSync(defaultContextDir)) {
+                throw new Error(`Context directory not created: ${defaultContextDir}`);
               }
               
               // Verify the context was set
@@ -226,6 +218,14 @@ runs:
               
               if (!contextOutput.trim().includes(input_context)) {
                 throw new Error(`Context mismatch: expected ${input_context}, got ${contextOutput}`);
+              }
+
+              // Now change to workdir if specified
+              if (workdir) {
+                console.log(`Creating workdir structure: ${workdir}`);
+                fs.mkdirSync(workdir, { recursive: true });
+                console.log(`Changing to workdir: ${workdir}`);
+                process.chdir(workdir);
               }
             } catch (error) {
               console.error('Error setting Windsor context:', error.message);
