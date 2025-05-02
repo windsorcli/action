@@ -87,23 +87,18 @@ runs:
           // Handle workdir path construction
           let workdir;
           if (rawWorkdir) {
-            // Convert to platform-specific path and handle drive letter
-            const platformPath = rawWorkdir
-              .replace(/\//g, path.sep)  // Convert forward slashes to platform-specific
-              .replace(/^[A-Za-z]:/, '');  // Remove drive letter if present
+            console.log(`Raw workdir input: ${rawWorkdir}`);
+            console.log(`GitHub workspace: ${githubWorkspace}`);
             
-            // If it's an absolute path, use it as is
-            if (path.isAbsolute(platformPath)) {
-              workdir = platformPath;
-            } else {
-              // Otherwise join with workspace
-              workdir = path.join(githubWorkspace, platformPath);
-            }
+            // Simple path join - let Node handle the path normalization
+            workdir = path.join(githubWorkspace, rawWorkdir);
+            
+            console.log(`Constructed workdir: ${workdir}`);
           } else {
             workdir = process.cwd();
           }
 
-          console.log(`Workdir: ${workdir}`);
+          console.log(`Final workdir: ${workdir}`);
           console.log(`Install folder: ${installFolder}`);
           console.log(`Context: ${input_context}`);
 
