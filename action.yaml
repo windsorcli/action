@@ -90,22 +90,25 @@ runs:
             console.log(`Raw workdir input: ${rawWorkdir}`);
             console.log(`GitHub workspace: ${githubWorkspace}`);
             
-            // Convert to forward slashes for consistent handling
-            const normalizedInput = rawWorkdir.replace(/\\/g, '/');
-            const normalizedWorkspace = githubWorkspace.replace(/\\/g, '/');
+            // Use GitHub Actions environment variables for consistent path handling
+            const workspacePath = process.env.GITHUB_WORKSPACE || githubWorkspace;
             
-            // Remove workspace prefix if present
-            const cleanPath = normalizedInput.startsWith(normalizedWorkspace) 
-              ? normalizedInput.slice(normalizedWorkspace.length)
-              : normalizedInput;
+            // Convert to platform-specific path
+            const platformPath = rawWorkdir.replace(/\//g, path.sep);
             
-            // Remove any drive letter and leading slashes
-            const finalPath = cleanPath
-              .replace(/^[A-Za-z]:/, '')
-              .replace(/^\/+/, '');
-            
-            // Join with workspace
-            workdir = path.join(githubWorkspace, finalPath);
+            // Handle Windows-specific path issues
+            if (process.platform === 'win32') {
+              // Remove any malformed drive letter prefix
+              const cleanPath = platformPath.replace(/^[A-Za-z]:[^\\]/, '');
+              workdir = path.join(workspacePath, cleanPath);
+            } else {
+              // On Unix, handle absolute paths
+              if (path.isAbsolute(platformPath)) {
+                workdir = platformPath;
+              } else {
+                workdir = path.join(workspacePath, platformPath);
+              }
+            }
             
             console.log(`Constructed workdir: ${workdir}`);
           } else {
