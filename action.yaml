@@ -87,23 +87,16 @@ runs:
           // Handle workdir path construction
           let workdir;
           if (rawWorkdir) {
-            // Normalize path separators and remove any drive letter
-            const normalizedWorkdir = rawWorkdir
-              .replace(/\\/g, '/')  // Convert all backslashes to forward slashes
-              .replace(/^[A-Za-z]:/, '')  // Remove drive letter
-              .replace(/^\/+/, '');  // Remove leading slashes
+            // Convert to platform-specific path
+            const platformPath = rawWorkdir.replace(/\//g, path.sep);
             
-            // Remove any workspace path prefix if present
-            const workspacePrefix = githubWorkspace
-              .replace(/\\/g, '/')  // Convert backslashes to forward slashes
-              .replace(/^[A-Za-z]:/, '')  // Remove drive letter
-              .replace(/^\/+/, '');  // Remove leading slashes
-            
-            // Remove workspace prefix from workdir
-            const cleanWorkdir = normalizedWorkdir.replace(new RegExp(`^${workspacePrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), '');
-            
-            // Join with workspace path using platform-specific separator
-            workdir = path.join(githubWorkspace, cleanWorkdir);
+            // If it's an absolute path, use it as is
+            if (path.isAbsolute(platformPath)) {
+              workdir = platformPath;
+            } else {
+              // Otherwise join with workspace
+              workdir = path.join(githubWorkspace, platformPath);
+            }
           } else {
             workdir = process.cwd();
           }
