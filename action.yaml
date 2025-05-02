@@ -94,10 +94,16 @@ runs:
               .replace(/^\/+/, '');  // Remove leading slashes
             
             // Remove any workspace path prefix if present
-            const workspacePrefix = githubWorkspace.replace(/\\/g, '/').replace(/^\/+/, '');
-            const cleanWorkdir = normalizedWorkdir.replace(new RegExp(`^${workspacePrefix}`), '');
+            const workspacePrefix = githubWorkspace
+              .replace(/\\/g, '/')  // Convert backslashes to forward slashes
+              .replace(/^[A-Za-z]:/, '')  // Remove drive letter
+              .replace(/^\/+/, '');  // Remove leading slashes
             
-            workdir = path.normalize(path.join(githubWorkspace, cleanWorkdir));
+            // Remove workspace prefix from workdir
+            const cleanWorkdir = normalizedWorkdir.replace(new RegExp(`^${workspacePrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), '');
+            
+            // Join with workspace path using platform-specific separator
+            workdir = path.join(githubWorkspace, cleanWorkdir);
           } else {
             workdir = process.cwd();
           }
