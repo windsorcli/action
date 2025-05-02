@@ -94,8 +94,9 @@ runs:
             if (path.isAbsolute(rawWorkdir)) {
               workdir = path.normalize(rawWorkdir);
             } else {
-              // Resolve against workspace and normalize to prevent duplicate segments
-              workdir = path.normalize(path.join(githubWorkspace, rawWorkdir));
+              // For Windows, ensure we don't get drive letter duplication
+              const normalizedWorkdir = rawWorkdir.replace(/^[A-Za-z]:/, '');
+              workdir = path.normalize(path.join(githubWorkspace, normalizedWorkdir));
             }
           } else {
             workdir = process.cwd();
