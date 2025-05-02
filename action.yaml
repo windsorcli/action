@@ -87,8 +87,10 @@ runs:
           // Handle workdir path construction
           let workdir;
           if (rawWorkdir) {
-            // Convert to platform-specific path
-            const platformPath = rawWorkdir.replace(/\//g, path.sep);
+            // Convert to platform-specific path and handle drive letter
+            const platformPath = rawWorkdir
+              .replace(/\//g, path.sep)  // Convert forward slashes to platform-specific
+              .replace(/^[A-Za-z]:/, '');  // Remove drive letter if present
             
             // If it's an absolute path, use it as is
             if (path.isAbsolute(platformPath)) {
