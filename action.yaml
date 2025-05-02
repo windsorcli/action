@@ -200,13 +200,14 @@ runs:
                 process.chdir(workdir);
               }
 
-              // Run init with full output capture
+              // Run init with full output capture including stderr
               console.log(`Running: ${windsorExecutable} init ${input_context}`);
               const initOutput = execSync(`${windsorExecutable} init ${input_context}`, { 
                 encoding: 'utf-8',
-                stdio: 'pipe'
+                stdio: ['pipe', 'pipe', 'pipe']
               });
-              console.log('Windsor init output:', initOutput);
+              console.log('Windsor init stdout:', initOutput.stdout);
+              console.log('Windsor init stderr:', initOutput.stderr);
               
               // Check if context directory exists
               const contextDir = path.join(process.cwd(), 'contexts', input_context);
