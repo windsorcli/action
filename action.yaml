@@ -90,12 +90,17 @@ runs:
             console.log(`Raw workdir input: ${rawWorkdir}`);
             console.log(`GitHub workspace: ${githubWorkspace}`);
             
-            // If the path is absolute, use it as is
-            if (path.isAbsolute(rawWorkdir)) {
-              workdir = rawWorkdir;
+            // Normalize the input path
+            const normalizedPath = rawWorkdir
+              .replace(/^[A-Za-z]:/, '')  // Remove any drive letter
+              .replace(/\//g, path.sep);  // Convert to platform-specific separators
+            
+            // If the path is absolute (starts with / or \), use it as is
+            if (path.isAbsolute(normalizedPath)) {
+              workdir = path.join(githubWorkspace, normalizedPath);
             } else {
               // If relative, join with workspace
-              workdir = path.join(githubWorkspace, rawWorkdir);
+              workdir = path.join(githubWorkspace, normalizedPath);
             }
             
             console.log(`Constructed workdir: ${workdir}`);
