@@ -68,7 +68,7 @@ jobs:
       - name: Change to a terraform folder
         uses: ./
         with:
-          workdir: ${{ github.workspace }}/.windsor/.tf_modules/cluster/talos
+          workdir: .windsor/.tf_modules/cluster/talos
           version: ${{ env.WINDSOR_VERSION }}
           context: ${{ env.WINDSOR_CONTEXT }}
 
