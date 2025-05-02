@@ -55,8 +55,6 @@ jobs:
             const envVars = [
               'KUBECONFIG',
               'KUBE_CONFIG_PATH',
-              'DOCKER_CONFIG',
-              'DOCKER_HOST',
               'OMNICONFIG',
               'TALOSCONFIG',
               'WINDSOR_CONTEXT',
@@ -70,14 +68,22 @@ jobs:
       - name: Change to a terraform folder
         uses: ./
         with:
-          workdir: ./.windsor/.tf_modules/cluster/talos
+          workdir: ${{ github.workspace }}/.windsor/.tf_modules/cluster/talos
           version: ${{ env.WINDSOR_VERSION }}
           context: ${{ env.WINDSOR_CONTEXT }}
 
-      - name: Check TF_ environment variables
+      - name: Check TF_ environment variables and folder contents
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
+            const { execSync } = require('child_process');
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Change to the working directory
+            const workDir = '${{ github.workspace }}/.windsor/.tf_modules/cluster/talos';
+            process.chdir(workDir);
+            
             // Log all environment variables that start with TF_
             console.log("TF_ environment variables:");
             Object.keys(process.env).forEach(key => {
@@ -90,6 +96,15 @@ jobs:
             console.log("Windsor-related environment variables:");
             ['WINDSOR_CONTEXT', 'WINDSOR_PROJECT_ROOT'].forEach(key => {
               console.log(`${key}=${process.env[key] || ''}`);
+            });
+            
+            // Print current directory and list files
+            console.log("Current directory:", process.cwd());
+            console.log("Directory contents:");
+            const files = fs.readdirSync('.');
+            files.forEach(file => {
+              const stats = fs.statSync(file);
+              console.log(`- ${file} (${stats.isDirectory() ? 'directory' : 'file'})`);
             });
 
       # - name: Assert TF_ environment variables are injected (terraform/cluster context)

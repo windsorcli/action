@@ -178,6 +178,7 @@ runs:
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = '${{ inputs.context }}';
+          const workdir = '${{ inputs.workdir }}';
 
           // Verify PATH is set correctly
           console.log('Current PATH:', process.env.PATH);
@@ -230,6 +231,12 @@ runs:
             // First verify windsor is in PATH
             const whichOutput = execSync(`which ${windsorExecutable}`, { encoding: 'utf-8' });
             console.log('Windsor executable path:', whichOutput);
+
+            // Change to workdir if specified
+            if (workdir) {
+              console.log(`Changing to workdir: ${workdir}`);
+              process.chdir(workdir);
+            }
 
             // Run windsor env with full output capture
             console.log(`Running: ${windsorExecutable} env`);
