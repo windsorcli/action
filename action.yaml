@@ -6,22 +6,18 @@ inputs:
   version:
     description: 'The version of Windsor CLI to install'
     required: false
-    type: string
     default: v0.5.2
   ref:
     description: 'Git reference to build Windsor CLI from source'
     required: false
-    type: string
     default: ""
   context:
     description: 'The context to use for Windsor CLI commands'
     required: false
-    type: string
     default: "local"
   workdir:
     description: 'The working directory for Windsor CLI commands'
     required: false
-    type: string
     default: ""
 
 runs:
@@ -91,11 +87,17 @@ runs:
           // Handle workdir path construction
           let workdir;
           if (rawWorkdir) {
-            if (path.isAbsolute(rawWorkdir)) {
-              workdir = path.normalize(rawWorkdir);
+            // For GitHub Actions workspace paths, they come in with forward slashes
+            // First normalize to forward slashes and remove any drive letter
+            const normalizedWorkdir = rawWorkdir
+              .replace(/\\/g, '/')  // Convert all backslashes to forward slashes
+              .replace(/^[A-Za-z]:/, '')  // Remove drive letter
+              .replace(/^\/+/, '');  // Remove leading slashes
+            
+            // If the path starts with the workspace, use it as is
+            if (normalizedWorkdir.startsWith('a/action/action')) {
+              workdir = path.normalize(path.join(githubWorkspace, normalizedWorkdir.replace('a/action/action', '')));
             } else {
-              // For Windows, ensure we don't get drive letter duplication
-              const normalizedWorkdir = rawWorkdir.replace(/^[A-Za-z]:/, '');
               workdir = path.normalize(path.join(githubWorkspace, normalizedWorkdir));
             }
           } else {
