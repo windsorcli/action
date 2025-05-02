@@ -172,10 +172,31 @@ runs:
           const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubEnv = process.env.GITHUB_ENV;
+          const input_context = process.env.INPUT_CONTEXT || '';
+
+          // First, ensure context is set if provided
+          if (input_context) {
+            console.log(`Setting Windsor context to: ${input_context}`);
+            try {
+              execSync(`${path.join(installFolder, windsorExecutable)} init ${input_context}`, { stdio: 'inherit' });
+            } catch (error) {
+              console.error('Error setting Windsor context:', error.message);
+              process.exit(1);
+            }
+          }
 
           // Run windsor env and capture output
-          const envOutput = execSync(`${path.join(installFolder, windsorExecutable)} env`, { encoding: 'utf-8' });
+          let envOutput;
+          try {
+            envOutput = execSync(`${path.join(installFolder, windsorExecutable)} env`, { encoding: 'utf-8' });
+            console.log('Raw windsor env output:', envOutput);
+          } catch (error) {
+            console.error('Error running windsor env:', error.message);
+            process.exit(1);
+          }
+
           const envLines = envOutput.split('\n').filter(line => line.trim() && !line.startsWith('#'));
+          console.log('Processed environment lines:', envLines);
 
           // Process each environment variable
           envLines.forEach(line => {
@@ -187,7 +208,9 @@ runs:
                 // Properly escape the value for GitHub Actions
                 const escapedValue = value.replace(/"/g, '\\"').replace(/\n/g, '\\n');
                 // Use the proper GitHub Actions environment variable format
-                fs.appendFileSync(githubEnv, `${key}<<EOF\n${escapedValue}\nEOF\n`);
+                const envLine = `${key}<<EOF\n${escapedValue}\nEOF\n`;
+                console.log(`Setting environment variable: ${key}`);
+                fs.appendFileSync(githubEnv, envLine);
               }
             } else if (line.startsWith('$env:')) {
               // Handle PowerShell-style
@@ -196,7 +219,9 @@ runs:
                 const [_, key, value] = match;
                 const escapedValue = value.replace(/"/g, '\\"').replace(/\n/g, '\\n');
                 // Use the proper GitHub Actions environment variable format
-                fs.appendFileSync(githubEnv, `${key}<<EOF\n${escapedValue}\nEOF\n`);
+                const envLine = `${key}<<EOF\n${escapedValue}\nEOF\n`;
+                console.log(`Setting environment variable: ${key}`);
+                fs.appendFileSync(githubEnv, envLine);
               }
             }
           });

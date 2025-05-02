@@ -23,22 +23,7 @@ jobs:
         uses: ./
         with:
           version: ${{ env.WINDSOR_VERSION }}
-
-      - name: Initialize Windsor Context
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            const { execSync } = require('child_process');
-            const path = require('path');
-
-            try {
-              console.log('Initializing Windsor context...');
-              execSync(`windsor init ${process.env.WINDSOR_CONTEXT}`, { stdio: 'inherit' });
-              console.log('Windsor context initialized successfully.');
-            } catch (error) {
-              console.error('Error initializing Windsor context:', error);
-              process.exit(1);
-            }
+          context: ${{ env.WINDSOR_CONTEXT }}
 
       - name: Verify Windsor Context
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
@@ -87,6 +72,7 @@ jobs:
         with:
           workdir: ./.windsor/.tf_modules/cluster/talos
           version: ${{ env.WINDSOR_VERSION }}
+          context: ${{ env.WINDSOR_CONTEXT }}
 
       - name: Check TF_ environment variables
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
