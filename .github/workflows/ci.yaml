@@ -6,7 +6,7 @@ on:
 env:
 
   WINDSOR_VERSION: v0.5.6
-  WINDSOR_CONTEXT: staging
+  WINDSOR_CONTEXT: local
 
 jobs:
   windsorcli:

@@ -222,8 +222,6 @@ runs:
 
               // Now change to workdir if specified
               if (workdir) {
-                console.log(`Creating workdir structure: ${workdir}`);
-                fs.mkdirSync(workdir, { recursive: true });
                 console.log(`Changing to workdir: ${workdir}`);
                 process.chdir(workdir);
               }
