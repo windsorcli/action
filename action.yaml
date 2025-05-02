@@ -261,8 +261,11 @@ runs:
               if (line.startsWith('export ')) {
                 // Handle bash-style export
                 const assignment = line.replace(/^export /, '');
-                const [key, value] = assignment.split('=');
-                if (key && value) {
+                // Split only on the first '='
+                const eqIdx = assignment.indexOf('=');
+                if (eqIdx !== -1) {
+                  const key = assignment.slice(0, eqIdx);
+                  let value = assignment.slice(eqIdx + 1);
                   // Remove quotes from value
                   const cleanValue = value.replace(/^["']|["']$/g, '');
                   // Properly escape the value for GitHub Actions
