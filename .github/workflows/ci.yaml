@@ -81,8 +81,13 @@ jobs:
             const path = require('path');
             
             // Change to the working directory
-            const workDir = '${{ github.workspace }}/.windsor/.tf_modules/cluster/talos';
-            process.chdir(workDir);
+            const rawWorkdir = cleanInput('${{ inputs.workdir }}');
+            let workdir = rawWorkdir === '' ? process.cwd() : rawWorkdir;
+            if (!path.isAbsolute(workdir)) {
+              workdir = path.resolve(process.env.GITHUB_WORKSPACE || process.cwd(), workdir);
+            }
+            workdir = path.normalize(workdir);
+            process.chdir(workdir);
             
             // Log all environment variables that start with TF_
             console.log("TF_ environment variables:");
