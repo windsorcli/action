@@ -90,14 +90,22 @@ runs:
             console.log(`Raw workdir input: ${rawWorkdir}`);
             console.log(`GitHub workspace: ${githubWorkspace}`);
             
-            // Convert to forward slashes and remove any drive letter
-            const normalizedPath = rawWorkdir
-              .replace(/\\/g, '/')  // Convert all backslashes to forward slashes
-              .replace(/^[A-Za-z]:/, '')  // Remove drive letter
-              .replace(/^\/+/, '');  // Remove leading slashes
+            // Convert to forward slashes for consistent handling
+            const normalizedInput = rawWorkdir.replace(/\\/g, '/');
+            const normalizedWorkspace = githubWorkspace.replace(/\\/g, '/');
             
-            // Always join with workspace path
-            workdir = path.join(githubWorkspace, normalizedPath);
+            // Remove workspace prefix if present
+            const cleanPath = normalizedInput.startsWith(normalizedWorkspace) 
+              ? normalizedInput.slice(normalizedWorkspace.length)
+              : normalizedInput;
+            
+            // Remove any drive letter and leading slashes
+            const finalPath = cleanPath
+              .replace(/^[A-Za-z]:/, '')
+              .replace(/^\/+/, '');
+            
+            // Join with workspace
+            workdir = path.join(githubWorkspace, finalPath);
             
             console.log(`Constructed workdir: ${workdir}`);
           } else {
