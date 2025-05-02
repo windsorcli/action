@@ -107,6 +107,44 @@ jobs:
               console.log(`- ${file} (${stats.isDirectory() ? 'directory' : 'file'})`);
             });
 
+      - name: Debug windsor env output and working directory
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const fs = require('fs');
+            const os = require('os');
+            const path = require('path');
+            const windsorExecutable = os.platform() === 'win32' ? 'windsor.exe' : 'windsor';
+
+            // Print current working directory and contents
+            console.log('Current directory:', process.cwd());
+            console.log('Directory contents:', fs.readdirSync('.'));
+
+            // Check for .tfvars files in the expected contexts folder
+            const contextTfvarsDir = path.resolve(
+              process.env.GITHUB_WORKSPACE,
+              'contexts',
+              process.env.WINDSOR_CONTEXT || 'local',
+              'terraform',
+              'cluster'
+            );
+            if (fs.existsSync(contextTfvarsDir)) {
+              const tfvarsFiles = fs.readdirSync(contextTfvarsDir).filter(f => f.endsWith('.tfvars'));
+              if (tfvarsFiles.length > 0) {
+                console.log('.tfvars files found in context folder:', tfvarsFiles);
+              } else {
+                console.log('No .tfvars files found in context folder:', contextTfvarsDir);
+              }
+            } else {
+              console.log('Context .tfvars directory does not exist:', contextTfvarsDir);
+            }
+
+            // Run windsor env and print raw output
+            console.log(`Running: ${windsorExecutable} env`);
+            const envOutput = execSync(`${windsorExecutable} env`, { encoding: 'utf-8' });
+            console.log('Raw windsor env output:\n', envOutput);
+
       # - name: Assert TF_ environment variables are injected (terraform/cluster context)
       #   uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
       #   with:
