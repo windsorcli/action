@@ -87,19 +87,17 @@ runs:
           // Handle workdir path construction
           let workdir;
           if (rawWorkdir) {
-            // For GitHub Actions workspace paths, they come in with forward slashes
-            // First normalize to forward slashes and remove any drive letter
+            // Normalize path separators and remove any drive letter
             const normalizedWorkdir = rawWorkdir
               .replace(/\\/g, '/')  // Convert all backslashes to forward slashes
               .replace(/^[A-Za-z]:/, '')  // Remove drive letter
               .replace(/^\/+/, '');  // Remove leading slashes
             
-            // If the path starts with the workspace, use it as is
-            if (normalizedWorkdir.startsWith('a/action/action')) {
-              workdir = path.normalize(path.join(githubWorkspace, normalizedWorkdir.replace('a/action/action', '')));
-            } else {
-              workdir = path.normalize(path.join(githubWorkspace, normalizedWorkdir));
-            }
+            // Remove any workspace path prefix if present
+            const workspacePrefix = githubWorkspace.replace(/\\/g, '/').replace(/^\/+/, '');
+            const cleanWorkdir = normalizedWorkdir.replace(new RegExp(`^${workspacePrefix}`), '');
+            
+            workdir = path.normalize(path.join(githubWorkspace, cleanWorkdir));
           } else {
             workdir = process.cwd();
           }
