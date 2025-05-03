@@ -115,37 +115,30 @@ jobs:
               process.exit(1);
             }
 
-            const projectRoot = process.env.WINDSOR_PROJECT_ROOT.replace(/\\/g, '/');
-            console.log('Project root:', projectRoot);
-            console.log('Current directory:', process.cwd());
-            console.log('Listing directory contents:');
-            const { execSync } = require('child_process');
-            console.log(execSync('ls -la', { encoding: 'utf8' }));
-            console.log('Listing contexts directory:');
-            console.log(execSync('ls -la contexts', { encoding: 'utf8' }));
-            console.log('Listing contexts/test directory:');
-            console.log(execSync('ls -la contexts/test', { encoding: 'utf8' }));
-
-            const expectedVars = {
-              'TF_CLI_ARGS_apply': process.platform === 'win32' 
-                ? `${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan`
-                : `"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan"`,
-              'TF_CLI_ARGS_destroy': process.platform === 'win32'
-                ? `-var-file=${projectRoot}/contexts/test/terraform/sample.tfvars`
-                : `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-              'TF_CLI_ARGS_import': process.platform === 'win32'
-                ? `-var-file=${projectRoot}/contexts/test/terraform/sample.tfvars`
-                : `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-              'TF_CLI_ARGS_init': process.platform === 'win32'
-                ? `-backend=true -backend-config=path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate`
-                : `-backend=true -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`,
-              'TF_CLI_ARGS_plan': process.platform === 'win32'
-                ? `-out=${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan -var-file=${projectRoot}/contexts/test/terraform/sample.tfvars`
-                : `-out="${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-              'TF_DATA_DIR': `${projectRoot}/contexts/test/.terraform/sample`,
-              'TF_VAR_context_path': `${projectRoot}/contexts/test`,
-              'TF_VAR_os_type': 'unix'
-            };
+            let expectedVars;
+            if (process.platform === 'win32') {
+              expectedVars = {
+                'TF_CLI_ARGS_apply': `${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan`,
+                'TF_CLI_ARGS_destroy': `-var-file=${projectRoot}/contexts/test/terraform/sample.tfvars`,
+                'TF_CLI_ARGS_import': `-var-file=${projectRoot}/contexts/test/terraform/sample.tfvars`,
+                'TF_CLI_ARGS_init': `-backend=true -backend-config=path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate`,
+                'TF_CLI_ARGS_plan': `-out=${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan -var-file=${projectRoot}/contexts/test/terraform/sample.tfvars`,
+                'TF_DATA_DIR': `${projectRoot}/contexts/test/.terraform/sample`,
+                'TF_VAR_context_path': `${projectRoot}/contexts/test`,
+                'TF_VAR_os_type': 'unix'
+              };
+            } else {
+              expectedVars = {
+                'TF_CLI_ARGS_apply': `"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan"`,
+                'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_CLI_ARGS_init': `-backend=true -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`,
+                'TF_CLI_ARGS_plan': `-out="${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_DATA_DIR': `${projectRoot}/contexts/test/.terraform/sample`,
+                'TF_VAR_context_path': `${projectRoot}/contexts/test`,
+                'TF_VAR_os_type': 'unix'
+              };
+            }
 
             for (const [varName, expectedValue] of Object.entries(expectedVars)) {
               console.log(`Checking ${varName}:`);
