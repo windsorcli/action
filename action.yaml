@@ -98,7 +98,7 @@ runs:
           let workdir;
           if (rawWorkdir) {
             const workspacePath = process.env.GITHUB_WORKSPACE || githubWorkspace;
-            const platformPath = rawWorkdir.replace(/\//g, path.sep);
+            const platformPath = rawWorkdir.replace(/\//g, path.sep).replace(/['"]/g, '');
             
             if (verbose) {
               console.log('Workdir resolution:');
