@@ -115,6 +115,8 @@ jobs:
               process.exit(1);
             }
 
+            const projectRoot = process.env.WINDSOR_PROJECT_ROOT.replace(/\\/g, '/');
+
             let expectedVars;
             if (process.platform === 'win32') {
               expectedVars = {
