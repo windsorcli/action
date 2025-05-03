@@ -4,6 +4,7 @@ on:
   push:
 
 env:
+
   WINDSOR_VERSION: v0.5.6
   WINDSOR_CONTEXT: local
 
@@ -45,15 +46,21 @@ jobs:
         with:
           script: |
             const { execSync } = require('child_process');
+            const path = require('path');
+
             try {
+              console.log('Getting Windsor context...');
               const contextOutput = execSync(`windsor context get`, { stdio: 'pipe' }).toString().trim();
-              if (contextOutput !== process.env.WINDSOR_CONTEXT) {
-                console.error(`Error: Windsor context is not '${process.env.WINDSOR_CONTEXT}'`);
+              console.log(`Current Windsor context: ${contextOutput}`);
+              const expectedContext = process.env.WINDSOR_CONTEXT;
+              if (contextOutput !== expectedContext) {
+                console.error(`Error: Windsor context is not '${expectedContext}'. Current context: ${contextOutput}`);
                 process.exit(1);
+              } else {
+                console.log(`Windsor context is correctly set to ${expectedContext}.`);
               }
-              console.log('✓ Windsor context verified');
             } catch (error) {
-              console.error('Error getting Windsor context');
+              console.error('Error getting Windsor context:', error);
               process.exit(1);
             }
 
@@ -75,16 +82,20 @@ jobs:
               console.error('Missing required environment variables:', missingVars);
               process.exit(1);
             }
-            console.log('✓ Base environment variables verified');
+
+            console.log('All required environment variables are present:');
+            requiredEnvVars.forEach(varName => {
+              console.log(`${varName}=${process.env[varName]}`);
+            });
 
       - name: Change to a terraform folder
         uses: ./
         with:
-          workdir: terraform/cluster/eks
+          workdir: .windsor/.tf_modules/cluster/talos
           version: ${{ env.WINDSOR_VERSION }}
           context: ${{ env.WINDSOR_CONTEXT }}
 
-      - name: Assert TF_ environment variables are injected
+      - name: Assert TF_ environment variables are injected (terraform/cluster context)
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
@@ -103,13 +114,20 @@ jobs:
               console.error('Missing required TF_ environment variables:', missingVars);
               process.exit(1);
             }
-            console.log('✓ TF_ environment variables verified');
-            
+            console.log('All required TF_ environment variables are present:');
+            requiredTfVars.forEach(varName => {
+              console.log(`${varName}=${process.env[varName]}`);
+            });
+            // Run terraform init in the current directory
             const { execSync } = require('child_process');
             try {
-              execSync('terraform init', { stdio: 'inherit' });
-              console.log('✓ Terraform initialized successfully');
+              console.log('Current PATH:', process.env.PATH);
+              console.log('Running terraform init in directory:', process.cwd());
+              const output = execSync('terraform init', { stdio: 'inherit' });
+              console.log('terraform init completed successfully');
             } catch (error) {
-              console.error('Error running terraform init');
+              console.error('Error running terraform init:', error.message);
+              if (error.stdout) console.error('stdout:', error.stdout);
+              if (error.stderr) console.error('stderr:', error.stderr);
               process.exit(1);
             }
