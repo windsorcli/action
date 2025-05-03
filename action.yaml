@@ -100,19 +100,56 @@ runs:
             const workspacePath = process.env.GITHUB_WORKSPACE || githubWorkspace;
             const platformPath = rawWorkdir.replace(/\//g, path.sep);
             
+            if (verbose) {
+              console.log('Workdir resolution:');
+              console.log('- Raw workdir:', rawWorkdir);
+              console.log('- Workspace path:', workspacePath);
+              console.log('- Platform path:', platformPath);
+              console.log('- Platform:', process.platform);
+              console.log('- Path separator:', path.sep);
+            }
+            
             if (process.platform === 'win32') {
-              const cleanPath = platformPath.replace(/^[A-Za-z]:[^\\]/, '');
-              workdir = path.join(workspacePath, cleanPath);
+              // Handle Windows paths properly
+              const normalizedPath = path.normalize(platformPath);
+              workdir = path.isAbsolute(normalizedPath) 
+                ? normalizedPath 
+                : path.join(workspacePath, normalizedPath);
+              
+              if (verbose) {
+                console.log('Windows path handling:');
+                console.log('- Normalized path:', normalizedPath);
+                console.log('- Final workdir:', workdir);
+              }
             } else {
               if (path.isAbsolute(platformPath)) {
                 workdir = platformPath;
               } else {
                 workdir = path.join(workspacePath, platformPath);
               }
+              if (verbose) {
+                console.log('Unix path handling:');
+                console.log('- Is absolute:', path.isAbsolute(platformPath));
+                console.log('- Final workdir:', workdir);
+              }
             }
-            if (verbose) console.log('Resolved workdir:', workdir);
+            if (verbose) {
+              console.log('Final workdir check:');
+              console.log('- Workdir:', workdir);
+              console.log('- Exists:', fs.existsSync(workdir));
+              try {
+                const stats = fs.statSync(workdir);
+                console.log('- Is directory:', stats.isDirectory());
+              } catch (e) {
+                console.log('- Error checking workdir:', e.message);
+              }
+            }
           } else {
             workdir = process.cwd();
+            if (verbose) {
+              console.log('Using current directory:');
+              console.log('- Workdir:', workdir);
+            }
           }
 
           const execCommand = (command) => {
@@ -226,7 +263,13 @@ runs:
           if (input_context) {
             try {
               const command = `${windsorExecutable} init ${input_context}${verbose ? ' --verbose' : ''}`;
-              if (verbose) console.log('Running:', command);
+              if (verbose) {
+                console.log('Environment setup:');
+                console.log('- Current directory:', process.cwd());
+                console.log('- GITHUB_WORKSPACE:', process.env.GITHUB_WORKSPACE);
+                console.log('- Input context:', input_context);
+                console.log('- Running command:', command);
+              }
               const { stdout, stderr } = execSync(command, { 
                 encoding: 'utf-8',
                 stdio: ['pipe', 'pipe', 'pipe']
@@ -237,7 +280,18 @@ runs:
               }
               
               const defaultContextDir = path.join(process.cwd(), 'contexts', input_context);
-              if (verbose) console.log('Checking context directory:', defaultContextDir);
+              if (verbose) {
+                console.log('Context directory check:');
+                console.log('- Default context dir:', defaultContextDir);
+                console.log('- Exists:', fs.existsSync(defaultContextDir));
+                console.log('- Parent exists:', fs.existsSync(path.dirname(defaultContextDir)));
+                try {
+                  const files = fs.readdirSync(process.cwd());
+                  console.log('- Current directory contents:', files);
+                } catch (e) {
+                  console.log('- Error reading directory:', e.message);
+                }
+              }
               if (!fs.existsSync(defaultContextDir)) {
                 throw new Error('Context directory not created');
               }
