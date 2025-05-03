@@ -6,7 +6,7 @@ inputs:
   version:
     description: 'The version of Windsor CLI to install'
     required: false
-    default: v0.5.2
+    default: v0.5.6
   ref:
     description: 'Git reference to build Windsor CLI from source'
     required: false
@@ -19,6 +19,10 @@ inputs:
     description: 'The working directory for Windsor CLI commands'
     required: false
     default: ""
+  verbose:
+    description: 'Enable verbose logging'
+    required: false
+    default: "false"
 
 runs:
   using: 'composite'
@@ -30,13 +34,11 @@ runs:
       with:
         script: |
           const { execSync } = require('child_process');
-
+          const verbose = '${{ inputs.verbose }}' === 'true';
           try {
-            // Check if Git is installed by attempting to get its version
-            execSync('git --version', { stdio: 'inherit' });
-            console.log('Git is installed.');
+            const output = execSync('git --version', { encoding: 'utf-8' });
+            if (verbose) console.log('Git version:', output.trim());
           } catch (error) {
-            console.log(`Current PATH: ${process.env.PATH}`);
             console.error('Git is not installed. Please install Git to proceed.');
             process.exit(1);
           }
@@ -48,19 +50,18 @@ runs:
         script: |
           const { execSync } = require('child_process');
           const os = require('os');
+          const verbose = '${{ inputs.verbose }}' === 'true';
 
           try {
             const platform = os.platform();
             let goPathCommand = platform === 'win32' ? 'where go' : 'which go';
-
-            console.log(`Checking Go installation on ${platform}...`);
             const goPath = execSync(goPathCommand, { encoding: 'utf-8' }).trim();
-            console.log(`Go binary path: ${goPath}`);
-
+            if (verbose) console.log('Go binary path:', goPath);
+            
             const goVersion = execSync('go version', { encoding: 'utf-8' }).trim();
-            console.log(`Go version: ${goVersion}`);
+            if (verbose) console.log('Go version:', goVersion);
           } catch (error) {
-            console.error('Go is not installed or not found in PATH:', error.message);
+            console.error('Go is not installed or not found in PATH');
             process.exit(1);
           }
 
@@ -74,6 +75,7 @@ runs:
           const os = require('os');
           
           const cleanInput = (input) => typeof input === 'string' ? input.replace(/\r?\n|\r/g, '') : input;
+          const verbose = '${{ inputs.verbose }}' === 'true';
 
           const isWindows = os.platform() === 'win32';
           const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
@@ -84,68 +86,62 @@ runs:
           const input_context = cleanInput('${{ inputs.context }}');
           let rawWorkdir = cleanInput('${{ inputs.workdir }}');
           
-          // Handle workdir path construction
+          if (verbose) {
+            console.log('Installation parameters:');
+            console.log('- Version:', version);
+            console.log('- Ref:', ref);
+            console.log('- Context:', input_context);
+            console.log('- Workdir:', rawWorkdir);
+            console.log('- Install folder:', installFolder);
+          }
+          
           let workdir;
           if (rawWorkdir) {
-            console.log(`Raw workdir input: ${rawWorkdir}`);
-            console.log(`GitHub workspace: ${githubWorkspace}`);
-            
-            // Use GitHub Actions environment variables for consistent path handling
             const workspacePath = process.env.GITHUB_WORKSPACE || githubWorkspace;
-            
-            // Convert to platform-specific path
             const platformPath = rawWorkdir.replace(/\//g, path.sep);
             
-            // Handle Windows-specific path issues
             if (process.platform === 'win32') {
-              // Remove any malformed drive letter prefix
               const cleanPath = platformPath.replace(/^[A-Za-z]:[^\\]/, '');
               workdir = path.join(workspacePath, cleanPath);
             } else {
-              // On Unix, handle absolute paths
               if (path.isAbsolute(platformPath)) {
                 workdir = platformPath;
               } else {
                 workdir = path.join(workspacePath, platformPath);
               }
             }
-            
-            console.log(`Constructed workdir: ${workdir}`);
+            if (verbose) console.log('Resolved workdir:', workdir);
           } else {
             workdir = process.cwd();
           }
 
-          console.log(`Final workdir: ${workdir}`);
-          console.log(`Install folder: ${installFolder}`);
-          console.log(`Context: ${input_context}`);
-
           const execCommand = (command) => {
             try {
-              console.log(`Executing: ${command}`);
+              if (verbose) console.log('Executing:', command);
               execSync(command, { stdio: 'inherit' });
             } catch (error) {
               console.error(`Error executing command: ${command}`);
-              console.error(error.message);
+              if (verbose) console.error('Error details:', error.message);
               process.exit(1);
             }
           };
 
           if (!fs.existsSync(path.join(installFolder, windsorExecutable))) {
-            console.log('Windsor CLI not found, proceeding with installation.');
-
             const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
             const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
             if (ref) {
-              console.log(`Installing Windsor CLI from ref (${ref})...`);
+              if (verbose) console.log(`Installing Windsor CLI from ref: ${ref}`);
               execCommand(`git clone https://github.com/windsorcli/cli.git ${githubWorkspace}/cli`);
               execCommand(`cd ${githubWorkspace}/cli && git pull && git checkout ${ref}`);
               execCommand(`cd ${githubWorkspace}/cli/cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
-              version = 'vdev';  // Set expected version to vdev when building from source
+              version = 'vdev';
             } else {
               const numericVersion = version.replace(/^v/, '');
               const localFileName = `windsor_${numericVersion}_${osType}_${arch}.tar.gz`;
               const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
+
+              if (verbose) console.log('Downloading Windsor CLI:', downloadUrl);
 
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
               const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
@@ -164,36 +160,36 @@ runs:
                 execCommand(chmodCommand);
                 execCommand(rmCommand);
               } catch (error) {
-                console.error('Error executing commands:', error.message);
+                console.error('Error executing commands');
+                if (verbose) console.error('Error details:', error.message);
                 process.exit(1);
               }
 
               let installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version`).toString().trim();
-
-              // Extract the version number from the output
               let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
               let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
 
-              console.log(`Expected version: "${version}"`);
-              console.log(`Installed version: "${installedVersion}"`);
+              if (verbose) {
+                console.log('Version check:');
+                console.log('- Expected:', version);
+                console.log('- Installed:', installedVersion);
+              }
 
               if (installedVersion !== version) {
                 console.error(`Version mismatch: expected ${version}, got ${installedVersion}`);
                 process.exit(1);
               }
-
-              console.log('Windsor CLI installation complete.');
             }
           }
 
-          // Always add installFolder to PATH for all subsequent steps
           fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
+          if (verbose) console.log('Added to PATH:', installFolder);
 
-          // When changing directories, always check existence
           if (workdir && fs.existsSync(workdir)) {
             process.chdir(workdir);
+            if (verbose) console.log('Changed to workdir:', workdir);
           } else if (workdir) {
-            console.error(`Workdir does not exist: ${workdir}`);
+            console.error(`Workdir does not exist`);
             process.exit(1);
           }
 
@@ -212,130 +208,57 @@ runs:
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = '${{ inputs.context }}';
           const workdir = '${{ inputs.workdir }}';
+          const verbose = '${{ inputs.verbose }}' === 'true';
 
-          // Verify PATH is set correctly
-          console.log('Current PATH:', process.env.PATH);
-          console.log('Install folder:', installFolder);
+          if (verbose) {
+            console.log('Environment setup:');
+            console.log('- Install folder:', installFolder);
+            console.log('- Context:', input_context);
+            console.log('- Workdir:', workdir);
+          }
+
           if (!process.env.PATH.includes(installFolder)) {
-            console.error(`Install folder ${installFolder} not in PATH`);
+            console.error('Install folder not in PATH');
             process.exit(1);
           }
 
-          // First, ensure context is set if provided
           if (input_context) {
-            console.log(`Setting Windsor context to: ${input_context}`);
             try {
-              // Run init in default directory first
-              console.log(`Running: ${windsorExecutable} init ${input_context}`);
-              const initOutput = execSync(`${windsorExecutable} init ${input_context}`, { 
+              const command = `${windsorExecutable} init ${input_context}${verbose ? ' --verbose' : ''}`;
+              if (verbose) console.log('Running:', command);
+              execSync(command, { 
                 encoding: 'utf-8',
                 stdio: ['pipe', 'pipe', 'pipe']
               });
-              console.log('Windsor init stdout:', initOutput.stdout);
-              console.log('Windsor init stderr:', initOutput.stderr);
               
-              // Check if context directory exists in default location
               const defaultContextDir = path.join(process.cwd(), 'contexts', input_context);
-              console.log('Checking default context directory:', defaultContextDir);
+              if (verbose) console.log('Checking context directory:', defaultContextDir);
               if (!fs.existsSync(defaultContextDir)) {
-                throw new Error(`Context directory not created: ${defaultContextDir}`);
+                throw new Error('Context directory not created');
               }
               
-              // Verify the context was set
-              console.log(`Running: ${windsorExecutable} context get`);
-              const contextOutput = execSync(`${windsorExecutable} context get`, { 
+              const contextOutput = execSync(`${windsorExecutable} context get${verbose ? ' --verbose' : ''}`, { 
                 encoding: 'utf-8',
                 stdio: 'pipe'
               });
-              console.log('Current Windsor context:', contextOutput);
-              
-              if (!contextOutput.trim().includes(input_context)) {
-                throw new Error(`Context mismatch: expected ${input_context}, got ${contextOutput}`);
-              }
-
-              // Now change to workdir if specified
-              if (workdir) {
-                console.log(`Changing to workdir: ${workdir}`);
-                process.chdir(workdir);
+              if (verbose) console.log('Context output:', contextOutput.trim());
+              if (contextOutput.trim() !== input_context) {
+                throw new Error('Context not set correctly');
               }
             } catch (error) {
-              console.error('Error setting Windsor context:', error.message);
-              if (error.stdout) console.error('stdout:', error.stdout);
-              if (error.stderr) console.error('stderr:', error.stderr);
+              console.error('Error setting Windsor context');
+              if (verbose) console.error('Error details:', error.message);
               process.exit(1);
             }
           }
 
-          // Run windsor env and capture output
-          try {
-            // First verify windsor is in PATH
-            const whichOutput = execSync(`which ${windsorExecutable}`, { encoding: 'utf-8' });
-            console.log('Windsor executable path:', whichOutput);
-
-            // Run windsor env with full output capture
-            console.log(`Running: ${windsorExecutable} env`);
-            const envOutput = execSync(`${windsorExecutable} env`, { 
-              encoding: 'utf-8',
-              stdio: 'pipe'
-            });
-            console.log('Raw windsor env output:', envOutput);
-
-            if (!envOutput) {
-              throw new Error('windsor env returned no output');
+          if (workdir) {
+            try {
+              process.chdir(workdir);
+              if (verbose) console.log('Changed to workdir:', workdir);
+            } catch (error) {
+              console.error('Error changing to workdir');
+              if (verbose) console.error('Error details:', error.message);
+              process.exit(1);
             }
-
-            const envLines = envOutput.split('\n')
-              .filter(line => line.trim() && !line.startsWith('#') && !line.includes('Cannot execute commands'));
-
-            console.log('Processed environment lines:', envLines);
-
-            // Process each environment variable
-            envLines.forEach(line => {
-              if (line.startsWith('export ')) {
-                // Handle bash-style export
-                const assignment = line.replace(/^export /, '');
-                // Split only on the first '='
-                const eqIdx = assignment.indexOf('=');
-                if (eqIdx !== -1) {
-                  const key = assignment.slice(0, eqIdx);
-                  let value = assignment.slice(eqIdx + 1);
-                  // Remove quotes from value
-                  const cleanValue = value.replace(/^["']|["']$/g, '');
-                  // Properly escape the value for GitHub Actions
-                  const escapedValue = cleanValue.replace(/"/g, '\\"').replace(/\n/g, '\\n');
-                  // Use the proper GitHub Actions environment variable format
-                  const envLine = `${key}<<EOF\n${escapedValue}\nEOF\n`;
-                  console.log(`Setting environment variable: ${key}`);
-                  fs.appendFileSync(githubEnv, envLine);
-                }
-              } else if (line.startsWith('$env:')) {
-                // Handle PowerShell-style
-                const match = line.match(/^\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*['"](.*)['"]$/);
-                if (match) {
-                  const [_, key, value] = match;
-                  const escapedValue = value.replace(/"/g, '\\"').replace(/\n/g, '\\n');
-                  // Use the proper GitHub Actions environment variable format
-                  const envLine = `${key}<<EOF\n${escapedValue}\nEOF\n`;
-                  console.log(`Setting environment variable: ${key}`);
-                  fs.appendFileSync(githubEnv, envLine);
-                }
-              }
-            });
-
-            // Verify the variables were set
-            const setVars = envLines.map(line => {
-              if (line.startsWith('export ')) {
-                return line.replace(/^export /, '').split('=')[0];
-              } else if (line.startsWith('$env:')) {
-                return line.match(/^\$env:([A-Za-z_][A-Za-z0-9_]*)/)[1];
-              }
-              return null;
-            }).filter(Boolean);
-
-            console.log('Set environment variables:', setVars.join(', '));
-          } catch (error) {
-            console.error('Error running windsor env:', error.message);
-            if (error.stdout) console.error('stdout:', error.stdout);
-            if (error.stderr) console.error('stderr:', error.stderr);
-            process.exit(1);
           }
