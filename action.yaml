@@ -98,7 +98,8 @@ runs:
           let workdir;
           if (rawWorkdir) {
             const workspacePath = process.env.GITHUB_WORKSPACE || githubWorkspace;
-            const platformPath = rawWorkdir.replace(/\//g, path.sep).replace(/['"]/g, '');
+            // Simple path normalization - no quotes, just slashes
+            const platformPath = rawWorkdir.replace(/\//g, path.sep);
             
             if (verbose) {
               console.log('Workdir resolution:');
@@ -110,15 +111,13 @@ runs:
             }
             
             if (process.platform === 'win32') {
-              // Handle Windows paths properly
-              const normalizedPath = path.normalize(platformPath);
-              workdir = path.isAbsolute(normalizedPath) 
-                ? normalizedPath 
-                : path.join(workspacePath, normalizedPath);
+              // Direct path handling for Windows
+              workdir = path.isAbsolute(platformPath) 
+                ? platformPath 
+                : path.join(workspacePath, platformPath);
               
               if (verbose) {
                 console.log('Windows path handling:');
-                console.log('- Normalized path:', normalizedPath);
                 console.log('- Final workdir:', workdir);
               }
             } else {
