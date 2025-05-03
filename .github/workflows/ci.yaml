@@ -122,7 +122,7 @@ jobs:
             let expectedVars;
             if (process.platform === 'win32') {
               expectedVars = {
-                'TF_CLI_ARGS_apply': `${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan`,
+                'TF_CLI_ARGS_apply': `"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan"`,
                 'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
                 'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
                 'TF_CLI_ARGS_init': `-backend=true -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`,
