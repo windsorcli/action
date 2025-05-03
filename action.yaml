@@ -214,6 +214,7 @@ runs:
             console.log('- Install folder:', installFolder);
             console.log('- Context:', input_context);
             console.log('- Workdir:', workdir);
+            console.log('- Current directory:', process.cwd());
           }
 
           if (!process.env.PATH.includes(installFolder)) {
@@ -225,10 +226,14 @@ runs:
             try {
               const command = `${windsorExecutable} init ${input_context}${verbose ? ' --verbose' : ''}`;
               if (verbose) console.log('Running:', command);
-              execSync(command, { 
+              const { stdout, stderr } = execSync(command, { 
                 encoding: 'utf-8',
                 stdio: ['pipe', 'pipe', 'pipe']
               });
+              if (verbose) {
+                if (stdout) console.log('Init stdout:', stdout);
+                if (stderr) console.log('Init stderr:', stderr);
+              }
               
               const defaultContextDir = path.join(process.cwd(), 'contexts', input_context);
               if (verbose) console.log('Checking context directory:', defaultContextDir);
@@ -260,4 +265,73 @@ runs:
               if (verbose) console.error('Error details:', error.message);
               process.exit(1);
             }
+          }
+
+          // Run windsor env to get environment variables
+          try {
+            if (verbose) console.log(`Running: ${windsorExecutable} env`);
+            const envOutput = execSync(`${windsorExecutable} env`, { 
+              encoding: 'utf-8',
+              stdio: 'pipe'
+            });
+
+            if (verbose) console.log('Raw windsor env output:', envOutput);
+
+            if (!envOutput) {
+              throw new Error('windsor env returned no output');
+            }
+
+            const envLines = envOutput.split('\n')
+              .filter(line => line.trim() && !line.startsWith('#') && !line.includes('Cannot execute commands'));
+
+            if (verbose) console.log('Processed environment lines:', envLines);
+
+            // Process each environment variable
+            envLines.forEach(line => {
+              if (line.startsWith('export ')) {
+                // Handle bash-style export
+                const assignment = line.replace(/^export /, '');
+                // Split only on the first '='
+                const eqIdx = assignment.indexOf('=');
+                if (eqIdx !== -1) {
+                  const key = assignment.slice(0, eqIdx);
+                  let value = assignment.slice(eqIdx + 1);
+                  // Remove quotes from value
+                  const cleanValue = value.replace(/^["']|["']$/g, '');
+                  // Properly escape the value for GitHub Actions
+                  const escapedValue = cleanValue.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+                  // Use the proper GitHub Actions environment variable format
+                  const envLine = `${key}<<EOF\n${escapedValue}\nEOF\n`;
+                  if (verbose) console.log(`Setting environment variable: ${key}`);
+                  fs.appendFileSync(githubEnv, envLine);
+                }
+              } else if (line.startsWith('$env:')) {
+                // Handle PowerShell-style
+                const match = line.match(/^\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*['"](.*)['"]$/);
+                if (match) {
+                  const [_, key, value] = match;
+                  const escapedValue = value.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+                  // Use the proper GitHub Actions environment variable format
+                  const envLine = `${key}<<EOF\n${escapedValue}\nEOF\n`;
+                  if (verbose) console.log(`Setting environment variable: ${key}`);
+                  fs.appendFileSync(githubEnv, envLine);
+                }
+              }
+            });
+
+            // Verify the variables were set
+            const setVars = envLines.map(line => {
+              if (line.startsWith('export ')) {
+                return line.replace(/^export /, '').split('=')[0];
+              } else if (line.startsWith('$env:')) {
+                return line.match(/^\$env:([A-Za-z_][A-Za-z0-9_]*)/)[1];
+              }
+              return null;
+            }).filter(Boolean);
+
+            if (verbose) console.log('Set environment variables:', setVars.join(', '));
+          } catch (error) {
+            console.error('Error running windsor env');
+            if (verbose) console.error('Error details:', error.message);
+            process.exit(1);
           }
