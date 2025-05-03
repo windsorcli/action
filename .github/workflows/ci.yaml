@@ -125,8 +125,6 @@ jobs:
             console.log(execSync('ls -la contexts', { encoding: 'utf8' }));
             console.log('Listing contexts/test directory:');
             console.log(execSync('ls -la contexts/test', { encoding: 'utf8' }));
-            console.log('Listing contexts/test/terraform directory:');
-            console.log(execSync('ls -la contexts/test/terraform', { encoding: 'utf8' }));
 
             const expectedVars = {
               'TF_CLI_ARGS_apply': `\\"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan\\"`,
