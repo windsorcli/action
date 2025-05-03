@@ -299,10 +299,8 @@ runs:
                   let value = assignment.slice(eqIdx + 1);
                   // Remove quotes from value
                   const cleanValue = value.replace(/^["']|["']$/g, '');
-                  // Properly escape the value for GitHub Actions
-                  const escapedValue = cleanValue.replace(/"/g, '\\"').replace(/\n/g, '\\n');
                   // Use the proper GitHub Actions environment variable format
-                  const envLine = `${key}<<EOF\n${escapedValue}\nEOF\n`;
+                  const envLine = `${key}<<EOF\n${cleanValue}\nEOF\n`;
                   if (verbose) console.log(`Setting environment variable: ${key}`);
                   fs.appendFileSync(githubEnv, envLine);
                 }
