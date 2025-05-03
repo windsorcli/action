@@ -14,20 +14,25 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
   
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: v1.11.4
+          terraform_version: 1.11.4
+          terraform_wrapper: false
 
       - name: Verify Terraform Installation
+        shell: pwsh
+        if: matrix.os == 'windows-latest'
+        run: terraform version
+
+      - name: Verify Terraform Installation
+        shell: bash
+        if: matrix.os != 'windows-latest'
         run: terraform version
 
       - name: Install Windsor CLI
