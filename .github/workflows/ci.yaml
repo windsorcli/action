@@ -116,6 +116,18 @@ jobs:
             }
 
             const projectRoot = process.env.WINDSOR_PROJECT_ROOT;
+            console.log('Project root:', projectRoot);
+            console.log('Current directory:', process.cwd());
+            console.log('Listing directory contents:');
+            const { execSync } = require('child_process');
+            console.log(execSync('ls -la', { encoding: 'utf8' }));
+            console.log('Listing contexts directory:');
+            console.log(execSync('ls -la contexts', { encoding: 'utf8' }));
+            console.log('Listing contexts/test directory:');
+            console.log(execSync('ls -la contexts/test', { encoding: 'utf8' }));
+            console.log('Listing contexts/test/terraform directory:');
+            console.log(execSync('ls -la contexts/test/terraform', { encoding: 'utf8' }));
+
             const expectedVars = {
               'TF_CLI_ARGS_apply': `\\"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan\\"`,
               'TF_CLI_ARGS_destroy': `-var-file=\\"${projectRoot}/contexts/test/terraform/sample.tfvars\\"`,
@@ -128,6 +140,9 @@ jobs:
             };
 
             for (const [varName, expectedValue] of Object.entries(expectedVars)) {
+              console.log(`Checking ${varName}:`);
+              console.log(`Expected: ${expectedValue}`);
+              console.log(`Actual: ${process.env[varName]}`);
               if (process.env[varName] !== expectedValue) {
                 console.error(`Error: ${varName} does not match expected value`);
                 console.error(`Expected: ${expectedValue}`);
@@ -150,6 +165,16 @@ jobs:
             const path = require('path');
 
             try {
+              console.log('Current directory:', process.cwd());
+              console.log('Listing directory contents:');
+              console.log(execSync('ls -la', { encoding: 'utf8' }));
+              console.log('Listing contexts directory:');
+              console.log(execSync('ls -la contexts', { encoding: 'utf8' }));
+              console.log('Listing contexts/test directory:');
+              console.log(execSync('ls -la contexts/test', { encoding: 'utf8' }));
+              console.log('Listing contexts/test/terraform directory:');
+              console.log(execSync('ls -la contexts/test/terraform', { encoding: 'utf8' }));
+
               execSync('terraform init', { stdio: 'inherit' });
               execSync('terraform plan', { stdio: 'inherit' });
               execSync('terraform apply', { stdio: 'inherit' });
