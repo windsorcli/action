@@ -348,10 +348,8 @@ runs:
                 if (eqIdx !== -1) {
                   const key = assignment.slice(0, eqIdx);
                   let value = assignment.slice(eqIdx + 1);
-                  // For Windows, ensure paths don't have quotes
-                  if (process.platform === 'win32' && (value.includes('\\') || value.includes('/'))) {
-                    value = value.replace(/^["']|["']$/g, '');
-                  }
+                  // Strip quotes from all values
+                  value = value.replace(/^["']|["']$/g, '');
                   fs.appendFileSync(githubEnv, `${key}<<EOF\n${value}\nEOF\n`);
                 }
               } else if (line.startsWith('$env:')) {
@@ -359,10 +357,8 @@ runs:
                 if (match) {
                   const [_, key, rawValue] = match;
                   let value = rawValue.trim();
-                  // For Windows, ensure paths don't have quotes
-                  if (process.platform === 'win32' && (value.includes('\\') || value.includes('/'))) {
-                    value = value.replace(/^["']|["']$/g, '');
-                  }
+                  // Strip quotes from all values
+                  value = value.replace(/^["']|["']$/g, '');
                   fs.appendFileSync(githubEnv, `${key}<<EOF\n${value}\nEOF\n`);
                 }
               }
