@@ -1,4 +1,3 @@
-# windsorcli.yaml
 name: 'Windsor CLI Action'
 description: 'Installs and configures the Windsor CLI for use in GitHub Actions'
 
