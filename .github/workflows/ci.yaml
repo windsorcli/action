@@ -14,6 +14,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
   
     steps:
       - name: Checkout code
@@ -23,6 +26,9 @@ jobs:
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: v1.11.4
+
+      - name: Verify Terraform Installation
+        run: terraform version
 
       - name: Install Windsor CLI
         uses: ./
@@ -98,21 +104,19 @@ jobs:
               'TF_VAR_context_path',
               'TF_VAR_os_type'
             ];
-
             const missingVars = requiredTfVars.filter(varName => !process.env[varName]);
             if (missingVars.length > 0) {
               console.error('Missing required TF_ environment variables:', missingVars);
               process.exit(1);
             }
-
             console.log('All required TF_ environment variables are present:');
             requiredTfVars.forEach(varName => {
               console.log(`${varName}=${process.env[varName]}`);
             });
-
             // Run terraform init in the current directory
             const { execSync } = require('child_process');
             try {
+              console.log('Current PATH:', process.env.PATH);
               console.log('Running terraform init in directory:', process.cwd());
               const output = execSync('terraform init', { stdio: 'inherit' });
               console.log('terraform init completed successfully');
