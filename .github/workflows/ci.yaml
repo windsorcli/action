@@ -146,6 +146,10 @@ jobs:
               console.log(`Checking ${varName}:`);
               console.log(`Expected: ${expectedValue}`);
               console.log(`Actual: ${process.env[varName]}`);
+              console.log(`Expected length: ${expectedValue.length}`);
+              console.log(`Actual length: ${process.env[varName].length}`);
+              console.log(`Expected chars: ${Array.from(expectedValue).map(c => c.charCodeAt(0))}`);
+              console.log(`Actual chars: ${Array.from(process.env[varName]).map(c => c.charCodeAt(0))}`);
               if (process.env[varName] !== expectedValue) {
                 console.error(`Error: ${varName} does not match expected value`);
                 console.error(`Expected: ${expectedValue}`);
