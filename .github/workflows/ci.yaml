@@ -2,15 +2,10 @@ name: CI
 
 on:
   push:
-  pull_request:
-    branches:
-      - main
-  repository_dispatch:
-    types: 
-      - main-branch-update
 
 env:
-  WINDSOR_VERSION: v0.5.5
+  WINDSOR_VERSION: v0.5.6
+  WINDSOR_CONTEXT: test
 
 jobs:
   windsorcli:
@@ -23,29 +18,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: 1.11.4
+          terraform_wrapper: false
+
+      - name: Verify Terraform Installation
+        shell: pwsh
+        if: matrix.os == 'windows-latest'
+        run: terraform version
+
+      - name: Verify Terraform Installation
+        shell: bash
+        if: matrix.os != 'windows-latest'
+        run: terraform version
+
       - name: Install Windsor CLI
         uses: ./
         with:
+          verbose: true
+          workdir: test
           version: ${{ env.WINDSOR_VERSION }}
-
-      - name: Initialize Windsor Context
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { execSync } = require('child_process');
-            const path = require('path');
-
-            try {
-              console.log('Initializing Windsor context...');
-              execSync(`windsor init local`, { stdio: 'inherit' });
-              console.log('Windsor context initialized successfully.');
-            } catch (error) {
-              console.error('Error initializing Windsor context:', error);
-              process.exit(1);
-            }
+          context: ${{ env.WINDSOR_CONTEXT }}
 
       - name: Verify Windsor Context
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const { execSync } = require('child_process');
@@ -55,180 +53,140 @@ jobs:
               console.log('Getting Windsor context...');
               const contextOutput = execSync(`windsor context get`, { stdio: 'pipe' }).toString().trim();
               console.log(`Current Windsor context: ${contextOutput}`);
-              if (contextOutput !== 'local') {
-                console.error(`Error: Windsor context is not 'local'. Current context: ${contextOutput}`);
+              const expectedContext = process.env.WINDSOR_CONTEXT;
+              if (contextOutput !== expectedContext) {
+                console.error(`Error: Windsor context is not '${expectedContext}'. Current context: ${contextOutput}`);
                 process.exit(1);
               } else {
-                console.log('Windsor context is correctly set to local.');
+                console.log(`Windsor context is correctly set to ${expectedContext}.`);
               }
             } catch (error) {
               console.error('Error getting Windsor context:', error);
               process.exit(1);
             }
 
-      - name: Windsor Context Get
-        run: |
-          windsor context get
-        shell: bash
-
-      - name: Check environment variables
-        uses: actions/github-script@v7
+      - name: Assert base environment variables are injected
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
-            const envVars = [
+            const requiredEnvVars = [
               'KUBECONFIG',
               'KUBE_CONFIG_PATH',
-              'DOCKER_CONFIG',
-              'DOCKER_HOST',
               'OMNICONFIG',
               'TALOSCONFIG',
               'WINDSOR_CONTEXT',
               'WINDSOR_PROJECT_ROOT'
             ];
 
-            envVars.forEach(varName => {
-              console.log(`${varName}="${process.env[varName] || ''}"`);
+            const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+            if (missingVars.length > 0) {
+              console.error('Missing required environment variables:', missingVars);
+              process.exit(1);
+            }
+
+            console.log('All required environment variables are present:');
+            requiredEnvVars.forEach(varName => {
+              console.log(`${varName}=${process.env[varName]}`);
             });
 
-      - name: Create terraform test folder
-        uses: actions/github-script@v7
+      - name: Change to a terraform folder
+        uses: ./
+        with:
+          verbose: true
+          workdir: test/terraform/sample
+          version: ${{ env.WINDSOR_VERSION }}
+          context: ${{ env.WINDSOR_CONTEXT }}
+
+      - name: Assert TF_ environment variables are injected
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
+            const requiredTfVars = [
+              'TF_CLI_ARGS_apply',
+              'TF_CLI_ARGS_destroy',
+              'TF_CLI_ARGS_import',
+              'TF_CLI_ARGS_init',
+              'TF_CLI_ARGS_plan',
+              'TF_DATA_DIR',
+              'TF_VAR_context_path',
+              'TF_VAR_os_type'
+            ];
+            const missingVars = requiredTfVars.filter(varName => !process.env[varName]);
+            if (missingVars.length > 0) {
+              console.error('Missing required TF_ environment variables:', missingVars);
+              process.exit(1);
+            }
+
+            const projectRoot = process.env.WINDSOR_PROJECT_ROOT.replace(/\\/g, '/');
+
+            let expectedVars;
+            if (process.platform === 'win32') {
+              expectedVars = {
+                'TF_CLI_ARGS_apply': `"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan"`,
+                'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_CLI_ARGS_init': `-backend=true -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`,
+                'TF_CLI_ARGS_plan': `-out="${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_DATA_DIR': `${projectRoot}/contexts/test/.terraform/sample`,
+                'TF_VAR_context_path': `${projectRoot}/contexts/test`,
+                'TF_VAR_os_type': 'windows'
+              };
+            } else {
+              expectedVars = {
+                'TF_CLI_ARGS_apply': `"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan"`,
+                'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_CLI_ARGS_init': `-backend=true -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`,
+                'TF_CLI_ARGS_plan': `-out="${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_DATA_DIR': `${projectRoot}/contexts/test/.terraform/sample`,
+                'TF_VAR_context_path': `${projectRoot}/contexts/test`,
+                'TF_VAR_os_type': 'unix'
+              };
+            }
+
+            for (const [varName, expectedValue] of Object.entries(expectedVars)) {
+              if (process.env[varName] !== expectedValue) {
+                console.error(`Error: ${varName} does not match expected value`);
+                console.error(`Expected: ${expectedValue}`);
+                console.error(`Got: ${process.env[varName]}`);
+                process.exit(1);
+              }
+            }
+
+            console.log('All required TF_ environment variables are present and correct:');
+            requiredTfVars.forEach(varName => {
+              console.log(`${varName}=${process.env[varName]}`);
+            });
+
+      - name: Assert Terraform workflow creates expected output
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { execSync } = require('child_process');
             const fs = require('fs');
             const path = require('path');
 
-            const terraformDir = path.join(process.env.GITHUB_WORKSPACE, 'terraform', 'cluster');
-            const mainTfPath = path.join(terraformDir, 'main.tf');
-
-            // Create the directory if it doesn't exist
-            if (!fs.existsSync(terraformDir)) {
-              fs.mkdirSync(terraformDir, { recursive: true });
-              console.log(`Created directory: ${terraformDir}`);
-            } else {
-              console.log(`Directory already exists: ${terraformDir}`);
-            }
-
-            // Create the main.tf file if it doesn't exist
-            if (!fs.existsSync(mainTfPath)) {
-              fs.writeFileSync(mainTfPath, '');
-              console.log(`Created file: ${mainTfPath}`);
-            } else {
-              console.log(`File already exists: ${mainTfPath}`);
-            }
-
-      - name: Check TF_ environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { execSync } = require('child_process');
-
-            // Execute the windsor env command and capture its output
             try {
-              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
-              console.log("windsor env output:");
-              console.log(windsorEnvOutput);
-            } catch (error) {
-              console.error("Error executing windsor env:", error.message);
-            }
+              process.chdir('test/terraform/sample');
+              execSync('terraform init', { stdio: 'inherit' });
+              execSync('terraform plan', { stdio: 'inherit' });
+              execSync('terraform apply', { stdio: 'inherit' });
 
-            // Log all environment variables that start with TF_
-            console.log("TF_ environment variables:");
-            Object.keys(process.env).forEach(key => {
-              if (key.startsWith('TF_')) {
-                console.log(`${key}=${process.env[key]}`);
+              if (!fs.existsSync('test.txt')) {
+                console.error('Error: test.txt was not created');
+                process.exit(1);
               }
-            });
 
-      # Install Windsor CLI Action
-      - name: CD to terraform test folder
-        uses: ./
-        with:
-          workdir: ${{ github.workspace }}
-          version: ${{ env.WINDSOR_VERSION }}
-          context: local
-
-      - name: Check TF_ environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { execSync } = require('child_process');
-
-            // Execute the windsor env command and capture its output
-            try {
-              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
-              console.log("windsor env output:");
-              console.log(windsorEnvOutput);
-            } catch (error) {
-              console.error("Error executing windsor env:", error.message);
-            }
-
-            // Log all environment variables that start with TF_
-            console.log("TF_ environment variables:");
-            Object.keys(process.env).forEach(key => {
-              if (key.startsWith('TF_')) {
-                console.log(`${key}=${process.env[key]}`);
+              const content = fs.readFileSync('test.txt', 'utf8');
+              if (content !== 'Hello from Windsor CLI test!') {
+                console.error(`Error: test.txt contents do not match expected value. Expected: "Hello from Windsor CLI test!", Got: "${content}"`);
+                process.exit(1);
               }
-            });
-            
-      # Staging Testing
-      # CD Windsor CLI - staging context
-      - name: CD to terraform test folder
-        uses: ./
-        with:
-          workdir: ${{ github.workspace }}/terraform/cluster
-          version: ${{ env.WINDSOR_VERSION }}
-          context: staging
 
-      - name: Check TF_ environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { execSync } = require('child_process');
-
-            // Execute the windsor env command and capture its output
-            try {
-              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
-              console.log("windsor env output:");
-              console.log(windsorEnvOutput);
+              console.log('✓ Terraform workflow completed successfully');
             } catch (error) {
-              console.error("Error executing windsor env:", error.message);
+              console.error('Error running Terraform:', error.message);
+              if (error.stdout) console.error('stdout:', error.stdout);
+              if (error.stderr) console.error('stderr:', error.stderr);
+              process.exit(1);
             }
-
-            // Log all environment variables that start with TF_
-            console.log("TF_ environment variables:");
-            Object.keys(process.env).forEach(key => {
-              if (key.startsWith('TF_')) {
-                console.log(`${key}=${process.env[key]}`);
-              }
-            });
-  
-      # Install Windsor CLI Action
-      - name: CD to terraform test folder
-        uses: ./
-        with:
-          workdir: ${{ github.workspace }}
-          version: v0.5.5
-          context: staging
-
-      - name: Check TF_ environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { execSync } = require('child_process');
-
-            // Execute the windsor env command and capture its output
-            try {
-              const windsorEnvOutput = execSync('windsor env', { encoding: 'utf-8' });
-              console.log("windsor env output:");
-              console.log(windsorEnvOutput);
-            } catch (error) {
-              console.error("Error executing windsor env:", error.message);
-            }
-
-            // Log all environment variables that start with TF_
-            console.log("TF_ environment variables:");
-            Object.keys(process.env).forEach(key => {
-              if (key.startsWith('TF_')) {
-                console.log(`${key}=${process.env[key]}`);
-              }
-            });
