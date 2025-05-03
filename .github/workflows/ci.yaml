@@ -127,11 +127,11 @@ jobs:
             console.log(execSync('ls -la contexts/test', { encoding: 'utf8' }));
 
             const expectedVars = {
-              'TF_CLI_ARGS_apply': `"${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/.terraform/sample/terraform.tfplan"`,
-              'TF_CLI_ARGS_destroy': `-var-file="${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/terraform/sample.tfvars"`,
-              'TF_CLI_ARGS_import': `-var-file="${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/terraform/sample.tfvars"`,
-              'TF_CLI_ARGS_init': `-backend=true -backend-config="path=${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/.tfstate/sample/terraform.tfstate"`,
-              'TF_CLI_ARGS_plan': `-out="${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/terraform/sample.tfvars"`,
+              'TF_CLI_ARGS_apply': `\\"${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/.terraform/sample/terraform.tfplan\\"`,
+              'TF_CLI_ARGS_destroy': `-var-file=\\"${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/terraform/sample.tfvars\\"`,
+              'TF_CLI_ARGS_import': `-var-file=\\"${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/terraform/sample.tfvars\\"`,
+              'TF_CLI_ARGS_init': `-backend=true -backend-config=\\"path=${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/.tfstate/sample/terraform.tfstate\\"`,
+              'TF_CLI_ARGS_plan': `-out=\\"${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/.terraform/sample/terraform.tfplan\\" -var-file=\\"${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/terraform/sample.tfvars\\"`,
               'TF_DATA_DIR': `${process.env.WINDSOR_PROJECT_ROOT}/contexts/test/.terraform/sample`,
               'TF_VAR_context_path': `${process.env.WINDSOR_PROJECT_ROOT}/contexts/test`,
               'TF_VAR_os_type': 'unix'
