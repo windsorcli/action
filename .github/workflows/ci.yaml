@@ -37,6 +37,7 @@ jobs:
       - name: Install Windsor CLI
         uses: ./
         with:
+          verbose: true
           workdir: test
           version: ${{ env.WINDSOR_VERSION }}
           context: ${{ env.WINDSOR_CONTEXT }}
@@ -91,6 +92,7 @@ jobs:
       - name: Change to a terraform folder
         uses: ./
         with:
+          verbose: true
           workdir: test/terraform/sample
           version: ${{ env.WINDSOR_VERSION }}
           context: ${{ env.WINDSOR_CONTEXT }}
