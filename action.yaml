@@ -306,13 +306,24 @@ runs:
                 }
               } else if (line.startsWith('$env:')) {
                 // Handle PowerShell-style
-                const match = line.match(/^\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*['"](.*)['"]$/);
+                const match = line.match(/^\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
                 if (match) {
-                  const [_, key, value] = match;
-                  // Remove quotes from value
-                  const cleanValue = value.replace(/^["']|["']$/g, '');
+                  const [_, key, rawValue] = match;
+                  // For Windows, ensure proper quote handling
+                  let value = rawValue.trim();
+                  
+                  // If the value starts with -var-file= or similar, ensure proper quoting
+                  if (value.includes('-var-file=') || value.includes('-backend-config=')) {
+                    const parts = value.split('=');
+                    const flag = parts[0];
+                    const path = parts[1];
+                    if (path.startsWith('"') && !path.endsWith('"')) {
+                      value = `${flag}=${path}"`;
+                    }
+                  }
+                  
                   // Use the proper GitHub Actions environment variable format
-                  const envLine = `${key}<<EOF\n${cleanValue}\nEOF\n`;
+                  const envLine = `${key}<<EOF\n${value}\nEOF\n`;
                   if (verbose) console.log(`Setting environment variable: ${key}`);
                   fs.appendFileSync(githubEnv, envLine);
                 }
