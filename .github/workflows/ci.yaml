@@ -4,9 +4,8 @@ on:
   push:
 
 env:
-
   WINDSOR_VERSION: v0.5.6
-  WINDSOR_CONTEXT: local
+  WINDSOR_CONTEXT: test
 
 jobs:
   windsorcli:
@@ -38,6 +37,7 @@ jobs:
       - name: Install Windsor CLI
         uses: ./
         with:
+          workdir: test
           version: ${{ env.WINDSOR_VERSION }}
           context: ${{ env.WINDSOR_CONTEXT }}
 
@@ -91,11 +91,11 @@ jobs:
       - name: Change to a terraform folder
         uses: ./
         with:
-          workdir: .windsor/.tf_modules/cluster/talos
+          workdir: test/terraform/sample
           version: ${{ env.WINDSOR_VERSION }}
           context: ${{ env.WINDSOR_CONTEXT }}
 
-      - name: Assert TF_ environment variables are injected (terraform/cluster context)
+      - name: Assert TF_ environment variables are injected
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
@@ -114,19 +114,60 @@ jobs:
               console.error('Missing required TF_ environment variables:', missingVars);
               process.exit(1);
             }
-            console.log('All required TF_ environment variables are present:');
+
+            const projectRoot = process.env.WINDSOR_PROJECT_ROOT;
+            const expectedVars = {
+              'TF_CLI_ARGS_apply': `"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan"`,
+              'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+              'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+              'TF_CLI_ARGS_init': `-backend=true -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`,
+              'TF_CLI_ARGS_plan': `-out="${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+              'TF_DATA_DIR': `${projectRoot}/contexts/test/.terraform/sample`,
+              'TF_VAR_context_path': `${projectRoot}/contexts/test`,
+              'TF_VAR_os_type': 'unix'
+            };
+
+            for (const [varName, expectedValue] of Object.entries(expectedVars)) {
+              if (process.env[varName] !== expectedValue) {
+                console.error(`Error: ${varName} does not match expected value`);
+                console.error(`Expected: ${expectedValue}`);
+                console.error(`Got: ${process.env[varName]}`);
+                process.exit(1);
+              }
+            }
+
+            console.log('All required TF_ environment variables are present and correct:');
             requiredTfVars.forEach(varName => {
               console.log(`${varName}=${process.env[varName]}`);
             });
-            // Run terraform init in the current directory
+
+      - name: Assert Terraform workflow creates expected output
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
             const { execSync } = require('child_process');
+            const fs = require('fs');
+            const path = require('path');
+
             try {
-              console.log('Current PATH:', process.env.PATH);
-              console.log('Running terraform init in directory:', process.cwd());
-              const output = execSync('terraform init', { stdio: 'inherit' });
-              console.log('terraform init completed successfully');
+              execSync('terraform init', { stdio: 'inherit' });
+              execSync('terraform plan', { stdio: 'inherit' });
+              execSync('terraform apply', { stdio: 'inherit' });
+
+              if (!fs.existsSync('test.txt')) {
+                console.error('Error: test.txt was not created');
+                process.exit(1);
+              }
+
+              const content = fs.readFileSync('test.txt', 'utf8');
+              if (content !== 'Hello from Windsor CLI test!') {
+                console.error(`Error: test.txt contents do not match expected value. Expected: "Hello from Windsor CLI test!", Got: "${content}"`);
+                process.exit(1);
+              }
+
+              console.log('✓ Terraform workflow completed successfully');
             } catch (error) {
-              console.error('Error running terraform init:', error.message);
+              console.error('Error running Terraform:', error.message);
               if (error.stdout) console.error('stdout:', error.stdout);
               if (error.stderr) console.error('stderr:', error.stderr);
               process.exit(1);
