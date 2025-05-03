@@ -163,16 +163,7 @@ jobs:
             const path = require('path');
 
             try {
-              console.log('Current directory:', process.cwd());
-              console.log('Listing directory contents:');
-              console.log(execSync('ls -la', { encoding: 'utf8' }));
-              console.log('Listing contexts directory:');
-              console.log(execSync('ls -la contexts', { encoding: 'utf8' }));
-              console.log('Listing contexts/test directory:');
-              console.log(execSync('ls -la contexts/test', { encoding: 'utf8' }));
-              console.log('Listing contexts/test/terraform directory:');
-              console.log(execSync('ls -la contexts/test/terraform', { encoding: 'utf8' }));
-
+              process.chdir('test/terraform/sample');
               execSync('terraform init', { stdio: 'inherit' });
               execSync('terraform plan', { stdio: 'inherit' });
               execSync('terraform apply', { stdio: 'inherit' });
