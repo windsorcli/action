@@ -363,16 +363,14 @@ runs:
                 if (match) {
                   const [_, key, rawValue] = match;
                   // For Windows, ensure proper quote handling
-                  let value = rawValue.trim();
+                  let value = rawValue.trim().replace(/^["']|["']$/g, '');
                   
                   // If the value starts with -var-file= or similar, ensure proper quoting
                   if (value.includes('-var-file=') || value.includes('-backend-config=')) {
                     const parts = value.split('=');
                     const flag = parts[0];
-                    const path = parts[1];
-                    if (path.startsWith('"') && !path.endsWith('"')) {
-                      value = `${flag}=${path}"`;
-                    }
+                    const path = parts[1].replace(/^["']|["']$/g, '');
+                    value = `${flag}=${path}`;
                   }
                   
                   // Use the proper GitHub Actions environment variable format
