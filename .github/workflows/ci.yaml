@@ -24,16 +24,6 @@ jobs:
           terraform_version: 1.11.4
           terraform_wrapper: false
 
-      - name: Verify Terraform Installation
-        shell: pwsh
-        if: matrix.os == 'windows-latest'
-        run: terraform version
-
-      - name: Verify Terraform Installation
-        shell: bash
-        if: matrix.os != 'windows-latest'
-        run: terraform version
-
       - name: Install Windsor CLI
         uses: ./
         with:
@@ -41,6 +31,71 @@ jobs:
           workdir: test
           version: ${{ env.WINDSOR_VERSION }}
           context: ${{ env.WINDSOR_CONTEXT }}
+
+      - name: Verify Windsor Tool Installation
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const fs = require('fs');
+            const path = require('path');
+            const os = require('os');
+
+            const version = process.env.WINDSOR_VERSION;
+            const toolCacheDir = process.env.RUNNER_TOOL_CACHE || path.join(os.homedir(), '_tool');
+            const toolInstallFolder = path.join(toolCacheDir, 'windsor', version);
+            const binDir = path.join(toolInstallFolder, 'bin');
+            const windsorExecutable = os.platform() === 'win32' ? 'windsor.exe' : 'windsor';
+
+            console.log('Verifying tool installation:');
+            console.log('- Tool cache dir:', toolCacheDir);
+            console.log('- Install folder:', toolInstallFolder);
+            console.log('- Bin dir:', binDir);
+
+            // Check directories exist
+            if (!fs.existsSync(toolInstallFolder)) {
+              console.error(`Error: Tool install folder does not exist: ${toolInstallFolder}`);
+              process.exit(1);
+            }
+
+            if (!fs.existsSync(binDir)) {
+              console.error(`Error: Bin directory does not exist: ${binDir}`);
+              process.exit(1);
+            }
+
+            // Check binary exists and is executable
+            const binaryPath = path.join(binDir, windsorExecutable);
+            if (!fs.existsSync(binaryPath)) {
+              console.error(`Error: Windsor binary does not exist: ${binaryPath}`);
+              process.exit(1);
+            }
+
+            // Check symlink
+            const symlinkPath = path.join(binDir, windsorExecutable);
+            const symlinkStats = fs.lstatSync(symlinkPath);
+            if (!symlinkStats.isSymbolicLink()) {
+              console.error(`Error: ${symlinkPath} is not a symlink`);
+              process.exit(1);
+            }
+
+            // Check PATH
+            const pathEnv = process.env.PATH;
+            if (!pathEnv.includes(binDir)) {
+              console.error(`Error: ${binDir} not found in PATH`);
+              process.exit(1);
+            }
+
+            // Verify version
+            const versionOutput = execSync(`${binaryPath} version`).toString().trim();
+            const versionMatch = versionOutput.match(/^Version:\s*(\S+)/);
+            const installedVersion = versionMatch ? `v${versionMatch[1]}` : '';
+            
+            if (installedVersion !== version) {
+              console.error(`Error: Version mismatch. Expected: ${version}, Got: ${installedVersion}`);
+              process.exit(1);
+            }
+
+            console.log('✓ Windsor tool installation verified');
 
       - name: Verify Windsor Context
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1

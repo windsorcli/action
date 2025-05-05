@@ -173,6 +173,13 @@ runs:
               execCommand(`cd ${githubWorkspace}/cli/cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
               version = 'vdev';
             } else {
+              // Get the tool cache directory from environment
+              const toolCacheDir = process.env.RUNNER_TOOL_CACHE || path.join(os.homedir(), '_tool');
+              const toolInstallFolder = path.join(toolCacheDir, 'windsor', version);
+              
+              // Create the installation directory
+              fs.mkdirSync(toolInstallFolder, { recursive: true });
+              
               const numericVersion = version.replace(/^v/, '');
               const localFileName = `windsor_${numericVersion}_${osType}_${arch}.tar.gz`;
               const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
@@ -180,13 +187,13 @@ runs:
               if (verbose) console.log('Downloading Windsor CLI:', downloadUrl);
 
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
-              const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
+              const mkdirCommand = isWindows ? `if not exist "${toolInstallFolder}" mkdir "${toolInstallFolder}"` : `mkdir -p "${toolInstallFolder}"`;
               const extractCommand = isWindows 
-                ? `powershell -Command "tar -xzf ${localFileName} -C ${installFolder}"`
-                : `tar -xzf ${localFileName} -C "${installFolder}"`;
+                ? `powershell -Command "tar -xzf ${localFileName} -C ${toolInstallFolder}"`
+                : `tar -xzf ${localFileName} -C "${toolInstallFolder}"`;
               const chmodCommand = isWindows 
-                ? `icacls "${path.join(installFolder, windsorExecutable)}" /grant Everyone:F`
-                : `chmod +x "${path.join(installFolder, windsorExecutable)}"`;
+                ? `icacls "${path.join(toolInstallFolder, windsorExecutable)}" /grant Everyone:F`
+                : `chmod +x "${path.join(toolInstallFolder, windsorExecutable)}"`;
               const rmCommand = isWindows ? `del ${localFileName}` : `rm -rf ${localFileName}`;
 
               try {
@@ -201,7 +208,15 @@ runs:
                 process.exit(1);
               }
 
-              let installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version`).toString().trim();
+              // Add to PATH
+              const binDir = path.join(toolInstallFolder, 'bin');
+              fs.mkdirSync(binDir, { recursive: true });
+              fs.symlinkSync(path.join(toolInstallFolder, windsorExecutable), path.join(binDir, windsorExecutable));
+              process.env.PATH = `${binDir}:${process.env.PATH}`;
+              
+              if (verbose) console.log('Added to PATH:', binDir);
+
+              let installedVersionOutput = execSync(`${path.join(binDir, windsorExecutable)} version`).toString().trim();
               let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
               let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
 
@@ -380,3 +395,46 @@ runs:
             if (verbose) console.error('Error details:', error.message);
             process.exit(1);
           }
+
+          // Install windsor
+          try {
+            if (verbose) console.log('Installing windsor...');
+            
+            // Get the tool cache directory from environment
+            const toolCacheDir = process.env.RUNNER_TOOL_CACHE || path.join(os.homedir(), '_tool');
+            const installFolder = path.join(toolCacheDir, 'windsor', version);
+            
+            // Create the installation directory
+            fs.mkdirSync(installFolder, { recursive: true });
+            
+            // Download and extract windsor
+            const downloadUrl = `https://github.com/windsor-cli/windsor/releases/download/${version}/windsor-${platform}-${arch}.tar.gz`;
+            if (verbose) console.log(`Downloading from: ${downloadUrl}`);
+            
+            const response = await fetch(downloadUrl);
+            if (!response.ok) {
+              throw new Error(`Failed to download windsor: ${response.statusText}`);
+            }
+            
+            const buffer = await response.arrayBuffer();
+            const tarPath = path.join(installFolder, 'windsor.tar.gz');
+            fs.writeFileSync(tarPath, Buffer.from(buffer));
+            
+            // Extract the tarball
+            execSync(`tar -xzf ${tarPath} -C ${installFolder}`);
+            fs.unlinkSync(tarPath);
+            
+            // Make the binary executable
+            const binaryPath = path.join(installFolder, 'windsor');
+            fs.chmodSync(binaryPath, '755');
+            
+            // Add to PATH
+            const binDir = path.join(installFolder, 'bin');
+            fs.mkdirSync(binDir, { recursive: true });
+            fs.symlinkSync(binaryPath, path.join(binDir, 'windsor'));
+            process.env.PATH = `${binDir}:${process.env.PATH}`;
+            
+            if (verbose) console.log('Added to PATH:', binDir);
+            
+            // Set the windsor executable path
+            const windsorExecutable = path.join(binDir, 'windsor');
