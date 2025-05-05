@@ -249,7 +249,9 @@ runs:
           const os = require('os');
 
           const isWindows = os.platform() === 'win32';
-          const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
+          const toolCacheDir = process.env.RUNNER_TOOL_CACHE || path.join(os.homedir(), '_tool');
+          const version = cleanInput('${{ inputs.version }}');
+          const installFolder = path.join(toolCacheDir, 'windsor', version);
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = '${{ inputs.context }}';
