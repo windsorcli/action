@@ -78,14 +78,15 @@ runs:
           const verbose = '${{ inputs.verbose }}' === 'true';
 
           const isWindows = os.platform() === 'win32';
-          const toolCacheDir = process.env.RUNNER_TOOL_CACHE || path.join(os.homedir(), '_tool');
-          const installFolder = path.join(toolCacheDir, 'windsor', version);
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubWorkspace = process.env.GITHUB_WORKSPACE;
           let version = cleanInput('${{ inputs.version }}');
           const ref = cleanInput('${{ inputs.ref }}');
           const input_context = cleanInput('${{ inputs.context }}');
           let rawWorkdir = cleanInput('${{ inputs.workdir }}');
+          
+          const toolCacheDir = process.env.RUNNER_TOOL_CACHE || path.join(os.homedir(), '_tool');
+          const installFolder = path.join(toolCacheDir, 'windsor', version);
           
           if (verbose) {
             console.log('Installation parameters:');
