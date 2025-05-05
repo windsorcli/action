@@ -78,7 +78,8 @@ runs:
           const verbose = '${{ inputs.verbose }}' === 'true';
 
           const isWindows = os.platform() === 'win32';
-          const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
+          const toolCacheDir = process.env.RUNNER_TOOL_CACHE || path.join(os.homedir(), '_tool');
+          const installFolder = path.join(toolCacheDir, 'windsor', version);
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubWorkspace = process.env.GITHUB_WORKSPACE;
           let version = cleanInput('${{ inputs.version }}');
@@ -182,18 +183,18 @@ runs:
               
               const numericVersion = version.replace(/^v/, '');
               const localFileName = `windsor_${numericVersion}_${osType}_${arch}.tar.gz`;
-              const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
+              const downloadUrl = `https://github.com/windsor-cli/windsor/releases/download/${version}/${localFileName}`;
 
               if (verbose) console.log('Downloading Windsor CLI:', downloadUrl);
 
               const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
-              const mkdirCommand = isWindows ? `if not exist "${toolInstallFolder}" mkdir "${toolInstallFolder}"` : `mkdir -p "${toolInstallFolder}"`;
+              const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
               const extractCommand = isWindows 
-                ? `powershell -Command "tar -xzf ${localFileName} -C ${toolInstallFolder}"`
-                : `tar -xzf ${localFileName} -C "${toolInstallFolder}"`;
+                ? `powershell -Command "tar -xzf ${localFileName} -C ${installFolder}"`
+                : `tar -xzf ${localFileName} -C "${installFolder}"`;
               const chmodCommand = isWindows 
-                ? `icacls "${path.join(toolInstallFolder, windsorExecutable)}" /grant Everyone:F`
-                : `chmod +x "${path.join(toolInstallFolder, windsorExecutable)}"`;
+                ? `icacls "${path.join(installFolder, windsorExecutable)}" /grant Everyone:F`
+                : `chmod +x "${path.join(installFolder, windsorExecutable)}"`;
               const rmCommand = isWindows ? `del ${localFileName}` : `rm -rf ${localFileName}`;
 
               try {
@@ -209,14 +210,10 @@ runs:
               }
 
               // Add to PATH
-              const binDir = path.join(toolInstallFolder, 'bin');
-              fs.mkdirSync(binDir, { recursive: true });
-              fs.symlinkSync(path.join(toolInstallFolder, windsorExecutable), path.join(binDir, windsorExecutable));
-              process.env.PATH = `${binDir}:${process.env.PATH}`;
-              
-              if (verbose) console.log('Added to PATH:', binDir);
+              fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
+              if (verbose) console.log('Added to PATH:', installFolder);
 
-              let installedVersionOutput = execSync(`${path.join(binDir, windsorExecutable)} version`).toString().trim();
+              let installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version`).toString().trim();
               let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
               let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
 
@@ -232,9 +229,6 @@ runs:
               }
             }
           }
-
-          fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
-          if (verbose) console.log('Added to PATH:', installFolder);
 
           if (workdir && fs.existsSync(workdir)) {
             process.chdir(workdir);
