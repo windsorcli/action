@@ -43,45 +43,30 @@ jobs:
 
             const version = process.env.WINDSOR_VERSION;
             const toolCacheDir = process.env.RUNNER_TOOL_CACHE || path.join(os.homedir(), '_tool');
-            const toolInstallFolder = path.join(toolCacheDir, 'windsor', version);
-            const binDir = path.join(toolInstallFolder, 'bin');
+            const installFolder = path.join(toolCacheDir, 'windsor', version);
             const windsorExecutable = os.platform() === 'win32' ? 'windsor.exe' : 'windsor';
 
             console.log('Verifying tool installation:');
             console.log('- Tool cache dir:', toolCacheDir);
-            console.log('- Install folder:', toolInstallFolder);
-            console.log('- Bin dir:', binDir);
+            console.log('- Install folder:', installFolder);
 
-            // Check directories exist
-            if (!fs.existsSync(toolInstallFolder)) {
-              console.error(`Error: Tool install folder does not exist: ${toolInstallFolder}`);
-              process.exit(1);
-            }
-
-            if (!fs.existsSync(binDir)) {
-              console.error(`Error: Bin directory does not exist: ${binDir}`);
+            // Check installation directory exists
+            if (!fs.existsSync(installFolder)) {
+              console.error(`Error: Tool install folder does not exist: ${installFolder}`);
               process.exit(1);
             }
 
             // Check binary exists and is executable
-            const binaryPath = path.join(binDir, windsorExecutable);
+            const binaryPath = path.join(installFolder, windsorExecutable);
             if (!fs.existsSync(binaryPath)) {
               console.error(`Error: Windsor binary does not exist: ${binaryPath}`);
               process.exit(1);
             }
 
-            // Check symlink
-            const symlinkPath = path.join(binDir, windsorExecutable);
-            const symlinkStats = fs.lstatSync(symlinkPath);
-            if (!symlinkStats.isSymbolicLink()) {
-              console.error(`Error: ${symlinkPath} is not a symlink`);
-              process.exit(1);
-            }
-
             // Check PATH
             const pathEnv = process.env.PATH;
-            if (!pathEnv.includes(binDir)) {
-              console.error(`Error: ${binDir} not found in PATH`);
+            if (!pathEnv.includes(installFolder)) {
+              console.error(`Error: ${installFolder} not found in PATH`);
               process.exit(1);
             }
 
