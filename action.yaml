@@ -248,6 +248,7 @@ runs:
           const path = require('path');
           const os = require('os');
 
+          const cleanInput = (input) => typeof input === 'string' ? input.replace(/\r?\n|\r/g, '') : input;
           const isWindows = os.platform() === 'win32';
           const toolCacheDir = process.env.RUNNER_TOOL_CACHE || path.join(os.homedir(), '_tool');
           const version = cleanInput('${{ inputs.version }}');
