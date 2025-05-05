@@ -184,7 +184,7 @@ runs:
               
               const numericVersion = version.replace(/^v/, '');
               const localFileName = `windsor_${numericVersion}_${osType}_${arch}.tar.gz`;
-              const downloadUrl = `https://github.com/windsor-cli/windsor/releases/download/${version}/${localFileName}`;
+              const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${version}/${localFileName}`;
 
               if (verbose) console.log('Downloading Windsor CLI:', downloadUrl);
 
