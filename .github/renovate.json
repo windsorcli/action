@@ -48,23 +48,6 @@
       "labels": [
         "dependencies"
       ]
-    },
-    {
-      "description": "Update pyproject.toml dependencies",
-      "matchFileNames": [
-        "pyproject.toml"
-      ],
-      "matchManagers": [
-        "poetry"
-      ],
-      "enabled": true,
-      "automerge": true,
-      "automergeType": "pr",
-      "automergeStrategy": "squash",
-      "labels": [
-        "python",
-        "dependencies"
-      ]
     }
   ],
   "customManagers": [
