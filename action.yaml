@@ -438,3 +438,8 @@ runs:
             
             // Set the windsor executable path
             const windsorExecutable = path.join(binDir, 'windsor');
+          } catch (error) {
+            console.error('Error installing windsor');
+            if (verbose) console.error('Error details:', error.message);
+            process.exit(1);
+          }
