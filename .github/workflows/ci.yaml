@@ -9,7 +9,8 @@ env:
   WINDSOR_CONTEXT: test
 
 jobs:
-  windsorcli:
+  test:
+    if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
