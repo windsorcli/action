@@ -39,28 +39,6 @@ runs:
             process.exit(1);
           }
 
-    - name: Check Go Installation
-      if: ${{ inputs.ref != '' }}
-      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-      with:
-        script: |
-          const { execSync } = require('child_process');
-          const os = require('os');
-          const verbose = '${{ inputs.verbose }}' === 'true';
-
-          try {
-            const platform = os.platform();
-            let goPathCommand = platform === 'win32' ? 'where go' : 'which go';
-            const goPath = execSync(goPathCommand, { encoding: 'utf-8' }).trim();
-            if (verbose) console.log('Go binary path:', goPath);
-            
-            const goVersion = execSync('go version', { encoding: 'utf-8' }).trim();
-            if (verbose) console.log('Go version:', goVersion);
-          } catch (error) {
-            console.error('Go is not installed or not found in PATH');
-            process.exit(1);
-          }
-
     - name: Install Windsor CLI
       uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
       with:
@@ -160,7 +138,7 @@ runs:
             const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
             const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
-            // Check if ref is a version tag (including any semver prerelease)
+            // Check if ref is a version tag
             const isVersionTag = /^v\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(ref);
             
             if (isVersionTag) {
@@ -206,11 +184,26 @@ runs:
               }
             }
 
-            // If not a version tag or download failed, build from source
-            if (verbose) console.log(`Building Windsor CLI from ref: ${ref}`);
-            execCommand(`git clone https://github.com/windsorcli/cli.git ${githubWorkspace}/cli`);
-            execCommand(`cd ${githubWorkspace}/cli && git pull && git checkout ${ref}`);
-            execCommand(`cd ${githubWorkspace}/cli/cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
+            // If not a version tag or download failed, check for Go and build from source
+            if (!isVersionTag || !fs.existsSync(path.join(installFolder, windsorExecutable))) {
+              try {
+                const platform = os.platform();
+                let goPathCommand = platform === 'win32' ? 'where go' : 'which go';
+                const goPath = execSync(goPathCommand, { encoding: 'utf-8' }).trim();
+                if (verbose) console.log('Go binary path:', goPath);
+                
+                const goVersion = execSync('go version', { encoding: 'utf-8' }).trim();
+                if (verbose) console.log('Go version:', goVersion);
+
+                if (verbose) console.log(`Building Windsor CLI from ref: ${ref}`);
+                execCommand(`git clone https://github.com/windsorcli/cli.git ${githubWorkspace}/cli`);
+                execCommand(`cd ${githubWorkspace}/cli && git pull && git checkout ${ref}`);
+                execCommand(`cd ${githubWorkspace}/cli/cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
+              } catch (error) {
+                console.error('Go is not installed or not found in PATH');
+                process.exit(1);
+              }
+            }
           }
 
           fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
