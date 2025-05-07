@@ -4,7 +4,7 @@ on:
   push:
 
 env:
-  WINDSOR_VERSION: v0.5.6
+  WINDSOR_VERSION: v0.5.6  # renovate: datasource=github-releases depName=windsorcli/cli
   WINDSOR_CONTEXT: test
 
 jobs:
@@ -24,22 +24,12 @@ jobs:
           terraform_version: 1.11.4
           terraform_wrapper: false
 
-      - name: Verify Terraform Installation
-        shell: pwsh
-        if: matrix.os == 'windows-latest'
-        run: terraform version
-
-      - name: Verify Terraform Installation
-        shell: bash
-        if: matrix.os != 'windows-latest'
-        run: terraform version
-
       - name: Install Windsor CLI
         uses: ./
         with:
           verbose: true
           workdir: test
-          version: ${{ env.WINDSOR_VERSION }}
+          ref: ${{ env.WINDSOR_VERSION }}
           context: ${{ env.WINDSOR_CONTEXT }}
 
       - name: Verify Windsor Context
@@ -94,7 +84,7 @@ jobs:
         with:
           verbose: true
           workdir: test/terraform/sample
-          version: ${{ env.WINDSOR_VERSION }}
+          ref: ${{ env.WINDSOR_VERSION }}
           context: ${{ env.WINDSOR_CONTEXT }}
 
       - name: Assert TF_ environment variables are injected

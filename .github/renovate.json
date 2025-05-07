@@ -53,16 +53,13 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "^\\.github/workflows/ci\\.yaml$"
-      ],
+      "fileMatch": ["^.*\\.ya?ml$"],
       "matchStrings": [
-        "(^|\\s)WINDSOR_VERSION:\\s*(?<currentValue>v[\\d\\.]+)"
+        "(?<currentValue>v\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9]+)?)\\s*#\\s*renovate:\\s*datasource=(?<datasource>[^\\s]+)\\s*depName=(?<depName>[^\\s]+)"
       ],
-      "depNameTemplate": "WINDSOR_VERSION",
-      "datasourceTemplate": "github-tags",
-      "packageNameTemplate": "windsorcli/cli",
-      "versioningTemplate": "semver"
+      "versioningTemplate": "semver",
+      "datasourceTemplate": "{{datasource}}",
+      "packageNameTemplate": "{{depName}}"
     }
   ],
   "labels": [

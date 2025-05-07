@@ -5,7 +5,8 @@ description: 'Installs and configures the Windsor CLI for use in GitHub Actions'
 inputs:
   ref:
     description: 'Git reference to build Windsor CLI from source or version tag to download'
-    required: true
+    required: false
+    default: v0.5.6  # renovate: datasource=github-releases depName=windsorcli/cli
   context:
     description: 'The context to use for Windsor CLI commands'
     required: false
