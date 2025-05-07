@@ -3,7 +3,7 @@ name: CI
 on:
   push:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 6 * * *'  # Run at 2AM ET / 6AM UTC
 
 env:
   WINDSOR_CONTEXT: test
