@@ -144,7 +144,7 @@ runs:
             if (isVersionTag) {
               if (verbose) console.log(`Attempting to download Windsor CLI version: ${ref}`);
               const numericVersion = ref.replace(/^v/, '');
-              const localFileName = `windsor_${numericVersion}_${osType}_${arch}.tar.gz`;
+              const localFileName = `windsor_${numericVersion}_${osType}_${arch}.${isWindows ? 'zip' : 'tar.gz'}`;
               const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${ref}/${localFileName}`;
 
               try {
@@ -152,7 +152,7 @@ runs:
                 const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
                 const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
                 const extractCommand = isWindows 
-                  ? `powershell -Command "tar -xzf ${localFileName} -C ${installFolder}"`
+                  ? `powershell -Command "Expand-Archive -Path ${localFileName} -DestinationPath ${installFolder} -Force"`
                   : `tar -xzf ${localFileName} -C "${installFolder}"`;
                 const chmodCommand = isWindows 
                   ? `icacls "${path.join(installFolder, windsorExecutable)}" /grant Everyone:F`
