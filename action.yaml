@@ -128,8 +128,6 @@ runs:
               if (verbose) console.log('Executing:', command);
               execSync(command, { stdio: 'inherit' });
             } catch (error) {
-              console.error(`Error executing command: ${command}`);
-              if (verbose) console.error('Error details:', error.message);
               process.exit(1);
             }
           };
@@ -165,7 +163,7 @@ runs:
                 execCommand(chmodCommand);
                 execCommand(rmCommand);
 
-                let installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version`).toString().trim();
+                let installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version${verbose ? ' --verbose' : ''}`).toString().trim();
                 let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
                 let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
 
@@ -179,7 +177,7 @@ runs:
                   throw new Error(`Version mismatch: expected ${ref}, got ${installedVersion}`);
                 }
               } catch (error) {
-                if (verbose) console.log('Failed to download version, falling back to building from source:', error.message);
+                if (verbose) console.log('Failed to download version, falling back to building from source');
                 // Fall through to build from source
               }
             }
@@ -200,7 +198,7 @@ runs:
                 execCommand(`cd ${githubWorkspace}/cli && git pull && git checkout ${ref}`);
                 execCommand(`cd ${githubWorkspace}/cli/cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
               } catch (error) {
-                console.error('Go is not installed or not found in PATH');
+                console.error(error.message);
                 process.exit(1);
               }
             }
@@ -234,13 +232,11 @@ runs:
           const workdir = '${{ inputs.workdir }}';
           const verbose = '${{ inputs.verbose }}' === 'true';
 
-          if (verbose) {
-            console.log('Environment setup:');
-            console.log('- Install folder:', installFolder);
-            console.log('- Context:', input_context);
-            console.log('- Workdir:', workdir);
-            console.log('- Current directory:', process.cwd());
-          }
+          console.log('Environment setup:');
+          console.log('- Install folder:', installFolder);
+          console.log('- Context:', input_context);
+          console.log('- Workdir:', workdir);
+          console.log('- Current directory:', process.cwd());
 
           if (!process.env.PATH.includes(installFolder)) {
             console.error('Install folder not in PATH');
@@ -257,43 +253,32 @@ runs:
                 console.log('- Input context:', input_context);
                 console.log('- Running command:', command);
               }
-              const { stdout, stderr } = execSync(command, { 
-                encoding: 'utf-8',
-                stdio: ['pipe', 'pipe', 'pipe']
-              });
-              if (verbose) {
-                if (stdout) console.log('Init stdout:', stdout);
-                if (stderr) console.log('Init stderr:', stderr);
+              
+              try {
+                execSync(command, { stdio: 'inherit' });
+              } catch (error) {
+                throw error;
               }
               
               const defaultContextDir = path.join(process.cwd(), 'contexts', input_context);
-              if (verbose) {
-                console.log('Context directory check:');
-                console.log('- Default context dir:', defaultContextDir);
-                console.log('- Exists:', fs.existsSync(defaultContextDir));
-                console.log('- Parent exists:', fs.existsSync(path.dirname(defaultContextDir)));
-                try {
-                  const files = fs.readdirSync(process.cwd());
-                  console.log('- Current directory contents:', files);
-                } catch (e) {
-                  console.log('- Error reading directory:', e.message);
-                }
-              }
               if (!fs.existsSync(defaultContextDir)) {
-                throw new Error('Context directory not created');
+                throw new Error(`Context directory '${defaultContextDir}' was not created`);
               }
               
-              const contextOutput = execSync(`${windsorExecutable} context get${verbose ? ' --verbose' : ''}`, { 
-                encoding: 'utf-8',
-                stdio: 'pipe'
-              });
-              if (verbose) console.log('Context output:', contextOutput.trim());
-              if (contextOutput.trim() !== input_context) {
-                throw new Error('Context not set correctly');
+              try {
+                const contextOutput = execSync(`${windsorExecutable} context get${verbose ? ' --verbose' : ''}`, { 
+                  encoding: 'utf-8',
+                  stdio: 'pipe'
+                }).toString().trim();
+                
+                if (contextOutput !== input_context) {
+                  throw new Error(`Context verification failed: expected '${input_context}', got '${contextOutput}'`);
+                }
+              } catch (error) {
+                console.error(error.message);
+                throw error;
               }
             } catch (error) {
-              console.error('Error setting Windsor context');
-              if (verbose) console.error('Error details:', error.message);
               process.exit(1);
             }
           }
@@ -312,7 +297,7 @@ runs:
           // Run windsor env to get environment variables
           try {
             if (verbose) console.log(`Running: ${windsorExecutable} env`);
-            const envOutput = execSync(`${windsorExecutable} env`, { 
+            const envOutput = execSync(`${windsorExecutable} env${verbose ? ' --verbose' : ''}`, { 
               encoding: 'utf-8',
               stdio: 'pipe'
             });
@@ -323,8 +308,10 @@ runs:
               throw new Error('windsor env returned no output');
             }
 
+            // Only keep non-empty env var assignments
             const envLines = envOutput.split('\n')
-              .filter(line => line.trim() && !line.startsWith('#') && !line.includes('Cannot execute commands'));
+              .filter(line => line.trim())
+              .filter(line => line.startsWith('export ') || line.startsWith('$env:'));
 
             if (verbose) console.log('Processed environment lines:', envLines);
 
