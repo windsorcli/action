@@ -83,7 +83,6 @@ jobs:
               'OMNICONFIG',
               'TALOSCONFIG',
               'WINDSOR_CONTEXT',
-              'WINDSOR_CONTEXT_ID',
               'WINDSOR_PROJECT_ROOT'
             ];
 
