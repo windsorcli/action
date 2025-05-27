@@ -17,6 +17,13 @@ jobs:
         ref: 
           - v0.5.7 # renovate: datasource=github-releases depName=windsorcli/cli
           - main
+        include:
+          - os: ubuntu-latest
+            vm-driver: docker
+          - os: windows-latest
+            vm-driver: docker-desktop
+          - os: macos-latest
+            vm-driver: docker-desktop
     runs-on: ${{ matrix.os }}
   
     steps:
@@ -41,6 +48,7 @@ jobs:
           workdir: test
           ref: ${{ matrix.ref }}
           context: ${{ env.WINDSOR_CONTEXT }}
+          vm-driver: ${{ matrix.vm-driver }}
 
       - name: Verify Windsor Context
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
@@ -75,6 +83,7 @@ jobs:
               'OMNICONFIG',
               'TALOSCONFIG',
               'WINDSOR_CONTEXT',
+              'WINDSOR_CONTEXT_ID',
               'WINDSOR_PROJECT_ROOT'
             ];
 

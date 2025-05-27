@@ -19,6 +19,10 @@ inputs:
     description: 'Enable verbose logging'
     required: false
     default: "false"
+  vm-driver:
+    description: 'VM driver to use for Windsor CLI init command'
+    required: false
+    default: ""
 
 runs:
   using: 'composite'
@@ -231,6 +235,7 @@ runs:
           const input_context = '${{ inputs.context }}';
           const workdir = '${{ inputs.workdir }}';
           const verbose = '${{ inputs.verbose }}' === 'true';
+          const vmDriver = '${{ inputs.vm-driver }}';
 
           console.log('Environment setup:');
           console.log('- Install folder:', installFolder);
@@ -245,7 +250,7 @@ runs:
 
           if (input_context) {
             try {
-              const command = `${windsorExecutable} init ${input_context}${verbose ? ' --verbose' : ''}`;
+              const command = `${windsorExecutable} init ${input_context}${vmDriver ? ` --vm-driver ${vmDriver}` : ''}${verbose ? ' --verbose' : ''}`;
               if (verbose) {
                 console.log('Environment setup:');
                 console.log('- Current directory:', process.cwd());
