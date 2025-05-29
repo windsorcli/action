@@ -54,13 +54,10 @@ runs:
           const isVersionTag = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/i.test(ref);
 
           const isWindows = os.platform() === 'win32';
-          const ref = '${{ inputs.ref }}';
           const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref);
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = '${{ inputs.context }}';
-          const workdir = '${{ inputs.workdir }}';
-          const verbose = '${{ inputs.verbose }}' === 'true';
           let rawWorkdir = cleanInput('${{ inputs.workdir }}');
           
           if (verbose) {
@@ -73,7 +70,7 @@ runs:
           
           let workdir;
           if (rawWorkdir) {
-            const workspacePath = process.env.GITHUB_WORKSPACE || process.env.GITHUB_WORKSPACE;
+            const workspacePath = process.env.GITHUB_WORKSPACE;
             // Simple path normalization - no quotes, just slashes
             const platformPath = rawWorkdir.replace(/\//g, path.sep);
             
@@ -140,9 +137,6 @@ runs:
             const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
             const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
-            // Check if ref is a version tag
-            const isVersionTag = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/i.test(ref);
-            
             if (isVersionTag) {
               if (verbose) console.log(`Attempting to download Windsor CLI version: ${ref}`);
               const numericVersion = ref.replace(/^v/, '');
@@ -234,8 +228,7 @@ runs:
           const os = require('os');
 
           const isWindows = os.platform() === 'win32';
-          const ref = '${{ inputs.ref }}';
-          const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref);
+          const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', '${{ inputs.ref }}');
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = '${{ inputs.context }}';
