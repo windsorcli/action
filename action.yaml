@@ -54,12 +54,13 @@ runs:
           const isVersionTag = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/i.test(ref);
 
           const isWindows = os.platform() === 'win32';
-          const installFolder = isVersionTag 
-            ? path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref)
-            : path.join(process.env.GITHUB_WORKSPACE, 'bin');
+          const ref = '${{ inputs.ref }}';
+          const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref);
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
-          const githubWorkspace = process.env.GITHUB_WORKSPACE;
-          const input_context = cleanInput('${{ inputs.context }}');
+          const githubEnv = process.env.GITHUB_ENV;
+          const input_context = '${{ inputs.context }}';
+          const workdir = '${{ inputs.workdir }}';
+          const verbose = '${{ inputs.verbose }}' === 'true';
           let rawWorkdir = cleanInput('${{ inputs.workdir }}');
           
           if (verbose) {
@@ -72,7 +73,7 @@ runs:
           
           let workdir;
           if (rawWorkdir) {
-            const workspacePath = process.env.GITHUB_WORKSPACE || githubWorkspace;
+            const workspacePath = process.env.GITHUB_WORKSPACE || process.env.GITHUB_WORKSPACE;
             // Simple path normalization - no quotes, just slashes
             const platformPath = rawWorkdir.replace(/\//g, path.sep);
             
@@ -233,13 +234,13 @@ runs:
           const os = require('os');
 
           const isWindows = os.platform() === 'win32';
+          const ref = '${{ inputs.ref }}';
           const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref);
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = '${{ inputs.context }}';
           const workdir = '${{ inputs.workdir }}';
           const verbose = '${{ inputs.verbose }}' === 'true';
-          const ref = '${{ inputs.ref }}';
 
           console.log('Environment setup:');
           console.log('- Install folder:', installFolder);
