@@ -54,13 +54,14 @@ runs:
           
           const cleanInput = (input) => typeof input === 'string' ? input.replace(/\r?\n|\r/g, '') : input;
           const verbose = '${{ inputs.verbose }}' === 'true';
+          const ref = cleanInput('${{ inputs.ref }}');
+          const isVersionTag = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/i.test(ref);
 
           const isWindows = os.platform() === 'win32';
-          const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
+          const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref);
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
-          const githubWorkspace = process.env.GITHUB_WORKSPACE;
-          const ref = cleanInput('${{ inputs.ref }}');
-          const input_context = cleanInput('${{ inputs.context }}');
+          const githubEnv = process.env.GITHUB_ENV;
+          const input_context = '${{ inputs.context }}';
           let rawWorkdir = cleanInput('${{ inputs.workdir }}');
           
           if (verbose) {
@@ -71,59 +72,25 @@ runs:
             console.log('- Install folder:', installFolder);
           }
           
+          // Simple workdir handling
           let workdir;
           if (rawWorkdir) {
-            const workspacePath = process.env.GITHUB_WORKSPACE || githubWorkspace;
-            // Simple path normalization - no quotes, just slashes
-            const platformPath = rawWorkdir.replace(/\//g, path.sep);
-            
-            if (verbose) {
-              console.log('Workdir resolution:');
-              console.log('- Raw workdir:', rawWorkdir);
-              console.log('- Workspace path:', workspacePath);
-              console.log('- Platform path:', platformPath);
-              console.log('- Platform:', process.platform);
-              console.log('- Path separator:', path.sep);
-            }
-            
-            if (process.platform === 'win32') {
-              // Direct path handling for Windows
-              workdir = path.isAbsolute(platformPath) 
-                ? platformPath 
-                : path.join(workspacePath, platformPath);
-              
-              if (verbose) {
-                console.log('Windows path handling:');
-                console.log('- Final workdir:', workdir);
-              }
+            if (path.isAbsolute(rawWorkdir)) {
+              workdir = rawWorkdir;
             } else {
-              if (path.isAbsolute(platformPath)) {
-                workdir = platformPath;
-              } else {
-                workdir = path.join(workspacePath, platformPath);
-              }
-              if (verbose) {
-                console.log('Unix path handling:');
-                console.log('- Is absolute:', path.isAbsolute(platformPath));
-                console.log('- Final workdir:', workdir);
-              }
-            }
-            if (verbose) {
-              console.log('Final workdir check:');
-              console.log('- Workdir:', workdir);
-              console.log('- Exists:', fs.existsSync(workdir));
-              try {
-                const stats = fs.statSync(workdir);
-                console.log('- Is directory:', stats.isDirectory());
-              } catch (e) {
-                console.log('- Error checking workdir:', e.message);
-              }
+              workdir = path.join(process.env.GITHUB_WORKSPACE, rawWorkdir);
             }
           } else {
             workdir = process.cwd();
-            if (verbose) {
-              console.log('Using current directory:');
-              console.log('- Workdir:', workdir);
+          }
+
+          if (verbose) {
+            console.log('Workdir resolution:');
+            console.log('- Raw workdir:', rawWorkdir);
+            console.log('- Final workdir:', workdir);
+            console.log('- Exists:', fs.existsSync(workdir));
+            if (fs.existsSync(workdir)) {
+              console.log('- Is directory:', fs.statSync(workdir).isDirectory());
             }
           }
 
@@ -132,7 +99,8 @@ runs:
               if (verbose) console.log('Executing:', command);
               execSync(command, { stdio: 'inherit' });
             } catch (error) {
-              process.exit(1);
+              console.error(`Command failed: ${command}`);
+              throw error;
             }
           };
 
@@ -140,9 +108,6 @@ runs:
             const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
             const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
-            // Check if ref is a version tag
-            const isVersionTag = /^v\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(ref);
-            
             if (isVersionTag) {
               if (verbose) console.log(`Attempting to download Windsor CLI version: ${ref}`);
               const numericVersion = ref.replace(/^v/, '');
@@ -167,9 +132,9 @@ runs:
                 execCommand(chmodCommand);
                 execCommand(rmCommand);
 
-                let installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version${verbose ? ' --verbose' : ''}`).toString().trim();
-                let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
-                let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
+                const installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version${verbose ? ' --verbose' : ''}`).toString().trim();
+                const installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
+                const installedVersion = installedVersionMatch ? installedVersionMatch[1] : '';
 
                 if (verbose) {
                   console.log('Version check:');
@@ -177,7 +142,7 @@ runs:
                   console.log('- Installed:', installedVersion);
                 }
 
-                if (installedVersion !== ref) {
+                if (!installedVersion || installedVersion !== ref.replace(/^v/, '')) {
                   throw new Error(`Version mismatch: expected ${ref}, got ${installedVersion}`);
                 }
               } catch (error) {
@@ -189,20 +154,35 @@ runs:
             // If not a version tag or download failed, check for Go and build from source
             if (!isVersionTag || !fs.existsSync(path.join(installFolder, windsorExecutable))) {
               try {
-                const platform = os.platform();
-                let goPathCommand = platform === 'win32' ? 'where go' : 'which go';
-                const goPath = execSync(goPathCommand, { encoding: 'utf-8' }).trim();
-                if (verbose) console.log('Go binary path:', goPath);
-                
+                const goPath = execSync(isWindows ? 'where go' : 'which go', { encoding: 'utf-8' }).trim();
                 const goVersion = execSync('go version', { encoding: 'utf-8' }).trim();
-                if (verbose) console.log('Go version:', goVersion);
+                
+                if (verbose) {
+                  console.log('Go binary path:', goPath);
+                  console.log('Go version:', goVersion);
+                }
 
                 if (verbose) console.log(`Building Windsor CLI from ref: ${ref}`);
-                execCommand(`git clone https://github.com/windsorcli/cli.git ${githubWorkspace}/cli`);
-                execCommand(`cd ${githubWorkspace}/cli && git pull && git checkout ${ref}`);
-                execCommand(`cd ${githubWorkspace}/cli/cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
+                const tmpDir = path.join(os.tmpdir(), `windsor-build-${Date.now()}`);
+                if (verbose) console.log('Using temporary build directory:', tmpDir);
+                
+                fs.mkdirSync(tmpDir, { recursive: true });
+                execCommand(`git clone https://github.com/windsorcli/cli.git ${tmpDir}`);
+                execCommand(`cd ${tmpDir} && git pull && git checkout ${ref}`);
+                
+                process.chdir(tmpDir);
+                if (!fs.existsSync('go.mod')) {
+                  execCommand('go mod init github.com/windsorcli/cli');
+                }
+                execCommand('go mod tidy');
+                
+                const tempBuildPath = path.join(tmpDir, 'cmd', 'windsor', windsorExecutable);
+                execCommand(`cd cmd/windsor && go build -o ${tempBuildPath}`);
+                
+                fs.mkdirSync(installFolder, { recursive: true });
+                fs.copyFileSync(tempBuildPath, path.join(installFolder, windsorExecutable));
               } catch (error) {
-                console.error(error.message);
+                console.error('Build failed:', error.message);
                 process.exit(1);
               }
             }
@@ -215,7 +195,7 @@ runs:
             process.chdir(workdir);
             if (verbose) console.log('Changed to workdir:', workdir);
           } else if (workdir) {
-            console.error(`Workdir does not exist`);
+            console.error(`Workdir does not exist: ${workdir}`);
             process.exit(1);
           }
 
@@ -230,7 +210,7 @@ runs:
           const os = require('os');
 
           const isWindows = os.platform() === 'win32';
-          const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
+          const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', '${{ inputs.ref }}');
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = '${{ inputs.context }}';
