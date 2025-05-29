@@ -168,7 +168,7 @@ runs:
 
                 let installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version${verbose ? ' --verbose' : ''}`).toString().trim();
                 let installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
-                let installedVersion = installedVersionMatch ? `v${installedVersionMatch[1]}` : '';
+                let installedVersion = installedVersionMatch ? installedVersionMatch[1] : '';
 
                 if (verbose) {
                   console.log('Version check:');
@@ -176,7 +176,8 @@ runs:
                   console.log('- Installed:', installedVersion);
                 }
 
-                if (installedVersion !== ref) {
+                if (!installedVersion || installedVersion !== ref.replace(/^v/, '')) {
+                  if (verbose) console.log('Version mismatch or missing, falling back to building from source');
                   throw new Error(`Version mismatch: expected ${ref}, got ${installedVersion}`);
                 }
               } catch (error) {
