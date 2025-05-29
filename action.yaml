@@ -239,6 +239,7 @@ runs:
           const input_context = '${{ inputs.context }}';
           const workdir = '${{ inputs.workdir }}';
           const verbose = '${{ inputs.verbose }}' === 'true';
+          const ref = '${{ inputs.ref }}';
 
           console.log('Environment setup:');
           console.log('- Install folder:', installFolder);
