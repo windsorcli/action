@@ -198,7 +198,10 @@ runs:
                 fs.mkdirSync(tmpDir, { recursive: true });
                 execCommand(`git clone https://github.com/windsorcli/cli.git ${tmpDir}`);
                 execCommand(`cd ${tmpDir} && git pull && git checkout ${ref}`);
-                execCommand(`cd ${tmpDir} && go mod init github.com/windsorcli/cli && go mod tidy`);
+                if (!fs.existsSync(path.join(tmpDir, 'go.mod'))) {
+                  execCommand(`cd ${tmpDir} && go mod init github.com/windsorcli/cli`);
+                }
+                execCommand(`cd ${tmpDir} && go mod tidy`);
                 execCommand(`cd ${tmpDir}/cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
                 fs.rmSync(tmpDir, { recursive: true, force: true });
               } catch (error) {
