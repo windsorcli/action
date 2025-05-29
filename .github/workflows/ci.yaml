@@ -5,12 +5,11 @@ on:
   schedule:
     - cron: '0 6 * * *'  # Run at 2AM ET / 6AM UTC
 
-env:
-  WINDSOR_CONTEXT: test
-
 jobs:
   test:
     if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
+    env:
+      WINDSOR_CONTEXT: test
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -188,5 +187,67 @@ jobs:
               console.error('Error running Terraform:', error.message);
               if (error.stdout) console.error('stdout:', error.stdout);
               if (error.stderr) console.error('stderr:', error.stderr);
+              process.exit(1);
+            }
+
+  test-install-only:
+    if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+  
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: 1.24.2
+
+      - name: Install Windsor CLI (install-only)
+        uses: ./
+        with:
+          verbose: true
+          ref: main
+          install-only: true
+
+      - name: Verify CLI is installed but not initialized
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const fs = require('fs');
+            const path = require('path');
+
+            try {
+              // Verify CLI is installed and executable
+              const versionOutput = execSync('windsor version', { stdio: 'pipe' }).toString().trim();
+              console.log('Windsor CLI version:', versionOutput);
+
+              // Verify environment variables are not set
+              const requiredEnvVars = [
+                'KUBECONFIG',
+                'KUBE_CONFIG_PATH',
+                'OMNICONFIG',
+                'TALOSCONFIG',
+                'WINDSOR_CONTEXT',
+                'WINDSOR_PROJECT_ROOT'
+              ];
+
+              const setVars = requiredEnvVars.filter(varName => process.env[varName]);
+              if (setVars.length > 0) {
+                console.error('Error: Environment variables should not be set in install-only mode:', setVars);
+                process.exit(1);
+              }
+
+              // Verify windsor.yaml was not created
+              if (fs.existsSync('windsor.yaml')) {
+                console.error('Error: windsor.yaml was created in install-only mode');
+                process.exit(1);
+              }
+
+              console.log('✓ No environment variables are set as expected');
+              console.log('✓ windsor.yaml was not created as expected');
+            } catch (error) {
+              console.error('Error:', error.message);
               process.exit(1);
             }

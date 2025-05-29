@@ -7,8 +7,7 @@ This GitHub Action installs and configures the Windsor CLI for use in GitHub Act
 ### `version`
 - **Description**: The version of Windsor CLI to install
 - **Required**: No
-- **Default**: `v0.5.2`
-- **Example**: `v0.5.6`
+- **Default**: `v0.5.7`
 
 ### `ref`
 - **Description**: Git reference to build Windsor CLI from source instead of downloading a release. Requires Go to be installed.
@@ -32,7 +31,11 @@ This GitHub Action installs and configures the Windsor CLI for use in GitHub Act
 - **Description**: Enable verbose logging for debugging purposes
 - **Required**: No
 - **Default**: `"false"`
-- **Example**: `"true"`
+
+### `install-only`
+- **Description**: Only install the CLI without initializing context or injecting environment variables
+- **Required**: No
+- **Default**: `"false"`
 
 ## Usage
 
@@ -41,7 +44,7 @@ steps:
   - name: Install Windsor CLI
     uses: windsorcli/action@v1
     with:
-      version: v0.5.6
+      version: v0.5.7
       context: local
       workdir: .windsor/.tf_modules/cluster/talos
 ```
@@ -90,7 +93,7 @@ jobs:
       - name: Install Windsor CLI
         uses: ./
         with:
-          version: v0.5.6
+          version: v0.5.7
           context: local
           workdir: terraform/cluster/eks
           # verbose: true  # Only enable for debugging
