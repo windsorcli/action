@@ -205,8 +205,16 @@ runs:
                   execCommand('go mod init github.com/windsorcli/cli');
                 }
                 execCommand('go mod tidy');
-                execCommand(`cd cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
-                fs.rmSync(tmpDir, { recursive: true, force: true });
+                
+                // Build in temp directory
+                const tempBuildPath = path.join(tmpDir, 'cmd', 'windsor', windsorExecutable);
+                execCommand(`cd cmd/windsor && go build -o ${tempBuildPath}`);
+                
+                // Create cache directory and copy binary
+                fs.mkdirSync(installFolder, { recursive: true });
+                fs.copyFileSync(tempBuildPath, path.join(installFolder, windsorExecutable));
+                
+                // Temp directory is ephemeral, no need to clean up
               } catch (error) {
                 console.error(error.message);
                 process.exit(1);
