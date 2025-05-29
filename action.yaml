@@ -50,12 +50,15 @@ runs:
           
           const cleanInput = (input) => typeof input === 'string' ? input.replace(/\r?\n|\r/g, '') : input;
           const verbose = '${{ inputs.verbose }}' === 'true';
+          const ref = cleanInput('${{ inputs.ref }}');
+          const isVersionTag = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/i.test(ref);
 
           const isWindows = os.platform() === 'win32';
-          const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref);
+          const installFolder = isVersionTag 
+            ? path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref)
+            : path.join(process.env.GITHUB_WORKSPACE, 'bin');
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubWorkspace = process.env.GITHUB_WORKSPACE;
-          const ref = cleanInput('${{ inputs.ref }}');
           const input_context = cleanInput('${{ inputs.context }}');
           let rawWorkdir = cleanInput('${{ inputs.workdir }}');
           
@@ -137,7 +140,7 @@ runs:
             const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
             // Check if ref is a version tag
-            const isVersionTag = /^v\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(ref);
+            const isVersionTag = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/i.test(ref);
             
             if (isVersionTag) {
               if (verbose) console.log(`Attempting to download Windsor CLI version: ${ref}`);
