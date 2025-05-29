@@ -151,13 +151,13 @@ runs:
               try {
                 if (verbose) console.log('Downloading Windsor CLI:', downloadUrl);
                 const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
-                const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `sudo mkdir -p "${installFolder}"`;
+                const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
                 const extractCommand = isWindows 
                   ? `powershell -Command "Expand-Archive -Path ${localFileName} -DestinationPath ${installFolder} -Force"`
                   : `tar -xzf ${localFileName} -C "${installFolder}"`;
                 const chmodCommand = isWindows 
                   ? `icacls "${path.join(installFolder, windsorExecutable)}" /grant Everyone:F`
-                  : `sudo chmod +x "${path.join(installFolder, windsorExecutable)}"`;
+                  : `chmod +x "${path.join(installFolder, windsorExecutable)}"`;
                 const rmCommand = isWindows ? `del ${localFileName}` : `rm -rf ${localFileName}`;
 
                 execCommand(curlCommand);
