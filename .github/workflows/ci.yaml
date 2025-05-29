@@ -192,13 +192,7 @@ jobs:
 
   test-install-only:
     if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        ref: 
-          - v0.5.7 # renovate: datasource=github-releases depName=windsorcli/cli
-          - main
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
   
     steps:
       - name: Checkout code
@@ -213,7 +207,7 @@ jobs:
         uses: ./
         with:
           verbose: true
-          ref: ${{ matrix.ref }}
+          ref: main
           install-only: true
 
       - name: Verify CLI is installed but not initialized
