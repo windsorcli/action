@@ -52,7 +52,7 @@ runs:
           const verbose = '${{ inputs.verbose }}' === 'true';
 
           const isWindows = os.platform() === 'win32';
-          const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
+          const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref);
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubWorkspace = process.env.GITHUB_WORKSPACE;
           const ref = cleanInput('${{ inputs.ref }}');
@@ -148,13 +148,13 @@ runs:
               try {
                 if (verbose) console.log('Downloading Windsor CLI:', downloadUrl);
                 const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
-                const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
+                const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `sudo mkdir -p "${installFolder}"`;
                 const extractCommand = isWindows 
                   ? `powershell -Command "Expand-Archive -Path ${localFileName} -DestinationPath ${installFolder} -Force"`
                   : `tar -xzf ${localFileName} -C "${installFolder}"`;
                 const chmodCommand = isWindows 
                   ? `icacls "${path.join(installFolder, windsorExecutable)}" /grant Everyone:F`
-                  : `chmod +x "${path.join(installFolder, windsorExecutable)}"`;
+                  : `sudo chmod +x "${path.join(installFolder, windsorExecutable)}"`;
                 const rmCommand = isWindows ? `del ${localFileName}` : `rm -rf ${localFileName}`;
 
                 execCommand(curlCommand);
@@ -194,9 +194,13 @@ runs:
                 if (verbose) console.log('Go version:', goVersion);
 
                 if (verbose) console.log(`Building Windsor CLI from ref: ${ref}`);
-                execCommand(`git clone https://github.com/windsorcli/cli.git ${githubWorkspace}/cli`);
-                execCommand(`cd ${githubWorkspace}/cli && git pull && git checkout ${ref}`);
-                execCommand(`cd ${githubWorkspace}/cli/cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
+                const tmpDir = path.join(os.tmpdir(), `windsor-build-${Date.now()}`);
+                if (verbose) console.log('Using temporary build directory:', tmpDir);
+                fs.mkdirSync(tmpDir, { recursive: true });
+                execCommand(`git clone https://github.com/windsorcli/cli.git ${tmpDir}`);
+                execCommand(`cd ${tmpDir} && git pull && git checkout ${ref}`);
+                execCommand(`cd ${tmpDir}/cmd/windsor && go build -o ${path.join(installFolder, windsorExecutable)}`);
+                fs.rmSync(tmpDir, { recursive: true, force: true });
               } catch (error) {
                 console.error(error.message);
                 process.exit(1);
@@ -225,7 +229,7 @@ runs:
           const os = require('os');
 
           const isWindows = os.platform() === 'win32';
-          const installFolder = path.resolve(process.env.GITHUB_WORKSPACE, 'bin');
+          const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref);
           const windsorExecutable = isWindows ? 'windsor.exe' : 'windsor';
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = '${{ inputs.context }}';
