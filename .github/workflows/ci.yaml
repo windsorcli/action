@@ -227,10 +227,11 @@ jobs:
             "TEST_SENSITIVE_INVALID"
           )
 
-          # Instead of checking for masking commands, verify the environment variables are masked
+          # Check each pattern directly
           for pattern in "${patterns[@]}"; do
-            if [ "${!pattern}" != "***" ]; then
-              echo "::error::Failed to mask secret pattern: ${pattern}"
+            value=$(eval echo \$$pattern)
+            if [ "$value" != "***" ]; then
+              echo "::error::Failed to mask secret pattern: ${pattern} (value: ${value})"
               exit 1
             fi
           done
