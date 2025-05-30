@@ -14,7 +14,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         ref: 
-          - v0.5.7 # renovate: datasource=github-releases depName=windsorcli/cli
+          - v0.6.0 # renovate: datasource=github-releases depName=windsorcli/cli
           - main
     runs-on: ${{ matrix.os }}
   
