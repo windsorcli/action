@@ -23,6 +23,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Go
+        if: ${{ !startsWith(matrix.ref, 'v') }}
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: 1.24.3 # renovate: datasource=github-releases depName=golang/go
@@ -91,7 +92,6 @@ jobs:
       - name: Change to a terraform folder
         uses: ./
         with:
-          verbose: true
           workdir: test/terraform/sample
           ref: ${{ matrix.ref }}
           context: ${{ env.WINDSOR_CONTEXT }}
@@ -231,7 +231,6 @@ jobs:
       - name: Install Windsor CLI (install-only)
         uses: ./
         with:
-          verbose: true
           ref: main
           install-only: true
 
