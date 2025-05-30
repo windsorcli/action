@@ -6,7 +6,7 @@ inputs:
   ref:
     description: 'Git reference to build Windsor CLI from source or version tag to download'
     required: false
-    default: v0.5.7  # renovate: datasource=github-releases depName=windsorcli/cli
+    default: v0.6.0  # renovate: datasource=github-releases depName=windsorcli/cli
   context:
     description: 'The context to use for Windsor CLI commands'
     required: false
