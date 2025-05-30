@@ -75,7 +75,6 @@ jobs:
               'TALOSCONFIG',
               'WINDSOR_CONTEXT',
               'WINDSOR_PROJECT_ROOT',
-              'TEST_INSENSITIVE',
             ];
 
             const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
