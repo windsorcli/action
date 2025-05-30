@@ -36,7 +36,6 @@ jobs:
       - name: Install Windsor CLI
         uses: ./
         with:
-          verbose: true
           workdir: test
           ref: ${{ matrix.ref }}
           context: ${{ env.WINDSOR_CONTEXT }}
