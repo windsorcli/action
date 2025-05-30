@@ -200,6 +200,19 @@ jobs:
 
       - name: Verify secret masking
         run: |
+          echo "=== Debug Information ==="
+          echo "GITHUB_STEP_SUMMARY contents:"
+          cat $GITHUB_STEP_SUMMARY
+          echo "=== Environment Variables ==="
+          env | grep -E "TEST_SENSITIVE|GITHUB_"
+          echo "=== Workflow Logs ==="
+          ls -la $GITHUB_WORKSPACE/.github/workflows/
+          echo "=== Current Directory ==="
+          pwd
+          echo "=== Listing Current Directory ==="
+          ls -la
+          echo "=== End Debug Information ==="
+
           # Verify each secret pattern was masked
           patterns=(
             "TEST_SENSITIVE"
@@ -212,7 +225,7 @@ jobs:
           )
 
           for pattern in "${patterns[@]}"; do
-            if ! grep -q "::add-mask::" $GITHUB_STEP_SUMMARY; then
+            if ! grep -q "::add-mask::.*${pattern}" $GITHUB_STEP_SUMMARY; then
               echo "::error::Failed to mask secret pattern: ${pattern}"
               exit 1
             fi
