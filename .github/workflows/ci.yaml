@@ -200,7 +200,7 @@ jobs:
 
       - name: Verify secret masking
         run: |
-          # Verify each secret pattern was detected and masked
+          # Verify each secret pattern was masked
           patterns=(
             "TEST_SENSITIVE"
             "TEST_SENSITIVE_ALT"
@@ -212,8 +212,8 @@ jobs:
           )
 
           for pattern in "${patterns[@]}"; do
-            if ! grep -q "Detected.*${pattern}" $GITHUB_OUTPUT; then
-              echo "::error::Failed to detect secret pattern: ${pattern}"
+            if ! grep -q "${pattern}: \*\*\*" $GITHUB_OUTPUT; then
+              echo "::error::Failed to mask secret pattern: ${pattern}"
               exit 1
             fi
           done
@@ -229,7 +229,7 @@ jobs:
             exit 1
           fi
 
-          echo "All secret patterns were properly detected and handled"
+          echo "All secret patterns were properly masked and handled"
 
   test-install-only:
     if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
