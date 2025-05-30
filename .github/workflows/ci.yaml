@@ -199,6 +199,9 @@ jobs:
           inject-secrets: true
 
       - name: Verify secret masking
+        env:
+          ACTIONS_STEP_DEBUG: true
+          ACTIONS_RUNNER_DEBUG: true
         run: |
           echo "=== Debug Information ==="
           echo "GITHUB_STEP_SUMMARY contents:"
@@ -224,20 +227,21 @@ jobs:
             "TEST_SENSITIVE_INVALID"
           )
 
+          # Instead of checking for masking commands, verify the environment variables are masked
           for pattern in "${patterns[@]}"; do
-            if ! grep -q "::add-mask::.*${pattern}" $GITHUB_OUTPUT; then
+            if [ "${!pattern}" != "***" ]; then
               echo "::error::Failed to mask secret pattern: ${pattern}"
               exit 1
             fi
           done
 
           # Verify that empty and invalid patterns are handled correctly
-          if ! grep -q "Invalid secret pattern.*TEST_SENSITIVE_EMPTY" $GITHUB_OUTPUT; then
+          if ! grep -q "Invalid secret pattern.*TEST_SENSITIVE_EMPTY" $GITHUB_STEP_SUMMARY; then
             echo "::error::Empty secret pattern was not properly handled"
             exit 1
           fi
 
-          if ! grep -q "Invalid secret pattern.*TEST_SENSITIVE_INVALID" $GITHUB_OUTPUT; then
+          if ! grep -q "Invalid secret pattern.*TEST_SENSITIVE_INVALID" $GITHUB_STEP_SUMMARY; then
             echo "::error::Invalid secret pattern was not properly handled"
             exit 1
           fi
