@@ -200,7 +200,7 @@ jobs:
 
       - name: Verify secret masking
         run: |
-          echo "Printing secret environment variables for manual masking verification:"
+          echo 'Printing secret environment variables for manual masking verification:'
           patterns=(
             "TEST_SENSITIVE"
             "TEST_SENSITIVE_ALT"
