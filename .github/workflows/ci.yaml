@@ -229,11 +229,13 @@ jobs:
 
           # Check each pattern directly
           for pattern in "${patterns[@]}"; do
+            value="${!pattern}"
             echo "Checking pattern: $pattern"
-            echo "Value: '${!pattern}'"
-            echo "Length: ${#pattern}"
-            if [ "${!pattern}" != "***" ]; then
-              echo "::error::Failed to mask secret pattern: ${pattern} (value: '${!pattern}')"
+            echo "Value: '$value'"
+            echo "Value length: ${#value}"
+            echo "Value hex: $(echo -n "$value" | xxd -p)"
+            if [ "$value" != "***" ]; then
+              echo "::error::Failed to mask secret pattern: ${pattern} (value: '$value')"
               exit 1
             fi
           done
