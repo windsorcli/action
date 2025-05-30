@@ -198,20 +198,22 @@ jobs:
           inject-secrets: true
 
       - name: Verify secret masking
-        run: |
-          echo 'Printing secret environment variables for manual masking verification:'
-          patterns=(
-            "TEST_SENSITIVE"
-            "TEST_SENSITIVE_ALT"
-            "TEST_SENSITIVE_SPACED"
-            "TEST_SENSITIVE_NESTED"
-            "TEST_SENSITIVE_MULTI"
-            "TEST_SENSITIVE_EMPTY"
-            "TEST_SENSITIVE_INVALID"
-          )
-          for pattern in "${patterns[@]}"; do
-            echo "$pattern='${!pattern}'"
-          done
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const vars = [
+              'TEST_SENSITIVE',
+              'TEST_SENSITIVE_ALT',
+              'TEST_SENSITIVE_SPACED',
+              'TEST_SENSITIVE_NESTED',
+              'TEST_SENSITIVE_MULTI',
+              'TEST_SENSITIVE_EMPTY',
+              'TEST_SENSITIVE_INVALID',
+            ];
+            console.log('Printing secret environment variables for manual masking verification:');
+            for (const v of vars) {
+              console.log(`${v}='${process.env[v]}'`);
+            }
 
   test-install-only:
     if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
