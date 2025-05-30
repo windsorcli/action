@@ -27,11 +27,6 @@ This GitHub Action installs and configures the Windsor CLI for use in GitHub Act
 - **Default**: `""` (current directory)
 - **Example**: `".windsor/.tf_modules/cluster/talos"`
 
-### `verbose`
-- **Description**: Enable verbose logging for debugging purposes
-- **Required**: No
-- **Default**: `"false"`
-
 ### `install-only`
 - **Description**: Only install the CLI without initializing context or injecting environment variables
 - **Required**: No
@@ -49,21 +44,17 @@ steps:
       workdir: .windsor/.tf_modules/cluster/talos
 ```
 
-## Security Considerations
+## Security
 
-### Verbose Mode Warning
-⚠️ **Important**: When using `verbose: true`, the action will log detailed information including:
-- Environment variables
-- Command outputs
-- File paths
-- System information
+The action automatically detects and masks secrets in your workflow:
 
-This can potentially expose sensitive information in your workflow logs. Only enable verbose mode when debugging issues and disable it in production workflows.
+1. Detects environment variables in your windsor.yaml that use the `${{ }}` syntax
+2. Uses GitHub Actions' built-in secret masking to prevent secrets from appearing in logs
+3. Only logs variable names, never their values
+4. Maintains a minimal logging footprint to reduce potential information exposure
+5. Reduces the threat surface by only using [actions/github-script](https://github.com/actions/github-script) with a pinned SHA
 
-### Secrets Protection
-- Never use verbose mode in workflows that handle sensitive data
-- Be cautious when using verbose mode with workflows that have access to secrets
-- Review workflow logs carefully when verbose mode is enabled
+NOTE: When using third party actions, you should ALWAYS reference them explicitly by their SHA. Furthermore, it's expected that you have performed your own threat modeling on systems in which this mechanism is used. See [Security hardening for GitHub Actions](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions) for more information.
 
 ## Example Workflow
 
@@ -96,7 +87,6 @@ jobs:
           version: v0.5.7
           context: local
           workdir: terraform/cluster/eks
-          # verbose: true  # Only enable for debugging
 ```
 
 ## License

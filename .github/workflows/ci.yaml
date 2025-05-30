@@ -25,12 +25,12 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version: 1.24.2
+          go-version: 1.24.3 # renovate: datasource=github-releases depName=golang/go
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
-          terraform_version: 1.11.4
+          terraform_version: 1.11.4 # renovate: datasource=github-releases depName=hashicorp/terraform
           terraform_wrapper: false
 
       - name: Install Windsor CLI
@@ -74,7 +74,8 @@ jobs:
               'OMNICONFIG',
               'TALOSCONFIG',
               'WINDSOR_CONTEXT',
-              'WINDSOR_PROJECT_ROOT'
+              'WINDSOR_PROJECT_ROOT',
+              'TEST_INSENSITIVE',
             ];
 
             const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -190,6 +191,46 @@ jobs:
               process.exit(1);
             }
 
+      - name: Test secret masking
+        uses: ./
+        with:
+          context: test
+          workdir: test
+          inject-secrets: true
+
+      - name: Verify secret masking
+        run: |
+          # Verify each secret pattern was detected and masked
+          patterns=(
+            "TEST_SENSITIVE"
+            "TEST_SENSITIVE_ALT"
+            "TEST_SENSITIVE_SPACED"
+            "TEST_SENSITIVE_NESTED"
+            "TEST_SENSITIVE_MULTI"
+            "TEST_SENSITIVE_EMPTY"
+            "TEST_SENSITIVE_INVALID"
+          )
+
+          for pattern in "${patterns[@]}"; do
+            if ! grep -q "Detected.*${pattern}" $GITHUB_OUTPUT; then
+              echo "::error::Failed to detect secret pattern: ${pattern}"
+              exit 1
+            fi
+          done
+
+          # Verify that empty and invalid patterns are handled correctly
+          if ! grep -q "Invalid secret pattern.*TEST_SENSITIVE_EMPTY" $GITHUB_OUTPUT; then
+            echo "::error::Empty secret pattern was not properly handled"
+            exit 1
+          fi
+
+          if ! grep -q "Invalid secret pattern.*TEST_SENSITIVE_INVALID" $GITHUB_OUTPUT; then
+            echo "::error::Invalid secret pattern was not properly handled"
+            exit 1
+          fi
+
+          echo "All secret patterns were properly detected and handled"
+
   test-install-only:
     if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -201,7 +242,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version: 1.24.2
+          go-version: 1.24.3 # renovate: datasource=github-releases depName=golang/go
 
       - name: Install Windsor CLI (install-only)
         uses: ./
