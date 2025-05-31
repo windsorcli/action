@@ -84,7 +84,8 @@ runs:
             }
           };
 
-          if (!fs.existsSync(path.join(installFolder, windsorExecutable))) {
+          // Always rebuild for non-semver refs
+          if (!isVersionTag || !fs.existsSync(path.join(installFolder, windsorExecutable))) {
             const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
             const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
@@ -137,9 +138,7 @@ runs:
                 const tmpDir = path.join(os.tmpdir(), `windsor-build-${Date.now()}`);
                 
                 fs.mkdirSync(tmpDir, { recursive: true });
-                execCommand(`git clone --depth 1 https://github.com/windsorcli/cli.git ${tmpDir}`);
-                execCommand(`cd ${tmpDir} && git checkout ${ref}`);
-                
+                execCommand(`git clone --depth 1 --branch ${ref} https://github.com/windsorcli/cli.git ${tmpDir}`);
                 process.chdir(tmpDir);
                 if (!fs.existsSync('go.mod')) {
                   execCommand('go mod init github.com/windsorcli/cli');
