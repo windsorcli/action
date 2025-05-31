@@ -4,16 +4,11 @@ This GitHub Action installs and configures the Windsor CLI for use in GitHub Act
 
 ## Inputs
 
-### `version`
-- **Description**: The version of Windsor CLI to install
-- **Required**: No
-- **Default**: `v0.5.7`
-
 ### `ref`
-- **Description**: Git reference to build Windsor CLI from source instead of downloading a release. Requires Go to be installed.
+- **Description**: Git reference to build Windsor CLI from source or version tag to download
 - **Required**: No
-- **Default**: `""` (empty string)
-- **Example**: `main`, `v0.5.6`, `1234abc`
+- **Default**: Latest stable release
+- **Example**: `main`, `v1.0.0`, `1234abc`
 
 ### `context`
 - **Description**: The context to use for Windsor CLI commands
@@ -32,6 +27,11 @@ This GitHub Action installs and configures the Windsor CLI for use in GitHub Act
 - **Required**: No
 - **Default**: `"false"`
 
+### `inject-secrets`
+- **Description**: Whether to inject decrypted secrets into environment variables
+- **Required**: No
+- **Default**: `"false"`
+
 ## Usage
 
 ```yaml
@@ -39,7 +39,7 @@ steps:
   - name: Install Windsor CLI
     uses: windsorcli/action@v1
     with:
-      version: v0.5.7
+      ref: v1.0.0
       context: local
       workdir: .windsor/.tf_modules/cluster/talos
 ```
@@ -84,7 +84,7 @@ jobs:
       - name: Install Windsor CLI
         uses: ./
         with:
-          version: v0.5.7
+          ref: v1.0.0
           context: local
           workdir: terraform/cluster/eks
 ```
