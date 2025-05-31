@@ -15,12 +15,12 @@ inputs:
     description: 'The working directory for Windsor CLI commands'
     required: false
     default: ""
-  verbose:
-    description: 'Enable verbose logging'
-    required: false
-    default: "false"
   install-only:
     description: 'Only install the CLI without initializing context or injecting environment variables'
+    required: false
+    default: "false"
+  inject-secrets:
+    description: 'Whether to inject decrypted secrets into environment variables'
     required: false
     default: "false"
 
@@ -34,10 +34,8 @@ runs:
       with:
         script: |
           const { execSync } = require('child_process');
-          const verbose = '${{ inputs.verbose }}' === 'true';
           try {
             const output = execSync('git --version', { encoding: 'utf-8' });
-            if (verbose) console.log('Git version:', output.trim());
           } catch (error) {
             console.error('Git is not installed. Please install Git to proceed.');
             process.exit(1);
@@ -53,9 +51,10 @@ runs:
           const os = require('os');
           
           const cleanInput = (input) => typeof input === 'string' ? input.replace(/\r?\n|\r/g, '') : input;
-          const verbose = '${{ inputs.verbose }}' === 'true';
           const ref = cleanInput('${{ inputs.ref }}');
           const isVersionTag = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/i.test(ref);
+
+          console.log(`Installing Windsor CLI ${isVersionTag ? `version ${ref}` : `from ref ${ref}`}`);
 
           const isWindows = os.platform() === 'win32';
           const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref);
@@ -63,14 +62,6 @@ runs:
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = '${{ inputs.context }}';
           let rawWorkdir = cleanInput('${{ inputs.workdir }}');
-          
-          if (verbose) {
-            console.log('Installation parameters:');
-            console.log('- Ref:', ref);
-            console.log('- Context:', input_context);
-            console.log('- Workdir:', rawWorkdir);
-            console.log('- Install folder:', installFolder);
-          }
           
           // Simple workdir handling
           let workdir;
@@ -84,19 +75,8 @@ runs:
             workdir = process.cwd();
           }
 
-          if (verbose) {
-            console.log('Workdir resolution:');
-            console.log('- Raw workdir:', rawWorkdir);
-            console.log('- Final workdir:', workdir);
-            console.log('- Exists:', fs.existsSync(workdir));
-            if (fs.existsSync(workdir)) {
-              console.log('- Is directory:', fs.statSync(workdir).isDirectory());
-            }
-          }
-
           const execCommand = (command) => {
             try {
-              if (verbose) console.log('Executing:', command);
               execSync(command, { stdio: 'inherit' });
             } catch (error) {
               console.error(`Command failed: ${command}`);
@@ -109,13 +89,12 @@ runs:
             const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
             if (isVersionTag) {
-              if (verbose) console.log(`Attempting to download Windsor CLI version: ${ref}`);
+              console.log(`Downloading Windsor CLI release for ${osType}/${arch}`);
               const numericVersion = ref.replace(/^v/, '');
               const localFileName = `windsor_${numericVersion}_${osType}_${arch}.${isWindows ? 'zip' : 'tar.gz'}`;
               const downloadUrl = `https://github.com/windsorcli/cli/releases/download/${ref}/${localFileName}`;
 
               try {
-                if (verbose) console.log('Downloading Windsor CLI:', downloadUrl);
                 const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
                 const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
                 const extractCommand = isWindows 
@@ -132,21 +111,16 @@ runs:
                 execCommand(chmodCommand);
                 execCommand(rmCommand);
 
-                const installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version${verbose ? ' --verbose' : ''}`).toString().trim();
+                const installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version`).toString().trim();
                 const installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
                 const installedVersion = installedVersionMatch ? installedVersionMatch[1] : '';
-
-                if (verbose) {
-                  console.log('Version check:');
-                  console.log('- Expected:', ref);
-                  console.log('- Installed:', installedVersion);
-                }
 
                 if (!installedVersion || installedVersion !== ref.replace(/^v/, '')) {
                   throw new Error(`Version mismatch: expected ${ref}, got ${installedVersion}`);
                 }
+                console.log(`Successfully installed Windsor CLI version ${installedVersion}`);
               } catch (error) {
-                if (verbose) console.log('Failed to download version, falling back to building from source');
+                console.log('Release download failed, falling back to building from source');
                 // Fall through to build from source
               }
             }
@@ -154,17 +128,13 @@ runs:
             // If not a version tag or download failed, check for Go and build from source
             if (!isVersionTag || !fs.existsSync(path.join(installFolder, windsorExecutable))) {
               try {
+                console.log('Building Windsor CLI from source');
                 const goPath = execSync(isWindows ? 'where go' : 'which go', { encoding: 'utf-8' }).trim();
                 const goVersion = execSync('go version', { encoding: 'utf-8' }).trim();
                 
-                if (verbose) {
-                  console.log('Go binary path:', goPath);
-                  console.log('Go version:', goVersion);
-                }
-
-                if (verbose) console.log(`Building Windsor CLI from ref: ${ref}`);
+                console.log(`Using Go ${goVersion}`);
+                
                 const tmpDir = path.join(os.tmpdir(), `windsor-build-${Date.now()}`);
-                if (verbose) console.log('Using temporary build directory:', tmpDir);
                 
                 fs.mkdirSync(tmpDir, { recursive: true });
                 execCommand(`git clone https://github.com/windsorcli/cli.git ${tmpDir}`);
@@ -181,19 +151,22 @@ runs:
                 
                 fs.mkdirSync(installFolder, { recursive: true });
                 fs.copyFileSync(tempBuildPath, path.join(installFolder, windsorExecutable));
+                console.log('Successfully built Windsor CLI from source');
               } catch (error) {
                 console.error('Build failed:', error.message);
                 process.exit(1);
               }
             }
+          } else {
+            console.log('Windsor CLI already installed');
           }
 
           fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
-          if (verbose) console.log('Added to PATH:', installFolder);
+          console.log(`Added Windsor CLI to PATH: ${installFolder}`);
 
           if (workdir && fs.existsSync(workdir)) {
             process.chdir(workdir);
-            if (verbose) console.log('Changed to workdir:', workdir);
+            console.log(`Changed working directory to: ${workdir}`);
           } else if (workdir) {
             console.error(`Workdir does not exist: ${workdir}`);
             process.exit(1);
@@ -215,13 +188,41 @@ runs:
           const githubEnv = process.env.GITHUB_ENV;
           const input_context = '${{ inputs.context }}';
           const workdir = '${{ inputs.workdir }}';
-          const verbose = '${{ inputs.verbose }}' === 'true';
+
+          // Function to detect secrets in environment variables
+          const detectSecrets = (managedVars, yamlContent) => {
+            const secrets = new Set();
+            if (!managedVars) return secrets;
+
+            const vars = managedVars.split(',').map(v => v.trim());
+            const lines = yamlContent.split('\n');
+
+            vars.forEach(varName => {
+              // Look for the variable in the YAML content
+              const varPattern = new RegExp(`\\s*${varName}\\s*:\\s*\\$\\{\\{`);
+              if (lines.some(line => varPattern.test(line))) {
+                secrets.add(varName);
+              }
+            });
+
+            return secrets;
+          };
+
+          // Function to mask secrets in GitHub Actions
+          const maskSecrets = (secrets) => {
+            secrets.forEach(secret => {
+              if (process.env[secret]) {
+                console.log(`::add-mask::${process.env[secret]}`);
+              }
+            });
+          };
 
           console.log('Environment setup:');
           console.log('- Install folder:', installFolder);
           console.log('- Context:', input_context);
           console.log('- Workdir:', workdir);
           console.log('- Current directory:', process.cwd());
+          console.log('- Secret injection:', '${{ inputs.inject-secrets }}' === 'true' ? 'enabled' : 'disabled');
 
           if (!process.env.PATH.includes(installFolder)) {
             console.error('Install folder not in PATH');
@@ -230,40 +231,26 @@ runs:
 
           if (input_context) {
             try {
-              const command = `${windsorExecutable} init ${input_context}${verbose ? ' --verbose' : ''}`;
-              if (verbose) {
-                console.log('Environment setup:');
-                console.log('- Current directory:', process.cwd());
-                console.log('- GITHUB_WORKSPACE:', process.env.GITHUB_WORKSPACE);
-                console.log('- Input context:', input_context);
-                console.log('- Running command:', command);
-              }
-              
-              try {
-                execSync(command, { stdio: 'inherit' });
-              } catch (error) {
-                throw error;
-              }
+              console.log(`Initializing context: ${input_context}`);
+              const command = `${windsorExecutable} init ${input_context}`;
+              execSync(command, { stdio: 'inherit' });
               
               const defaultContextDir = path.join(process.cwd(), 'contexts', input_context);
               if (!fs.existsSync(defaultContextDir)) {
                 throw new Error(`Context directory '${defaultContextDir}' was not created`);
               }
               
-              try {
-                const contextOutput = execSync(`${windsorExecutable} context get${verbose ? ' --verbose' : ''}`, { 
-                  encoding: 'utf-8',
-                  stdio: 'pipe'
-                }).toString().trim();
-                
-                if (contextOutput !== input_context) {
-                  throw new Error(`Context verification failed: expected '${input_context}', got '${contextOutput}'`);
-                }
-              } catch (error) {
-                console.error(error.message);
-                throw error;
+              const contextOutput = execSync(`${windsorExecutable} context get`, { 
+                encoding: 'utf-8',
+                stdio: 'pipe'
+              }).toString().trim();
+              
+              if (contextOutput !== input_context) {
+                throw new Error(`Context verification failed: expected '${input_context}', got '${contextOutput}'`);
               }
+              console.log(`Context initialized successfully: ${input_context}`);
             } catch (error) {
+              console.error(`Failed to initialize context: ${error.message}`);
               process.exit(1);
             }
           }
@@ -271,23 +258,20 @@ runs:
           if (workdir) {
             try {
               process.chdir(workdir);
-              if (verbose) console.log('Changed to workdir:', workdir);
+              console.log(`Changed to workdir: ${workdir}`);
             } catch (error) {
               console.error('Error changing to workdir');
-              if (verbose) console.error('Error details:', error.message);
               process.exit(1);
             }
           }
 
           // Run windsor env to get environment variables
           try {
-            if (verbose) console.log(`Running: ${windsorExecutable} env`);
-            const envOutput = execSync(`${windsorExecutable} env${verbose ? ' --verbose' : ''}`, { 
+            console.log('Retrieving environment variables');
+            const envOutput = execSync(`${windsorExecutable} env${'${{ inputs.inject-secrets }}' === 'true' ? ' --decrypt' : ''}`, { 
               encoding: 'utf-8',
               stdio: 'pipe'
             });
-
-            if (verbose) console.log('Raw windsor env output:', envOutput);
 
             if (!envOutput) {
               throw new Error('windsor env returned no output');
@@ -298,7 +282,18 @@ runs:
               .filter(line => line.trim())
               .filter(line => line.startsWith('export ') || line.startsWith('$env:'));
 
-            if (verbose) console.log('Processed environment lines:', envLines);
+            console.log(`Found ${envLines.length} environment variables to inject`);
+
+            // Extract WINDSOR_MANAGED_ENV from the output
+            let managedEnvVars = '';
+            envLines.forEach(line => {
+              if (line.includes('WINDSOR_MANAGED_ENV=')) {
+                const match = line.match(/WINDSOR_MANAGED_ENV=['"]([^'"]+)['"]/);
+                if (match) {
+                  managedEnvVars = match[1];
+                }
+              }
+            });
 
             // Process each environment variable
             envLines.forEach(line => {
@@ -324,19 +319,27 @@ runs:
               }
             });
 
-            // Verify the variables were set
-            const setVars = envLines.map(line => {
-              if (line.startsWith('export ')) {
-                return line.replace(/^export /, '').split('=')[0];
-              } else if (line.startsWith('$env:')) {
-                return line.match(/^\$env:([A-Za-z_][A-Za-z0-9_]*)/)[1];
+            // Check for secrets in windsor.yaml
+            const windsorYamlPath = path.join(process.cwd(), 'windsor.yaml');
+            if (fs.existsSync(windsorYamlPath) && managedEnvVars) {
+              try {
+                console.log('Scanning windsor.yaml for secrets');
+                const content = fs.readFileSync(windsorYamlPath, 'utf8');
+                const secrets = detectSecrets(managedEnvVars, content);
+                if (secrets.size > 0) {
+                  console.log(`Detected ${secrets.size} secrets in context ${input_context}:`);
+                  secrets.forEach(secret => console.log(`- ${secret}`));
+                  maskSecrets(secrets);
+                  console.log('Secrets have been masked in logs');
+                } else {
+                  console.log('No secrets detected in windsor.yaml');
+                }
+              } catch (error) {
+                console.error('Error detecting secrets:', error.message);
               }
-              return null;
-            }).filter(Boolean);
-
-            if (verbose) console.log('Set environment variables:', setVars.join(', '));
+            }
+            console.log('Environment variables injected successfully');
           } catch (error) {
-            console.error('Error running windsor env');
-            if (verbose) console.error('Error details:', error.message);
+            console.error('Error running windsor env:', error.message);
             process.exit(1);
           }
