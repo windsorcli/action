@@ -84,7 +84,8 @@ runs:
             }
           };
 
-          if (!fs.existsSync(path.join(installFolder, windsorExecutable))) {
+          // Always rebuild for non-semver refs
+          if (!isVersionTag || !fs.existsSync(path.join(installFolder, windsorExecutable))) {
             const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
             const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
