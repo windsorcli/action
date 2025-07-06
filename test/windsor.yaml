@@ -10,6 +10,9 @@ contexts:
       TEST_SENSITIVE_MULTI: ${{ op.secrets.secret1 }}/${{ op.secrets.secret2 }}
       TEST_SENSITIVE_EMPTY: ${{ }}
       TEST_SENSITIVE_INVALID: ${{ invalid.syntax }}
+    cluster:
+      enabled: true
+      provider: talos
     terraform:
       enabled: true
       backend:
