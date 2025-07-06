@@ -73,7 +73,6 @@ jobs:
             const requiredEnvVars = [
               'KUBECONFIG',
               'KUBE_CONFIG_PATH',
-              'OMNICONFIG',
               'TALOSCONFIG',
               'WINDSOR_CONTEXT',
               'WINDSOR_PROJECT_ROOT',
