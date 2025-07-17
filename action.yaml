@@ -276,46 +276,93 @@ runs:
               throw new Error('windsor env returned no output');
             }
 
-            // Only keep non-empty env var assignments
-            const envLines = envOutput.split('\n')
-              .filter(line => line.trim())
-              .filter(line => line.startsWith('export ') || line.startsWith('$env:'));
-
-            console.log(`Found ${envLines.length} environment variables to inject`);
-
-            // Extract WINDSOR_MANAGED_ENV from the output
+            // Parse environment variables, handling line continuations and wrapped lines
+            const lines = envOutput.split('\n');
+            const envVars = new Map();
+            let currentVar = null;
+            let currentValue = '';
             let managedEnvVars = '';
-            envLines.forEach(line => {
-              if (line.includes('WINDSOR_MANAGED_ENV=')) {
-                const match = line.match(/WINDSOR_MANAGED_ENV=['"]([^'"]+)['"]/);
-                if (match) {
-                  managedEnvVars = match[1];
-                }
-              }
-            });
 
-            // Process each environment variable
-            envLines.forEach(line => {
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i].trim();
+              
+              // Skip empty lines and unset commands
+              if (!line || line.startsWith('unset ')) {
+                continue;
+              }
+
+              // Handle export statements
               if (line.startsWith('export ')) {
+                // If we were building a previous variable, finish it
+                if (currentVar) {
+                  envVars.set(currentVar, currentValue.trim());
+                  currentVar = null;
+                  currentValue = '';
+                }
+
                 const assignment = line.replace(/^export /, '');
                 const eqIdx = assignment.indexOf('=');
                 if (eqIdx !== -1) {
                   const key = assignment.slice(0, eqIdx);
                   let value = assignment.slice(eqIdx + 1);
-                  // Strip quotes from all values
-                  value = value.replace(/^["']|["']$/g, '');
-                  fs.appendFileSync(githubEnv, `${key}<<EOF\n${value}\nEOF\n`);
+                  
+                  // Check if the line ends with an incomplete quote or seems wrapped
+                  const hasOpenQuote = (value.match(/"/g) || []).length % 2 === 1;
+                  
+                  if (hasOpenQuote || !value.endsWith('"')) {
+                    // This might be a multi-line value, start collecting
+                    currentVar = key;
+                    currentValue = value;
+                  } else {
+                    // Complete assignment on one line
+                    value = value.replace(/^["']|["']$/g, '');
+                    envVars.set(key, value);
+                  }
                 }
               } else if (line.startsWith('$env:')) {
+                // Windows PowerShell style (not expected in unix, but handle anyway)
                 const match = line.match(/^\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
                 if (match) {
                   const [_, key, rawValue] = match;
-                  let value = rawValue.trim();
-                  // Strip quotes from all values
-                  value = value.replace(/^["']|["']$/g, '');
-                  fs.appendFileSync(githubEnv, `${key}<<EOF\n${value}\nEOF\n`);
+                  let value = rawValue.trim().replace(/^["']|["']$/g, '');
+                  envVars.set(key, value);
+                }
+              } else if (currentVar) {
+                // Continuation of a multi-line value
+                currentValue += line;
+                
+                // Check if this completes the value (ends with quote)
+                if (line.endsWith('"')) {
+                  let finalValue = currentValue.replace(/^["']|["']$/g, '');
+                  envVars.set(currentVar, finalValue);
+                  currentVar = null;
+                  currentValue = '';
                 }
               }
+            }
+
+            // Handle any remaining variable
+            if (currentVar) {
+              let finalValue = currentValue.replace(/^["']|["']$/g, '');
+              envVars.set(currentVar, finalValue);
+            }
+
+            console.log(`Found ${envVars.size} environment variables to inject`);
+
+            // Extract managed env vars
+            if (envVars.has('WINDSOR_MANAGED_ENV')) {
+              managedEnvVars = envVars.get('WINDSOR_MANAGED_ENV');
+            }
+
+            // Add missing TALOSCONFIG if cluster is enabled
+            if (!envVars.has('TALOSCONFIG') && envVars.has('WINDSOR_PROJECT_ROOT')) {
+              const talosConfigPath = path.join(envVars.get('WINDSOR_PROJECT_ROOT'), 'contexts', input_context, '.talos', 'config');
+              envVars.set('TALOSCONFIG', talosConfigPath);
+            }
+
+            // Process each environment variable
+            envVars.forEach((value, key) => {
+              fs.appendFileSync(githubEnv, `${key}<<EOF\n${value}\nEOF\n`);
             });
 
             // Check for secrets in windsor.yaml

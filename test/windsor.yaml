@@ -12,7 +12,7 @@ contexts:
       TEST_SENSITIVE_INVALID: ${{ invalid.syntax }}
     cluster:
       enabled: true
-      provider: talos
+      driver: talos
     terraform:
       enabled: true
       backend:
