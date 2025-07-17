@@ -73,7 +73,6 @@ jobs:
             const requiredEnvVars = [
               'KUBECONFIG',
               'KUBE_CONFIG_PATH',
-              'OMNICONFIG',
               'TALOSCONFIG',
               'WINDSOR_CONTEXT',
               'WINDSOR_PROJECT_ROOT',
@@ -118,6 +117,15 @@ jobs:
             }
 
             const projectRoot = process.env.WINDSOR_PROJECT_ROOT.replace(/\\/g, '/');
+            const ref = '${{ matrix.ref }}';
+            const isMainBranch = ref === 'main';
+
+            // TF_CLI_ARGS_init differs between versions:
+            // - main branch includes -force-copy
+            // - v0.6.1 does not include -force-copy
+            const tfInitArgs = isMainBranch 
+              ? `-backend=true -force-copy -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`
+              : `-backend=true -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`;
 
             let expectedVars;
             if (process.platform === 'win32') {
@@ -125,7 +133,7 @@ jobs:
                 'TF_CLI_ARGS_apply': `"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan"`,
                 'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
                 'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-                'TF_CLI_ARGS_init': `-backend=true -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`,
+                'TF_CLI_ARGS_init': tfInitArgs,
                 'TF_CLI_ARGS_plan': `-out="${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
                 'TF_DATA_DIR': `${projectRoot}/contexts/test/.terraform/sample`,
                 'TF_VAR_context_path': `${projectRoot}/contexts/test`,
@@ -136,7 +144,7 @@ jobs:
                 'TF_CLI_ARGS_apply': `"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan"`,
                 'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
                 'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-                'TF_CLI_ARGS_init': `-backend=true -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`,
+                'TF_CLI_ARGS_init': tfInitArgs,
                 'TF_CLI_ARGS_plan': `-out="${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
                 'TF_DATA_DIR': `${projectRoot}/contexts/test/.terraform/sample`,
                 'TF_VAR_context_path': `${projectRoot}/contexts/test`,
