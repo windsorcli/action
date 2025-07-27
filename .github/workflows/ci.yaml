@@ -205,6 +205,7 @@ jobs:
         with:
           context: test
           workdir: test
+          ref: ${{ matrix.ref }}
           inject-secrets: true
 
       - name: Verify secret masking
@@ -227,7 +228,14 @@ jobs:
 
   test-install-only:
     if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        ref: 
+          # Disable until we get through the v0.7.0 release
+          # - v0.6.1 # renovate: datasource=github-releases depName=windsorcli/cli
+          - main
+    runs-on: ${{ matrix.os }}
   
     steps:
       - name: Checkout code
@@ -241,7 +249,7 @@ jobs:
       - name: Install Windsor CLI (install-only)
         uses: ./
         with:
-          ref: main
+          ref: ${{ matrix.ref }}
           install-only: true
 
       - name: Verify CLI is installed but not initialized
