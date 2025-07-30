@@ -120,7 +120,7 @@ jobs:
             const ref = '${{ matrix.ref }}';
             const isMainBranch = ref === 'main';
 
-            const tfInitArgs = `-backend=true -force-copy -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`;
+            const tfInitArgs = `-backend=true -force-copy -upgrade -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`;
 
             let expectedVars;
             if (process.platform === 'win32') {
