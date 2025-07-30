@@ -53,7 +53,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^.*\\.ya?ml$"],
+      "managerFilePatterns": [
+        "/^.*\\.ya?ml$/"
+      ],
       "matchStrings": [
         "(?<currentValue>v\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9]+)?)\\s*#\\s*renovate:\\s*datasource=(?<datasource>[^\\s]+)\\s*depName=(?<depName>[^\\s]+)"
       ],
