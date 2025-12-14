@@ -120,29 +120,42 @@ jobs:
             const ref = '${{ matrix.ref }}';
             const isMainBranch = ref === 'main';
 
-            const tfInitArgs = `-backend=true -force-copy -upgrade -backend-config="path=${projectRoot}/.windsor/contexts/test/.tfstate/sample/terraform.tfstate"`;
+            // In main branch, terraform data is under .windsor/contexts, in versioned releases it's under contexts
+            const terraformBasePath = isMainBranch 
+              ? `${projectRoot}/.windsor/contexts/test/.terraform/sample`
+              : `${projectRoot}/contexts/test/.terraform/sample`;
+            const tfstateBasePath = isMainBranch
+              ? `${projectRoot}/.windsor/contexts/test/.tfstate/sample/terraform.tfstate`
+              : `${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate`;
+            const tfvarsPath = `${projectRoot}/contexts/test/terraform/sample.tfvars`;
+            const contextPath = `${projectRoot}/contexts/test`;
+
+            const tfInitArgs = `-backend=true -force-copy -upgrade -backend-config="path=${tfstateBasePath}"`;
 
             let expectedVars;
+            const applyPlanPath = isMainBranch 
+              ? `'"${terraformBasePath}/terraform.tfplan"'`
+              : `"${terraformBasePath}/terraform.tfplan"`;
             if (process.platform === 'win32') {
               expectedVars = {
-                'TF_CLI_ARGS_apply': `"${projectRoot}/.windsor/contexts/test/.terraform/sample/terraform.tfplan"`,
-                'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-                'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_CLI_ARGS_apply': applyPlanPath,
+                'TF_CLI_ARGS_destroy': `-var-file="${tfvarsPath}"`,
+                'TF_CLI_ARGS_import': `-var-file="${tfvarsPath}"`,
                 'TF_CLI_ARGS_init': tfInitArgs,
-                'TF_CLI_ARGS_plan': `-out="${projectRoot}/.windsor/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-                'TF_DATA_DIR': `${projectRoot}/.windsor/contexts/test/.terraform/sample`,
-                'TF_VAR_context_path': `${projectRoot}/contexts/test`,
+                'TF_CLI_ARGS_plan': `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"`,
+                'TF_DATA_DIR': terraformBasePath,
+                'TF_VAR_context_path': contextPath,
                 'TF_VAR_os_type': 'windows'
               };
             } else {
               expectedVars = {
-                'TF_CLI_ARGS_apply': `"${projectRoot}/.windsor/contexts/test/.terraform/sample/terraform.tfplan"`,
-                'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-                'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_CLI_ARGS_apply': applyPlanPath,
+                'TF_CLI_ARGS_destroy': `-var-file="${tfvarsPath}"`,
+                'TF_CLI_ARGS_import': `-var-file="${tfvarsPath}"`,
                 'TF_CLI_ARGS_init': tfInitArgs,
-                'TF_CLI_ARGS_plan': `-out="${projectRoot}/.windsor/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-                'TF_DATA_DIR': `${projectRoot}/.windsor/contexts/test/.terraform/sample`,
-                'TF_VAR_context_path': `${projectRoot}/contexts/test`,
+                'TF_CLI_ARGS_plan': `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"`,
+                'TF_DATA_DIR': terraformBasePath,
+                'TF_VAR_context_path': contextPath,
                 'TF_VAR_os_type': 'unix'
               };
             }
