@@ -126,11 +126,8 @@ jobs:
             const tfvarsPath = `${projectRoot}/contexts/test/terraform/sample.tfvars`;
             const contextPath = `${projectRoot}/contexts/test`;
 
-            const tfInitArgsBase = `-backend=true -force-copy -upgrade -backend-config="path=${tfstateBasePath}"`;
-            // Main branch has single quotes around init args
-            const tfInitArgs = isMainBranch
-              ? `'${tfInitArgsBase}'`
-              : tfInitArgsBase;
+            // Init args don't have single quotes even on main because terraform needs to parse multiple flags
+            const tfInitArgs = `-backend=true -force-copy -upgrade -backend-config="path=${tfstateBasePath}"`;
 
             let expectedVars;
             // Main branch has single quotes around the double-quoted path
