@@ -120,19 +120,16 @@ jobs:
             const ref = '${{ matrix.ref }}';
             const isMainBranch = ref === 'main';
 
-            // In main branch, terraform data is under .windsor/contexts, in versioned releases it's under contexts
-            const terraformBasePath = isMainBranch 
-              ? `${projectRoot}/.windsor/contexts/test/.terraform/sample`
-              : `${projectRoot}/contexts/test/.terraform/sample`;
-            const tfstateBasePath = isMainBranch
-              ? `${projectRoot}/.windsor/contexts/test/.tfstate/sample/terraform.tfstate`
-              : `${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate`;
+            // Terraform data directories are under .windsor/contexts in v0.8.1+
+            const terraformBasePath = `${projectRoot}/.windsor/contexts/test/.terraform/sample`;
+            const tfstateBasePath = `${projectRoot}/.windsor/contexts/test/.tfstate/sample/terraform.tfstate`;
             const tfvarsPath = `${projectRoot}/contexts/test/terraform/sample.tfvars`;
             const contextPath = `${projectRoot}/contexts/test`;
 
             const tfInitArgs = `-backend=true -force-copy -upgrade -backend-config="path=${tfstateBasePath}"`;
 
             let expectedVars;
+            // Main branch has single quotes around the double-quoted path
             const applyPlanPath = isMainBranch 
               ? `'"${terraformBasePath}/terraform.tfplan"'`
               : `"${terraformBasePath}/terraform.tfplan"`;
