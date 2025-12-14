@@ -137,11 +137,15 @@ jobs:
             const destroyArgs = isMainBranch 
               ? `'-auto-approve -var-file="${tfvarsPath}"'`
               : `-var-file="${tfvarsPath}"`;
+            // Main branch has single quotes around import args
+            const importArgs = isMainBranch
+              ? `'-var-file="${tfvarsPath}"'`
+              : `-var-file="${tfvarsPath}"`;
             if (process.platform === 'win32') {
               expectedVars = {
                 'TF_CLI_ARGS_apply': applyPlanPath,
                 'TF_CLI_ARGS_destroy': destroyArgs,
-                'TF_CLI_ARGS_import': `-var-file="${tfvarsPath}"`,
+                'TF_CLI_ARGS_import': importArgs,
                 'TF_CLI_ARGS_init': tfInitArgs,
                 'TF_CLI_ARGS_plan': `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"`,
                 'TF_DATA_DIR': terraformBasePath,
@@ -152,7 +156,7 @@ jobs:
               expectedVars = {
                 'TF_CLI_ARGS_apply': applyPlanPath,
                 'TF_CLI_ARGS_destroy': destroyArgs,
-                'TF_CLI_ARGS_import': `-var-file="${tfvarsPath}"`,
+                'TF_CLI_ARGS_import': importArgs,
                 'TF_CLI_ARGS_init': tfInitArgs,
                 'TF_CLI_ARGS_plan': `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"`,
                 'TF_DATA_DIR': terraformBasePath,
