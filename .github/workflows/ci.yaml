@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         ref: 
-          - v0.7.1 # renovate: datasource=github-releases depName=windsorcli/cli
+          - v0.8.1 # renovate: datasource=github-releases depName=windsorcli/cli
           - main
     runs-on: ${{ matrix.os }}
   
@@ -44,7 +44,7 @@ jobs:
           context: ${{ env.WINDSOR_CONTEXT }}
 
       - name: Verify Windsor Context
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const { execSync } = require('child_process');
@@ -67,7 +67,7 @@ jobs:
             }
 
       - name: Assert base environment variables are injected
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const requiredEnvVars = [
@@ -97,7 +97,7 @@ jobs:
           context: ${{ env.WINDSOR_CONTEXT }}
 
       - name: Assert TF_ environment variables are injected
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const requiredTfVars = [
@@ -120,29 +120,40 @@ jobs:
             const ref = '${{ matrix.ref }}';
             const isMainBranch = ref === 'main';
 
-            const tfInitArgs = `-backend=true -force-copy -upgrade -backend-config="path=${projectRoot}/contexts/test/.tfstate/sample/terraform.tfstate"`;
+            // Terraform data directories are under .windsor/contexts in v0.8.1+
+            const terraformBasePath = `${projectRoot}/.windsor/contexts/test/.terraform/sample`;
+            const tfstateBasePath = `${projectRoot}/.windsor/contexts/test/.tfstate/sample/terraform.tfstate`;
+            const tfvarsPath = `${projectRoot}/contexts/test/terraform/sample.tfvars`;
+            const contextPath = `${projectRoot}/contexts/test`;
+
+            // Action strips single quotes from values, so all values are the same regardless of branch
+            const tfInitArgs = `-backend=true -force-copy -upgrade -backend-config="path=${tfstateBasePath}"`;
+            const applyPlanPath = `"${terraformBasePath}/terraform.tfplan"`;
+            const destroyArgs = `-var-file="${tfvarsPath}"`;
+            const importArgs = `-var-file="${tfvarsPath}"`;
+            const planArgs = `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"`;
 
             let expectedVars;
             if (process.platform === 'win32') {
               expectedVars = {
-                'TF_CLI_ARGS_apply': `"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan"`,
-                'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-                'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_CLI_ARGS_apply': applyPlanPath,
+                'TF_CLI_ARGS_destroy': destroyArgs,
+                'TF_CLI_ARGS_import': importArgs,
                 'TF_CLI_ARGS_init': tfInitArgs,
-                'TF_CLI_ARGS_plan': `-out="${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-                'TF_DATA_DIR': `${projectRoot}/contexts/test/.terraform/sample`,
-                'TF_VAR_context_path': `${projectRoot}/contexts/test`,
+                'TF_CLI_ARGS_plan': planArgs,
+                'TF_DATA_DIR': terraformBasePath,
+                'TF_VAR_context_path': contextPath,
                 'TF_VAR_os_type': 'windows'
               };
             } else {
               expectedVars = {
-                'TF_CLI_ARGS_apply': `"${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan"`,
-                'TF_CLI_ARGS_destroy': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-                'TF_CLI_ARGS_import': `-var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
+                'TF_CLI_ARGS_apply': applyPlanPath,
+                'TF_CLI_ARGS_destroy': destroyArgs,
+                'TF_CLI_ARGS_import': importArgs,
                 'TF_CLI_ARGS_init': tfInitArgs,
-                'TF_CLI_ARGS_plan': `-out="${projectRoot}/contexts/test/.terraform/sample/terraform.tfplan" -var-file="${projectRoot}/contexts/test/terraform/sample.tfvars"`,
-                'TF_DATA_DIR': `${projectRoot}/contexts/test/.terraform/sample`,
-                'TF_VAR_context_path': `${projectRoot}/contexts/test`,
+                'TF_CLI_ARGS_plan': planArgs,
+                'TF_DATA_DIR': terraformBasePath,
+                'TF_VAR_context_path': contextPath,
                 'TF_VAR_os_type': 'unix'
               };
             }
@@ -162,7 +173,7 @@ jobs:
             });
 
       - name: Assert Terraform workflow creates expected output
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const { execSync } = require('child_process');
@@ -203,7 +214,7 @@ jobs:
           inject-secrets: true
 
       - name: Verify secret masking
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const vars = [
@@ -226,7 +237,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         ref: 
-          - v0.7.1 # renovate: datasource=github-releases depName=windsorcli/cli
+          - v0.8.1 # renovate: datasource=github-releases depName=windsorcli/cli
           - main
     runs-on: ${{ matrix.os }}
   
@@ -246,7 +257,7 @@ jobs:
           install-only: true
 
       - name: Verify CLI is installed but not initialized
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
             const { execSync } = require('child_process');
