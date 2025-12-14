@@ -133,10 +133,14 @@ jobs:
             const applyPlanPath = isMainBranch 
               ? `'"${terraformBasePath}/terraform.tfplan"'`
               : `"${terraformBasePath}/terraform.tfplan"`;
+            // Main branch includes -auto-approve in destroy command
+            const destroyArgs = isMainBranch 
+              ? `-auto-approve -var-file="${tfvarsPath}"`
+              : `-var-file="${tfvarsPath}"`;
             if (process.platform === 'win32') {
               expectedVars = {
                 'TF_CLI_ARGS_apply': applyPlanPath,
-                'TF_CLI_ARGS_destroy': `-auto-approve -var-file="${tfvarsPath}"`,
+                'TF_CLI_ARGS_destroy': destroyArgs,
                 'TF_CLI_ARGS_import': `-var-file="${tfvarsPath}"`,
                 'TF_CLI_ARGS_init': tfInitArgs,
                 'TF_CLI_ARGS_plan': `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"`,
@@ -147,7 +151,7 @@ jobs:
             } else {
               expectedVars = {
                 'TF_CLI_ARGS_apply': applyPlanPath,
-                'TF_CLI_ARGS_destroy': `-auto-approve -var-file="${tfvarsPath}"`,
+                'TF_CLI_ARGS_destroy': destroyArgs,
                 'TF_CLI_ARGS_import': `-var-file="${tfvarsPath}"`,
                 'TF_CLI_ARGS_init': tfInitArgs,
                 'TF_CLI_ARGS_plan': `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"`,
