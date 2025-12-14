@@ -137,9 +137,9 @@ jobs:
             const applyPlanPath = isMainBranch 
               ? `'"${terraformBasePath}/terraform.tfplan"'`
               : `"${terraformBasePath}/terraform.tfplan"`;
-            // Main branch includes -auto-approve in destroy command and has single quotes around it
+            // Main branch has single quotes around destroy args
             const destroyArgs = isMainBranch 
-              ? `'-auto-approve -var-file="${tfvarsPath}"'`
+              ? `'-var-file="${tfvarsPath}"'`
               : `-var-file="${tfvarsPath}"`;
             // Main branch has single quotes around import args
             const importArgs = isMainBranch
