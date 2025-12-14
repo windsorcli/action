@@ -293,7 +293,13 @@ runs:
               const eqIdx = line.indexOf('=');
               if (eqIdx !== -1) {
                 const key = line.slice(0, eqIdx);
-                const value = line.slice(eqIdx + 1);
+                let value = line.slice(eqIdx + 1);
+                
+                // Strip outer single quotes if present (shell escaping from windsor env)
+                // Only strip if value starts and ends with single quotes
+                if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
+                  value = value.slice(1, -1);
+                }
                 
                 // Basic validation for environment variable names
                 if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
