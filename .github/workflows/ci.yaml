@@ -133,9 +133,9 @@ jobs:
             const applyPlanPath = isMainBranch 
               ? `'"${terraformBasePath}/terraform.tfplan"'`
               : `"${terraformBasePath}/terraform.tfplan"`;
-            // Main branch includes -auto-approve in destroy command
+            // Main branch includes -auto-approve in destroy command and has single quotes around it
             const destroyArgs = isMainBranch 
-              ? `-auto-approve -var-file="${tfvarsPath}"`
+              ? `'-auto-approve -var-file="${tfvarsPath}"'`
               : `-var-file="${tfvarsPath}"`;
             if (process.platform === 'win32') {
               expectedVars = {
