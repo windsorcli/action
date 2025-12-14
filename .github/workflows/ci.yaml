@@ -126,29 +126,14 @@ jobs:
             const tfvarsPath = `${projectRoot}/contexts/test/terraform/sample.tfvars`;
             const contextPath = `${projectRoot}/contexts/test`;
 
-            // Main branch has single quotes around init args (even though it breaks terraform parsing)
-            const tfInitArgsBase = `-backend=true -force-copy -upgrade -backend-config="path=${tfstateBasePath}"`;
-            const tfInitArgs = isMainBranch
-              ? `'${tfInitArgsBase}'`
-              : tfInitArgsBase;
+            // Action strips single quotes from values, so all values are the same regardless of branch
+            const tfInitArgs = `-backend=true -force-copy -upgrade -backend-config="path=${tfstateBasePath}"`;
+            const applyPlanPath = `"${terraformBasePath}/terraform.tfplan"`;
+            const destroyArgs = `-var-file="${tfvarsPath}"`;
+            const importArgs = `-var-file="${tfvarsPath}"`;
+            const planArgs = `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"`;
 
             let expectedVars;
-            // Main branch has single quotes around the double-quoted path
-            const applyPlanPath = isMainBranch 
-              ? `'"${terraformBasePath}/terraform.tfplan"'`
-              : `"${terraformBasePath}/terraform.tfplan"`;
-            // Main branch has single quotes around destroy args
-            const destroyArgs = isMainBranch 
-              ? `'-var-file="${tfvarsPath}"'`
-              : `-var-file="${tfvarsPath}"`;
-            // Main branch has single quotes around import args
-            const importArgs = isMainBranch
-              ? `'-var-file="${tfvarsPath}"'`
-              : `-var-file="${tfvarsPath}"`;
-            // Main branch has single quotes around plan args
-            const planArgs = isMainBranch
-              ? `'-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"'`
-              : `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"`;
             if (process.platform === 'win32') {
               expectedVars = {
                 'TF_CLI_ARGS_apply': applyPlanPath,
