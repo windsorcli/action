@@ -54,10 +54,18 @@ runs:
           
           // Only validate if ref is a semver version tag
           if (isVersionTag) {
-            const versionStr = ref.replace(/^v/, '');
+            // Remove case-insensitive 'v' or 'V' prefix
+            let versionStr = ref.replace(/^v/i, '');
+            // Strip prerelease and build metadata (everything after '-' or '+')
+            versionStr = versionStr.split(/[-+]/)[0];
             const versionParts = versionStr.split('.').map(Number);
             
             if (versionParts.length < 3) {
+              throw new Error(`Invalid version format: ${ref}`);
+            }
+            
+            // Check for NaN values (invalid version parts)
+            if (versionParts.some(isNaN)) {
               throw new Error(`Invalid version format: ${ref}`);
             }
             
