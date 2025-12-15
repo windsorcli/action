@@ -1,4 +1,3 @@
-# windsorcli.yaml
 name: 'Windsor CLI Action'
 description: 'Installs and configures the Windsor CLI for use in GitHub Actions'
 
@@ -39,6 +38,41 @@ runs:
           } catch (error) {
             console.error('Git is not installed. Please install Git to proceed.');
             process.exit(1);
+          }
+
+    - name: Validate Windsor CLI version requirement
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      with:
+        script: |
+          // Minimum required Windsor CLI version
+          const MINIMUM_VERSION = { major: 0, minor: 7, patch: 0 };
+          const MINIMUM_VERSION_STRING = `${MINIMUM_VERSION.major}.${MINIMUM_VERSION.minor}.${MINIMUM_VERSION.patch}`;
+          
+          const cleanInput = (input) => typeof input === 'string' ? input.replace(/\r?\n|\r/g, '') : input;
+          const ref = cleanInput('${{ inputs.ref }}');
+          const isVersionTag = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/i.test(ref);
+          
+          // Only validate if ref is a semver version tag
+          if (isVersionTag) {
+            const versionStr = ref.replace(/^v/, '');
+            const versionParts = versionStr.split('.').map(Number);
+            
+            if (versionParts.length < 3) {
+              throw new Error(`Invalid version format: ${ref}`);
+            }
+            
+            const [major, minor, patch] = versionParts;
+            
+            // Compare versions
+            if (major < MINIMUM_VERSION.major ||
+                (major === MINIMUM_VERSION.major && minor < MINIMUM_VERSION.minor) ||
+                (major === MINIMUM_VERSION.major && minor === MINIMUM_VERSION.minor && patch < MINIMUM_VERSION.patch)) {
+              throw new Error(`Windsor CLI version ${ref} is less than the minimum required version ${MINIMUM_VERSION_STRING}. Please use version ${MINIMUM_VERSION_STRING} or higher.`);
+            }
+            
+            console.log(`Version check passed: ${ref} >= ${MINIMUM_VERSION_STRING}`);
+          } else {
+            console.log(`Skipping version check for non-semver ref: ${ref}`);
           }
 
     - name: Install Windsor CLI
