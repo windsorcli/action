@@ -126,12 +126,18 @@ jobs:
             const tfvarsPath = `${projectRoot}/contexts/test/terraform/sample.tfvars`;
             const contextPath = `${projectRoot}/contexts/test`;
 
-            // Action strips single quotes from values, so all values are the same regardless of branch
-            const tfInitArgs = `-backend=true -force-copy -upgrade -backend-config="path=${tfstateBasePath}"`;
-            const applyPlanPath = `"${terraformBasePath}/terraform.tfplan"`;
-            const destroyArgs = `-var-file="${tfvarsPath}"`;
-            const importArgs = `-var-file="${tfvarsPath}"`;
-            const planArgs = `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"`;
+            // v0.9.0+ appends `-lock-timeout=5m` to every TF_CLI_ARGS_* and drops
+            // `-force-copy -upgrade` from init. v0.8.1 has neither change.
+            const lockTimeout = isMainBranch ? ' -lock-timeout=5m' : '';
+            const tfInitArgs = isMainBranch
+              ? `-backend=true -backend-config="path=${tfstateBasePath}"${lockTimeout}`
+              : `-backend=true -force-copy -upgrade -backend-config="path=${tfstateBasePath}"`;
+            const applyPlanPath = isMainBranch
+              ? `-lock-timeout=5m "${terraformBasePath}/terraform.tfplan"`
+              : `"${terraformBasePath}/terraform.tfplan"`;
+            const destroyArgs = `-var-file="${tfvarsPath}"${lockTimeout}`;
+            const importArgs = `-var-file="${tfvarsPath}"${lockTimeout}`;
+            const planArgs = `-out="${terraformBasePath}/terraform.tfplan" -var-file="${tfvarsPath}"${lockTimeout}`;
 
             let expectedVars;
             if (process.platform === 'win32') {
