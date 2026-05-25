@@ -281,7 +281,7 @@ runs:
                 throw new Error(`Context directory '${defaultContextDir}' was not created`);
               }
               
-              const contextOutput = execSync(`${windsorExecutable} context get`, { 
+              const contextOutput = execSync(`${windsorExecutable} get-context`, {
                 encoding: 'utf-8',
                 stdio: 'pipe'
               }).toString().trim();
