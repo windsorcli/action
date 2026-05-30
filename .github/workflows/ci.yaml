@@ -44,7 +44,7 @@ jobs:
           context: ${{ env.WINDSOR_CONTEXT }}
 
       - name: Verify Windsor Context
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const { execSync } = require('child_process');
@@ -67,7 +67,7 @@ jobs:
             }
 
       - name: Assert base environment variables are injected
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const requiredEnvVars = [
@@ -97,7 +97,7 @@ jobs:
           context: ${{ env.WINDSOR_CONTEXT }}
 
       - name: Assert TF_ environment variables are injected
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const requiredTfVars = [
@@ -179,7 +179,7 @@ jobs:
             });
 
       - name: Assert Terraform workflow creates expected output
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const { execSync } = require('child_process');
@@ -220,7 +220,7 @@ jobs:
           inject-secrets: true
 
       - name: Verify secret masking
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const vars = [
@@ -263,7 +263,7 @@ jobs:
           install-only: true
 
       - name: Verify CLI is installed but not initialized
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const { execSync } = require('child_process');

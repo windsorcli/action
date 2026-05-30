@@ -29,7 +29,7 @@ runs:
 
     - name: Check if Git is installed
       id: check-git
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
       with:
         script: |
           const { execSync } = require('child_process');
@@ -41,7 +41,7 @@ runs:
           }
 
     - name: Validate Windsor CLI version requirement
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
       with:
         script: |
           // Minimum required Windsor CLI version
@@ -84,7 +84,7 @@ runs:
           }
 
     - name: Install Windsor CLI
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
       with:
         script: |
           const { execSync } = require('child_process');
@@ -214,7 +214,7 @@ runs:
           }
 
     - name: Set Windsor CLI environment variables
-      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
       if: ${{ inputs.install-only != 'true' }}
       with:
         script: |
