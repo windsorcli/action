@@ -119,8 +119,21 @@ jobs:
 
             const projectRoot = process.env.WINDSOR_PROJECT_ROOT.replace(/\\/g, '/');
             const ref = '${{ matrix.ref }}';
-            // nightly tracks main, so both build the same post-v0.9.0 CLI behavior.
-            const isMainBranch = ref === 'main' || ref === 'nightly';
+
+            // Compares a `vX.Y.Z` tag against a minimum version. Returns false for
+            // main, nightly, and other non-semver refs; callers check those separately.
+            const isAtLeastVersion = (candidate, minimum) => {
+              const parse = (v) => v.replace(/^v/i, '').split('.').map(Number);
+              const [cMajor, cMinor, cPatch] = parse(candidate);
+              const [mMajor, mMinor, mPatch] = parse(minimum);
+              if (Number.isNaN(cMajor)) return false;
+              if (cMajor !== mMajor) return cMajor > mMajor;
+              if (cMinor !== mMinor) return cMinor > mMinor;
+              return cPatch >= mPatch;
+            };
+            // main and nightly always track the latest CLI behavior. v0.9.0+
+            // release tags carry the same behavior going forward.
+            const isPostV090 = ref === 'main' || ref === 'nightly' || isAtLeastVersion(ref, 'v0.9.0');
 
             // Terraform data directories are under .windsor/contexts in v0.8.1+
             const terraformBasePath = `${projectRoot}/.windsor/contexts/test/.terraform/sample`;
@@ -129,12 +142,12 @@ jobs:
             const contextPath = `${projectRoot}/contexts/test`;
 
             // v0.9.0+ appends `-lock-timeout=5m` to every TF_CLI_ARGS_* and drops
-            // `-force-copy -upgrade` from init. v0.8.1 has neither change.
-            const lockTimeout = isMainBranch ? ' -lock-timeout=5m' : '';
-            const tfInitArgs = isMainBranch
+            // `-force-copy -upgrade` from init. Earlier versions have neither change.
+            const lockTimeout = isPostV090 ? ' -lock-timeout=5m' : '';
+            const tfInitArgs = isPostV090
               ? `-backend=true -backend-config="path=${tfstateBasePath}"${lockTimeout}`
               : `-backend=true -force-copy -upgrade -backend-config="path=${tfstateBasePath}"`;
-            const applyPlanPath = isMainBranch
+            const applyPlanPath = isPostV090
               ? `-lock-timeout=5m "${terraformBasePath}/terraform.tfplan"`
               : `"${terraformBasePath}/terraform.tfplan"`;
             const destroyArgs = `-var-file="${tfvarsPath}"${lockTimeout}`;
