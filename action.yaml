@@ -95,8 +95,13 @@ runs:
           const cleanInput = (input) => typeof input === 'string' ? input.replace(/\r?\n|\r/g, '') : input;
           const ref = cleanInput('${{ inputs.ref }}');
           const isVersionTag = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/i.test(ref);
+          // windsorcli/cli publishes a real GitHub Release tagged `nightly`, rebuilt on
+          // every push to main. Download it the same way as a version tag instead of
+          // compiling from source.
+          const isNightly = ref === 'nightly';
+          const canDownloadRelease = isVersionTag || isNightly;
 
-          console.log(`Installing Windsor CLI ${isVersionTag ? `version ${ref}` : `from ref ${ref}`}`);
+          console.log(`Installing Windsor CLI ${isVersionTag ? `version ${ref}` : canDownloadRelease ? `release ${ref}` : `from ref ${ref}`}`);
 
           const isWindows = os.platform() === 'win32';
           const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'windsor', ref);
@@ -126,12 +131,14 @@ runs:
             }
           };
 
-          // Always rebuild for non-semver refs
+          // Version tags are immutable, so a cached install is reused as-is.
+          // Nightly is a moving target rebuilt on every push to main, so it is
+          // always redownloaded.
           if (!isVersionTag || !fs.existsSync(path.join(installFolder, windsorExecutable))) {
             const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
             const osType = isWindows ? 'windows' : process.platform === 'darwin' ? 'darwin' : 'linux';
 
-            if (isVersionTag) {
+            if (canDownloadRelease) {
               console.log(`Downloading Windsor CLI release for ${osType}/${arch}`);
               const numericVersion = ref.replace(/^v/, '');
               const localFileName = `windsor_${numericVersion}_${osType}_${arch}.${isWindows ? 'zip' : 'tar.gz'}`;
@@ -140,10 +147,10 @@ runs:
               try {
                 const curlCommand = `curl -L -o ${localFileName} ${downloadUrl}`;
                 const mkdirCommand = isWindows ? `if not exist "${installFolder}" mkdir "${installFolder}"` : `mkdir -p "${installFolder}"`;
-                const extractCommand = isWindows 
+                const extractCommand = isWindows
                   ? `powershell -Command "Expand-Archive -Path ${localFileName} -DestinationPath ${installFolder} -Force"`
                   : `tar -xzf ${localFileName} -C "${installFolder}"`;
-                const chmodCommand = isWindows 
+                const chmodCommand = isWindows
                   ? `icacls "${path.join(installFolder, windsorExecutable)}" /grant Everyone:F`
                   : `chmod +x "${path.join(installFolder, windsorExecutable)}"`;
                 const rmCommand = isWindows ? `del ${localFileName}` : `rm -rf ${localFileName}`;
@@ -154,22 +161,28 @@ runs:
                 execCommand(chmodCommand);
                 execCommand(rmCommand);
 
-                const installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version`).toString().trim();
-                const installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
-                const installedVersion = installedVersionMatch ? installedVersionMatch[1] : '';
+                // Nightly builds report their own snapshot version string, not
+                // the literal ref, so only version tags check for an exact match.
+                if (isVersionTag) {
+                  const installedVersionOutput = execSync(`${path.join(installFolder, windsorExecutable)} version`).toString().trim();
+                  const installedVersionMatch = installedVersionOutput.match(/^Version:\s*(\S+)/);
+                  const installedVersion = installedVersionMatch ? installedVersionMatch[1] : '';
 
-                if (!installedVersion || installedVersion !== ref.replace(/^v/, '')) {
-                  throw new Error(`Version mismatch: expected ${ref}, got ${installedVersion}`);
+                  if (!installedVersion || installedVersion !== ref.replace(/^v/, '')) {
+                    throw new Error(`Version mismatch: expected ${ref}, got ${installedVersion}`);
+                  }
+                  console.log(`Successfully installed Windsor CLI version ${installedVersion}`);
+                } else {
+                  console.log(`Successfully installed Windsor CLI from release ${ref}`);
                 }
-                console.log(`Successfully installed Windsor CLI version ${installedVersion}`);
               } catch (error) {
                 console.log('Release download failed, falling back to building from source');
                 // Fall through to build from source
               }
             }
 
-            // If not a version tag or download failed, check for Go and build from source
-            if (!isVersionTag || !fs.existsSync(path.join(installFolder, windsorExecutable))) {
+            // If no release is available or the download failed, check for Go and build from source
+            if (!canDownloadRelease || !fs.existsSync(path.join(installFolder, windsorExecutable))) {
               try {
                 console.log('Building Windsor CLI from source');
                 const goPath = execSync(isWindows ? 'where go' : 'which go', { encoding: 'utf-8' }).trim();

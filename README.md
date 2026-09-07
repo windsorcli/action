@@ -5,10 +5,10 @@ This GitHub Action installs and configures the Windsor CLI for use in GitHub Act
 ## Inputs
 
 ### `ref`
-- **Description**: Git reference to build Windsor CLI from source or version tag to download
+- **Description**: Git reference to build Windsor CLI from source, or a release tag to download. `nightly` downloads the latest build from `main`.
 - **Required**: No
 - **Default**: Latest stable release
-- **Example**: `main`, `v1.0.0`, `1234abc`
+- **Example**: `main`, `v1.0.0`, `nightly`, `1234abc`
 
 ### `context`
 - **Description**: The context to use for Windsor CLI commands
