@@ -46,7 +46,7 @@ steps:
 
 ## Sub-actions
 
-Once the CLI is installed (the root action above, or `install-only: true` if you don't need context init / env injection), a set of sub-actions wrap common windsor commands so a workflow doesn't need to hand-write `run: windsor ...` steps. Each one:
+Install the CLI first, either with the root action above or `install-only: true` if you don't need context init or env injection. After that, these sub-actions wrap common windsor commands, so a workflow doesn't need to hand-write `run: windsor ...` steps. Each one:
 
 - Expects `windsor` already on PATH — it doesn't install the CLI itself, and fails fast with an actionable message if it can't find one.
 - Takes an optional `workdir` input, resolved the same way as the root action's.
@@ -74,7 +74,7 @@ Wraps `windsor up`.
 
 ### `windsorcli/action/apply`
 
-Wraps `windsor apply`. `terraform-component` and `kustomize-name` scope to a single layer, matching `windsor apply terraform <component>` / `windsor apply kustomize <name>` — they're mutually exclusive, and `wait`/`prune` aren't valid once scoped to `terraform-component` (that subcommand has neither flag).
+Wraps `windsor apply`. `terraform-component` and `kustomize-name` each scope to one layer (matching `windsor apply terraform <component>` and `windsor apply kustomize <name>`) and can't be combined. Neither accepts `wait` or `prune` — `apply terraform` has no such flags.
 
 | Input | Description |
 | --- | --- |
@@ -92,7 +92,7 @@ Wraps `windsor apply`. `terraform-component` and `kustomize-name` scope to a sin
 
 ### `windsorcli/action/destroy`
 
-Wraps `windsor destroy`. `confirm` is required — `windsor destroy` always asks for confirmation, and there's no TTY in CI to answer it, so this is the non-interactive equivalent of typing the expected token at the prompt.
+Wraps `windsor destroy`. `confirm` is required: `windsor destroy` always asks for confirmation, and CI has no TTY to answer it. Passing `confirm` is the non-interactive equivalent of typing the expected token at the prompt.
 
 | Input | Description |
 | --- | --- |
@@ -109,7 +109,7 @@ Wraps `windsor destroy`. `confirm` is required — `windsor destroy` always asks
 
 ### `windsorcli/action/bootstrap`
 
-Wraps `windsor bootstrap`. `yes` is required for the same reason `destroy`'s `confirm` is: `windsor bootstrap` prompts for confirmation with no way to detect a non-interactive caller on its own.
+Wraps `windsor bootstrap`. `yes` is required for the same reason `destroy`'s `confirm` is: `windsor bootstrap` prompts for confirmation and can't tell a non-interactive caller from an interactive one.
 
 | Input | Description |
 | --- | --- |
@@ -138,9 +138,9 @@ Wraps `windsor check` — verifies required tools and cloud credentials. Takes o
 
 ### `windsorcli/action/plan-comment`
 
-Runs `windsor plan --summary --no-color` and posts the result as a sticky PR comment — updating the same comment on later pushes rather than piling up a new one each time. The comment is matched by a hidden marker keyed on the windsor context name, so a matrix of contexts posting to the same PR each get their own comment instead of overwriting one another.
+Runs `windsor plan --summary --no-color` and posts the result as a sticky PR comment. Later pushes update that same comment instead of piling up new ones. The comment is matched by a hidden marker keyed on the windsor context name, so a matrix of contexts each get their own comment on the same PR instead of overwriting each other.
 
-Requires `permissions: pull-requests: write` on the calling job. Defaults to the triggering PR (`github.event.pull_request.number`), so it's meant for a `pull_request`-triggered workflow; pass `pr-number` to use it elsewhere. A failed `windsor plan` still gets posted (with the real error, so reviewers can see what happened) — the step then fails afterwards so the job goes red.
+Requires `permissions: pull-requests: write` on the calling job. It defaults to the triggering PR (`github.event.pull_request.number`), so it's meant for a `pull_request`-triggered workflow — pass `pr-number` to use it elsewhere. A failed `windsor plan` still gets posted, real error included, so reviewers can see what happened. The step then fails, so the job still goes red.
 
 | Input | Description |
 | --- | --- |
@@ -155,6 +155,61 @@ permissions:
 steps:
   - uses: windsorcli/action/plan-comment@v1
 ```
+
+## Recipes
+
+These patterns aren't worth a dedicated sub-action — copy the snippet into your own workflow instead.
+
+### Collecting a support bundle on failure
+
+`windsor exec` runs any command with the project's environment already injected, so a diagnostics tool like [troubleshoot](https://troubleshoot.sh)'s `support-bundle` works with no extra setup:
+
+```yaml
+- name: Install support-bundle CLI
+  if: failure() || cancelled()
+  run: |
+    curl -fsSL -o support-bundle.tar.gz \
+      https://github.com/replicatedhq/troubleshoot/releases/download/v0.134.0/support-bundle_linux_amd64.tar.gz
+    tar -xzf support-bundle.tar.gz support-bundle
+    sudo install -m 0755 support-bundle /usr/local/bin/
+
+- name: Collect support bundle
+  if: failure() || cancelled()
+  run: windsor exec -- support-bundle --interactive=false --output=bundle .github/support-bundle.yaml
+
+- name: Upload support bundle
+  if: failure() || cancelled()
+  uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  with:
+    name: support-bundle
+    path: bundle.tar.gz
+    if-no-files-found: warn
+```
+
+Adjust the download URL for your runner's OS/arch and pin whichever `support-bundle` version you want — [releases here](https://github.com/replicatedhq/troubleshoot/releases).
+
+### Caching Terraform providers across runs
+
+windsor never sets `TF_PLUGIN_CACHE_DIR` itself — it passes through whatever the environment already has to every `terraform` it runs. Set it yourself and cache the directory:
+
+```yaml
+- name: Set up Terraform provider cache
+  run: |
+    mkdir -p "$RUNNER_TEMP/tf-plugin-cache"
+    echo "TF_PLUGIN_CACHE_DIR=$RUNNER_TEMP/tf-plugin-cache" >> "$GITHUB_ENV"
+
+- uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+  with:
+    path: ${{ runner.temp }}/tf-plugin-cache
+    key: ${{ runner.os }}-tf-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
+    restore-keys: |
+      ${{ runner.os }}-tf-providers-
+
+- uses: windsorcli/action@v1
+  # ... your windsor apply / up / etc. steps
+```
+
+If you don't commit `.terraform.lock.hcl` files, `hashFiles` resolves to an empty string and every run shares one cache keyed just by OS — still correct (Terraform verifies each provider's checksum before using it), just less precisely scoped than a lockfile-keyed cache.
 
 ## Security
 
