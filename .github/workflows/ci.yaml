@@ -319,3 +319,245 @@ jobs:
               console.error('Error:', error.message);
               process.exit(1);
             }
+
+  test-sub-actions:
+    # Exercises the lifecycle sub-actions (up/apply/destroy/bootstrap/check) against a
+    # stub `windsor` binary instead of the real CLI: these actions only build an argument
+    # list and hand it to `windsor`, so a stub that records its invocation is enough to
+    # verify the argument construction and validation logic without cloud/cluster infra.
+    if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Shellcheck scripts/lib.sh
+        # Runs once rather than per OS — it's a static lint of one file, not
+        # platform-dependent behavior. ubuntu-latest ships shellcheck preinstalled.
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: shellcheck scripts/lib.sh
+
+      - name: windsor check (no CLI on PATH)
+        id: check-no-cli
+        uses: ./check
+        continue-on-error: true
+
+      - name: Assert check-no-cli failed
+        shell: bash
+        run: |
+          if [ "${{ steps.check-no-cli.outcome }}" != "failure" ]; then
+            echo "::error::expected windsor check to fail with no windsor CLI on PATH, got outcome '${{ steps.check-no-cli.outcome }}'"
+            exit 1
+          fi
+
+      - name: Install stub windsor CLI
+        shell: bash
+        run: |
+          stub_dir="$RUNNER_TEMP/windsor-stub"
+          mkdir -p "$stub_dir"
+          stub_log="$RUNNER_TEMP/windsor-calls.log"
+          : > "$stub_log"
+          # Built with individual `echo` lines rather than a heredoc so the file's
+          # content isn't at the mercy of this step's own YAML indentation (a
+          # heredoc would bake that indentation into the shebang line and break it).
+          stub="$stub_dir/windsor"
+          {
+            echo '#!/usr/bin/env bash'
+            echo '# Records every invocation (other than `get context`, an implementation'
+            echo '# detail of emit_context_output) so tests can assert on the exact'
+            echo '# argument list a sub-action built, without a real windsor CLI.'
+            echo 'if [ "$1" = "get" ] && [ "$2" = "context" ]; then'
+            echo '  echo "stub-context"'
+            echo '  exit 0'
+            echo 'fi'
+            echo 'echo "$*" >> "$WINDSOR_STUB_LOG"'
+            echo 'exit 0'
+          } > "$stub"
+          chmod +x "$stub"
+          echo "$stub_dir" >> "$GITHUB_PATH"
+          echo "WINDSOR_STUB_LOG=$stub_log" >> "$GITHUB_ENV"
+
+      - name: windsor up
+        id: up-call
+        uses: ./up
+        with:
+          wait: true
+          platform: aws
+          set: |
+            a=1
+            b=2
+
+      - name: Assert up invocation and output
+        shell: bash
+        run: |
+          grep -qxF "up --wait --platform aws --set a=1 --set b=2" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected windsor up invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+          if [ "${{ steps.up-call.outputs.context }}" != "stub-context" ]; then
+            echo "::error::expected context output 'stub-context', got '${{ steps.up-call.outputs.context }}'"
+            exit 1
+          fi
+
+      - name: windsor apply (unscoped)
+        uses: ./apply
+        with:
+          wait: true
+          prune: true
+
+      - name: windsor apply (terraform-scoped)
+        uses: ./apply
+        with:
+          terraform-component: cluster
+
+      - name: windsor apply (kustomize-scoped)
+        uses: ./apply
+        with:
+          kustomize-name: dns
+          wait: true
+
+      - name: Assert apply invocations
+        shell: bash
+        run: |
+          grep -qxF "apply --wait --prune" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected unscoped windsor apply invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+          grep -qxF "apply terraform cluster" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected terraform-scoped windsor apply invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+          grep -qxF "apply kustomize dns --wait" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected kustomize-scoped windsor apply invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+
+      - name: windsor apply (conflicting scope)
+        id: apply-conflict
+        uses: ./apply
+        with:
+          terraform-component: cluster
+          kustomize-name: dns
+        continue-on-error: true
+
+      - name: windsor apply (wait with terraform-component)
+        id: apply-bad-wait
+        uses: ./apply
+        with:
+          terraform-component: cluster
+          wait: true
+        continue-on-error: true
+
+      - name: windsor apply (prune with kustomize-name)
+        id: apply-bad-prune
+        uses: ./apply
+        with:
+          kustomize-name: dns
+          prune: true
+        continue-on-error: true
+
+      - name: Assert apply validation failures
+        shell: bash
+        run: |
+          if [ "${{ steps.apply-conflict.outcome }}" != "failure" ]; then
+            echo "::error::expected apply with both terraform-component and kustomize-name to fail"
+            exit 1
+          fi
+          if [ "${{ steps.apply-bad-wait.outcome }}" != "failure" ]; then
+            echo "::error::expected apply --wait with terraform-component to fail"
+            exit 1
+          fi
+          if [ "${{ steps.apply-bad-prune.outcome }}" != "failure" ]; then
+            echo "::error::expected apply --prune with kustomize-name to fail"
+            exit 1
+          fi
+
+      - name: windsor destroy
+        uses: ./destroy
+        with:
+          confirm: my-context
+          component: cluster
+          layer: terraform
+          continue: true
+
+      - name: Assert destroy invocation
+        shell: bash
+        run: |
+          grep -qxF "destroy terraform cluster --confirm my-context --continue" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected windsor destroy invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+
+      - name: windsor destroy (missing confirm)
+        id: destroy-no-confirm
+        uses: ./destroy
+        with:
+          confirm: ""
+        continue-on-error: true
+
+      - name: Assert destroy-no-confirm failed
+        shell: bash
+        run: |
+          if [ "${{ steps.destroy-no-confirm.outcome }}" != "failure" ]; then
+            echo "::error::expected windsor destroy with no confirm to fail"
+            exit 1
+          fi
+
+      - name: windsor destroy (invalid layer)
+        id: destroy-bad-layer
+        uses: ./destroy
+        with:
+          confirm: my-context
+          layer: bogus
+        continue-on-error: true
+
+      - name: Assert destroy-bad-layer failed
+        shell: bash
+        run: |
+          if [ "${{ steps.destroy-bad-layer.outcome }}" != "failure" ]; then
+            echo "::error::expected windsor destroy with an invalid layer to fail"
+            exit 1
+          fi
+
+      - name: windsor bootstrap
+        uses: ./bootstrap
+        with:
+          context: staging
+          yes: true
+          platform: gcp
+
+      - name: Assert bootstrap invocation
+        shell: bash
+        run: |
+          grep -qxF "bootstrap staging --yes --platform gcp" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected windsor bootstrap invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+
+      - name: windsor bootstrap (missing yes)
+        id: bootstrap-no-yes
+        uses: ./bootstrap
+        with:
+          yes: ""
+        continue-on-error: true
+
+      - name: Assert bootstrap-no-yes failed
+        shell: bash
+        run: |
+          if [ "${{ steps.bootstrap-no-yes.outcome }}" != "failure" ]; then
+            echo "::error::expected windsor bootstrap with no yes to fail"
+            exit 1
+          fi
+
+      - name: windsor check
+        id: check-call
+        uses: ./check
+
+      - name: Assert check invocation and output
+        shell: bash
+        run: |
+          grep -qxF "check" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected windsor check invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+          if [ "${{ steps.check-call.outputs.context }}" != "stub-context" ]; then
+            echo "::error::expected context output 'stub-context', got '${{ steps.check-call.outputs.context }}'"
+            exit 1
+          fi

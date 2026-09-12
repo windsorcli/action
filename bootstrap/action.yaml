@@ -1,0 +1,68 @@
+name: 'Windsor Bootstrap'
+description: 'Bootstrap a fresh environment end-to-end (windsor bootstrap)'
+
+inputs:
+  workdir:
+    description: 'The working directory to run windsor from'
+    required: false
+    default: ""
+  context:
+    description: 'Context to bootstrap. Defaults to the current context when omitted.'
+    required: false
+    default: ""
+  yes:
+    description: 'Skip windsor bootstrap''s confirmation prompt(s). Required — there is no TTY in CI to answer them, so windsor bootstrap otherwise fails closed. Pass "true" to proceed non-interactively.'
+    required: true
+  platform:
+    description: 'Target platform: none, docker, incus, metal, hetzner, aws, azure, gcp, hyperv, vsphere'
+    required: false
+    default: ""
+  blueprint:
+    description: 'Blueprint OCI reference, e.g. oci://ghcr.io/org/repo:tag'
+    required: false
+    default: ""
+  set:
+    description: 'Config overrides, one key=value per line (e.g. dns.enabled=false). Repeated as --set.'
+    required: false
+    default: ""
+
+outputs:
+  context:
+    description: 'The windsor context this step ran against'
+    value: ${{ steps.bootstrap.outputs.context }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: windsor bootstrap
+      id: bootstrap
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_CONTEXT: ${{ inputs.context }}
+        INPUT_YES: ${{ inputs.yes }}
+        INPUT_PLATFORM: ${{ inputs.platform }}
+        INPUT_BLUEPRINT: ${{ inputs.blueprint }}
+        INPUT_SET: ${{ inputs.set }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        require_windsor
+        resolve_workdir "$INPUT_WORKDIR"
+
+        if [ -z "$INPUT_YES" ]; then
+          echo "::error::yes is required — windsor bootstrap always prompts for confirmation and there is no TTY in CI to answer it. Pass yes: \"true\" to proceed non-interactively (windsor bootstrap --yes)." >&2
+          exit 1
+        fi
+
+        args=(bootstrap)
+        [ -n "$INPUT_CONTEXT" ] && args+=("$INPUT_CONTEXT")
+        [ "$INPUT_YES" = "true" ] && args+=(--yes)
+        [ -n "$INPUT_PLATFORM" ] && args+=(--platform "$INPUT_PLATFORM")
+        [ -n "$INPUT_BLUEPRINT" ] && args+=(--blueprint "$INPUT_BLUEPRINT")
+        collect_set_flags "$INPUT_SET"
+        args+=("${SET_ARGS[@]}")
+
+        windsor "${args[@]}"
+        emit_context_output

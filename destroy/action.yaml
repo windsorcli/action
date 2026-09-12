@@ -1,0 +1,70 @@
+name: 'Windsor Destroy'
+description: 'Destroy live infrastructure (windsor destroy)'
+
+inputs:
+  workdir:
+    description: 'The working directory to run windsor from'
+    required: false
+    default: ""
+  confirm:
+    description: 'Context or component name to confirm destruction, matching what windsor destroy would prompt for interactively. Required — there is no TTY in CI to answer the prompt.'
+    required: true
+  component:
+    description: 'Destroy a single component (across whichever layers declare it) instead of everything'
+    required: false
+    default: ""
+  layer:
+    description: 'Scope to one layer: "" (both), "terraform", or "kustomize"'
+    required: false
+    default: ""
+  continue:
+    description: 'Continue past per-component destroy failures and report a summary at the end. Layer-wide only — refused when component is also set.'
+    required: false
+    default: "false"
+
+outputs:
+  context:
+    description: 'The windsor context this step ran against'
+    value: ${{ steps.destroy.outputs.context }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: windsor destroy
+      id: destroy
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_CONFIRM: ${{ inputs.confirm }}
+        INPUT_COMPONENT: ${{ inputs.component }}
+        INPUT_LAYER: ${{ inputs.layer }}
+        INPUT_CONTINUE: ${{ inputs.continue }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        require_windsor
+        resolve_workdir "$INPUT_WORKDIR"
+
+        if [ -z "$INPUT_CONFIRM" ]; then
+          echo "::error::confirm is required — pass the context or component name windsor destroy expects at its confirmation prompt (e.g. confirm: my-context). This is the CI-safe equivalent of typing it at the interactive prompt." >&2
+          exit 1
+        fi
+
+        case "$INPUT_LAYER" in
+          "") subcmd=(destroy) ;;
+          terraform) subcmd=(destroy terraform) ;;
+          kustomize) subcmd=(destroy kustomize) ;;
+          *)
+            echo "::error::layer must be one of '', 'terraform', or 'kustomize' (got '$INPUT_LAYER')." >&2
+            exit 1
+            ;;
+        esac
+
+        args=("${subcmd[@]}")
+        [ -n "$INPUT_COMPONENT" ] && args+=("$INPUT_COMPONENT")
+        args+=(--confirm "$INPUT_CONFIRM")
+        [ "$INPUT_CONTINUE" = "true" ] && args+=(--continue)
+
+        windsor "${args[@]}"
+        emit_context_output
