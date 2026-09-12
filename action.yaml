@@ -22,6 +22,10 @@ inputs:
     description: 'Whether to inject decrypted secrets into environment variables'
     required: false
     default: "false"
+  cache-terraform-providers:
+    description: 'Cache downloaded Terraform providers (via TF_PLUGIN_CACHE_DIR) across runs'
+    required: false
+    default: "false"
 
 runs:
   using: 'composite'
@@ -39,6 +43,50 @@ runs:
             console.error('Git is not installed. Please install Git to proceed.');
             process.exit(1);
           }
+
+    - name: Classify install strategy
+      id: strategy
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+      with:
+        script: |
+          const cleanInput = (input) => typeof input === 'string' ? input.replace(/\r?\n|\r/g, '') : input;
+          const ref = cleanInput('${{ inputs.ref }}');
+          const isVersionTag = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/i.test(ref);
+          const isNightly = ref === 'nightly';
+          // A version tag or nightly downloads a prebuilt release; anything else
+          // (a branch, a commit SHA) builds from source. Duplicates the same
+          // classification the install step below makes for itself — like
+          // isVersionTag already is across the validation and install steps —
+          // because the Go cache step needs it as a step output to gate on via
+          // `if:`, and can't see another step's internal JS variables.
+          const isSourceBuild = !isVersionTag && !isNightly;
+          core.setOutput('is-source-build', isSourceBuild ? 'true' : 'false');
+
+    - name: Resolve Go cache paths
+      id: go-cache-paths
+      if: steps.strategy.outputs.is-source-build == 'true'
+      shell: bash
+      run: |
+        if ! command -v go >/dev/null 2>&1; then
+          # No Go on PATH — the build-from-source step below reports this
+          # itself with a clearer, install-specific error. Nothing to cache.
+          exit 0
+        fi
+        {
+          echo "gocache=$(go env GOCACHE)"
+          echo "gomodcache=$(go env GOMODCACHE)"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Restore Go build cache
+      if: steps.strategy.outputs.is-source-build == 'true' && steps.go-cache-paths.outputs.gocache != ''
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ steps.go-cache-paths.outputs.gocache }}
+          ${{ steps.go-cache-paths.outputs.gomodcache }}
+        key: ${{ runner.os }}-windsor-go-build-${{ inputs.ref }}
+        restore-keys: |
+          ${{ runner.os }}-windsor-go-build-
 
     - name: Validate Windsor CLI version requirement
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
@@ -399,3 +447,24 @@ runs:
             console.error('Error running windsor env:', error.message);
             process.exit(1);
           }
+
+    # TF_PLUGIN_CACHE_DIR is a flat directory of downloaded provider binaries, unrelated to
+    # any specific project's root — unlike windsor's own OCI blueprint cache (keyed off a
+    # project root windsor discovers itself, which may not match `workdir`), there's no
+    # ambiguity about which directory this applies to. windsor never sets this itself; it
+    # just passes through whatever the environment already has to every `terraform` it runs.
+    - name: Restore Terraform provider cache
+      if: ${{ inputs.cache-terraform-providers == 'true' }}
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/windsor-terraform-plugin-cache
+        key: ${{ runner.os }}-windsor-terraform-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
+        restore-keys: |
+          ${{ runner.os }}-windsor-terraform-providers-
+
+    - name: Configure Terraform provider cache directory
+      if: ${{ inputs.cache-terraform-providers == 'true' }}
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/windsor-terraform-plugin-cache"
+        echo "TF_PLUGIN_CACHE_DIR=$RUNNER_TEMP/windsor-terraform-plugin-cache" >> "$GITHUB_ENV"

@@ -32,6 +32,15 @@ This GitHub Action installs and configures the Windsor CLI for use in GitHub Act
 - **Required**: No
 - **Default**: `"false"`
 
+### `cache-terraform-providers`
+- **Description**: Cache downloaded Terraform providers across runs, via `TF_PLUGIN_CACHE_DIR`. Opt-in: on a cold cache it adds a small amount of restore/save time for no benefit, so it's worth enabling once your workflow actually runs `terraform init` more than once (e.g. across a matrix, or on every push).
+- **Required**: No
+- **Default**: `"false"`
+
+## Caching
+
+Building the CLI from a non-release `ref` (a branch or commit SHA) is cached automatically — no input needed. Enable `cache-terraform-providers` and subsequent `terraform init` runs reuse cached providers instead of re-downloading them.
+
 ## Usage
 
 ```yaml

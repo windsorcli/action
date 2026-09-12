@@ -43,6 +43,7 @@ jobs:
           workdir: test
           ref: ${{ matrix.ref }}
           context: ${{ env.WINDSOR_CONTEXT }}
+          cache-terraform-providers: true
 
       - name: Verify Windsor Context
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
