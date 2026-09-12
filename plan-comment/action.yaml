@@ -1,0 +1,138 @@
+name: 'Windsor Plan Comment'
+description: 'Post windsor plan output as a sticky PR comment'
+
+inputs:
+  workdir:
+    description: 'The working directory to run windsor from'
+    required: false
+    default: ""
+  component:
+    description: 'Scope to a single component (both terraform and kustomize layers), like windsor plan <component>'
+    required: false
+    default: ""
+  pr-number:
+    description: 'Pull request number to comment on. Defaults to github.event.pull_request.number, so this is only needed outside a pull_request-triggered workflow.'
+    required: false
+    default: ""
+  github-token:
+    description: 'Token used to read/write the PR comment. Needs pull-requests: write on the calling job.'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  context:
+    description: 'The windsor context this step ran against'
+    value: ${{ steps.plan.outputs.context }}
+  comment-id:
+    description: 'The id of the created or updated PR comment'
+    value: ${{ steps.comment.outputs.comment-id }}
+  comment-url:
+    description: 'The URL of the created or updated PR comment'
+    value: ${{ steps.comment.outputs.comment-url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: windsor plan
+      id: plan
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_COMPONENT: ${{ inputs.component }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        require_windsor
+        resolve_workdir "$INPUT_WORKDIR"
+
+        args=(plan)
+        [ -n "$INPUT_COMPONENT" ] && args+=("$INPUT_COMPONENT")
+        args+=(--summary --no-color)
+
+        plan_file="$RUNNER_TEMP/windsor-plan-output.txt"
+        # Captured regardless of exit code so a failed plan (auth error, terraform
+        # init failure, ...) still gets posted to the PR comment below — reviewers
+        # see the real error instead of just a red check with no context. The
+        # actual failure is only surfaced (job goes red) by the last step, after
+        # the comment is posted.
+        status=ok
+        windsor "${args[@]}" > "$plan_file" 2>&1 || status=failed
+        cat "$plan_file"
+
+        echo "plan-status=$status" >> "$GITHUB_OUTPUT"
+        echo "plan-file=$plan_file" >> "$GITHUB_OUTPUT"
+        emit_context_output
+
+    - name: Post or update PR comment
+      id: comment
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+      env:
+        PLAN_FILE: ${{ steps.plan.outputs.plan-file }}
+        PLAN_STATUS: ${{ steps.plan.outputs.plan-status }}
+        WINDSOR_CONTEXT: ${{ steps.plan.outputs.context }}
+        PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require('fs');
+
+          const prNumber = Number(process.env.PR_NUMBER);
+          if (!prNumber) {
+            core.setFailed('plan-comment requires a pull request number: pass pr-number, or run this from a pull_request-triggered workflow.');
+            return;
+          }
+
+          const contextName = process.env.WINDSOR_CONTEXT || '';
+          const planText = fs.readFileSync(process.env.PLAN_FILE, 'utf8');
+          // One marker per context, not per action, so a matrix of contexts posting
+          // to the same PR gets one sticky comment each instead of overwriting
+          // each other's.
+          const marker = `<!-- windsorcli/action:plan-comment:${contextName} -->`;
+          const statusEmoji = process.env.PLAN_STATUS === 'ok' ? '✅' : '❌ failed';
+
+          // Stay well under GitHub's 65536-character comment cap, leaving room
+          // for the marker/heading/fence wrapper added below.
+          const MAX_PLAN_CHARS = 60000;
+          let planBody = planText;
+          let truncated = false;
+          if (planBody.length > MAX_PLAN_CHARS) {
+            planBody = planBody.slice(0, MAX_PLAN_CHARS) + '\n... (truncated)';
+            truncated = true;
+          }
+
+          const body = [
+            marker,
+            `### Windsor plan — \`${contextName}\` ${statusEmoji}`,
+            '',
+            '```',
+            planBody,
+            '```',
+          ].join('\n');
+
+          const { owner, repo } = context.repo;
+          const comments = await github.paginate(github.rest.issues.listComments, {
+            owner, repo, issue_number: prNumber,
+          });
+          const existing = comments.find(c => c.body && c.body.includes(marker));
+
+          const result = existing
+            ? await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body })
+            : await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+
+          core.setOutput('comment-id', String(result.data.id));
+          core.setOutput('comment-url', result.data.html_url);
+
+          if (truncated) {
+            core.warning('windsor plan output was truncated to fit the PR comment size limit');
+          }
+
+    - name: Fail if windsor plan failed
+      shell: bash
+      env:
+        PLAN_STATUS: ${{ steps.plan.outputs.plan-status }}
+      run: |
+        if [ "$PLAN_STATUS" != "ok" ]; then
+          echo "::error::windsor plan failed — see the PR comment or the log above for details" >&2
+          exit 1
+        fi

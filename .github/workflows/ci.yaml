@@ -375,6 +375,15 @@ jobs:
             echo '  exit 0'
             echo 'fi'
             echo 'echo "$*" >> "$WINDSOR_STUB_LOG"'
+            echo 'if [ "$1" = "plan" ]; then'
+            echo '  echo "Terraform"'
+            echo '  echo "  cluster   ~ update"'
+            echo '  if [ "$FAIL_PLAN" = "true" ]; then'
+            echo '    echo "Error: something went wrong (stub)"'
+            echo '    exit 1'
+            echo '  fi'
+            echo '  exit 0'
+            echo 'fi'
             echo 'exit 0'
           } > "$stub"
           chmod +x "$stub"
@@ -560,4 +569,64 @@ jobs:
           if [ "${{ steps.check-call.outputs.context }}" != "stub-context" ]; then
             echo "::error::expected context output 'stub-context', got '${{ steps.check-call.outputs.context }}'"
             exit 1
+          fi
+
+      # plan-comment isn't invoked via `uses: ./plan-comment` like the other sub-actions:
+      # its middle step is a real actions/github-script call that would post to the actual
+      # GitHub API (and this workflow's real PR) if run wholesale. Its three steps are
+      # extracted and tested individually instead — runs once on ubuntu-latest since none
+      # of this is OS-dependent.
+      - name: Install PyYAML (for extracting composite action scripts to test)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: python3 -m pip install --quiet pyyaml
+
+      - name: windsor plan (via plan-comment's first step)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          python3 scripts/test/extract-step.py plan-comment/action.yaml 0 > "$RUNNER_TEMP/plan-comment-step0.sh"
+
+          GITHUB_OUTPUT="$RUNNER_TEMP/plan-comment-outputs-1.txt" INPUT_WORKDIR="" INPUT_COMPONENT="" \
+            bash "$RUNNER_TEMP/plan-comment-step0.sh"
+          grep -qxF "plan --summary --no-color" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected unscoped windsor plan invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+          grep -qxF "plan-status=ok" "$RUNNER_TEMP/plan-comment-outputs-1.txt" || {
+            echo "::error::expected plan-status=ok"; cat "$RUNNER_TEMP/plan-comment-outputs-1.txt"; exit 1;
+          }
+
+          GITHUB_OUTPUT="$RUNNER_TEMP/plan-comment-outputs-2.txt" INPUT_WORKDIR="" INPUT_COMPONENT="cluster" \
+            bash "$RUNNER_TEMP/plan-comment-step0.sh"
+          grep -qxF "plan cluster --summary --no-color" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected component-scoped windsor plan invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+
+          GITHUB_OUTPUT="$RUNNER_TEMP/plan-comment-outputs-3.txt" INPUT_WORKDIR="" INPUT_COMPONENT="" FAIL_PLAN=true \
+            bash "$RUNNER_TEMP/plan-comment-step0.sh"
+          grep -qxF "plan-status=failed" "$RUNNER_TEMP/plan-comment-outputs-3.txt" || {
+            echo "::error::expected plan-status=failed when windsor plan itself fails"; cat "$RUNNER_TEMP/plan-comment-outputs-3.txt"; exit 1;
+          }
+
+      - name: Test plan-comment JS logic (mocked GitHub API)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          python3 scripts/test/extract-step.py plan-comment/action.yaml 1 --wrap-js > "$RUNNER_TEMP/plan-comment-wrapped.js"
+          node scripts/test/plan-comment.test.js "$RUNNER_TEMP/plan-comment-wrapped.js"
+
+      - name: Test plan-comment's fail-gate step
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          python3 scripts/test/extract-step.py plan-comment/action.yaml 2 > "$RUNNER_TEMP/plan-comment-step2.sh"
+
+          if PLAN_STATUS=ok bash "$RUNNER_TEMP/plan-comment-step2.sh"; then
+            :
+          else
+            echo "::error::expected the fail-gate step to succeed when PLAN_STATUS=ok"; exit 1
+          fi
+
+          if PLAN_STATUS=failed bash "$RUNNER_TEMP/plan-comment-step2.sh"; then
+            echo "::error::expected the fail-gate step to fail when PLAN_STATUS=failed"; exit 1
           fi
