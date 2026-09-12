@@ -46,7 +46,7 @@ steps:
 
 ## Sub-actions
 
-Once the CLI is installed (the root action above, or `install-only: true` if you don't need context init / env injection), a set of sub-actions wrap common windsor commands so a workflow doesn't need to hand-write `run: windsor ...` steps. Each one:
+Install the CLI first, either with the root action above or `install-only: true` if you don't need context init or env injection. After that, these sub-actions wrap common windsor commands, so a workflow doesn't need to hand-write `run: windsor ...` steps. Each one:
 
 - Expects `windsor` already on PATH — it doesn't install the CLI itself, and fails fast with an actionable message if it can't find one.
 - Takes an optional `workdir` input, resolved the same way as the root action's.
@@ -74,7 +74,7 @@ Wraps `windsor up`.
 
 ### `windsorcli/action/apply`
 
-Wraps `windsor apply`. `terraform-component` and `kustomize-name` scope to a single layer, matching `windsor apply terraform <component>` / `windsor apply kustomize <name>` — they're mutually exclusive, and `wait`/`prune` aren't valid once scoped to `terraform-component` (that subcommand has neither flag).
+Wraps `windsor apply`. `terraform-component` and `kustomize-name` each scope to one layer (matching `windsor apply terraform <component>` and `windsor apply kustomize <name>`) and can't be combined. Neither accepts `wait` or `prune` — `apply terraform` has no such flags.
 
 | Input | Description |
 | --- | --- |
@@ -92,7 +92,7 @@ Wraps `windsor apply`. `terraform-component` and `kustomize-name` scope to a sin
 
 ### `windsorcli/action/destroy`
 
-Wraps `windsor destroy`. `confirm` is required — `windsor destroy` always asks for confirmation, and there's no TTY in CI to answer it, so this is the non-interactive equivalent of typing the expected token at the prompt.
+Wraps `windsor destroy`. `confirm` is required: `windsor destroy` always asks for confirmation, and CI has no TTY to answer it. Passing `confirm` is the non-interactive equivalent of typing the expected token at the prompt.
 
 | Input | Description |
 | --- | --- |
@@ -109,7 +109,7 @@ Wraps `windsor destroy`. `confirm` is required — `windsor destroy` always asks
 
 ### `windsorcli/action/bootstrap`
 
-Wraps `windsor bootstrap`. `yes` is required for the same reason `destroy`'s `confirm` is: `windsor bootstrap` prompts for confirmation with no way to detect a non-interactive caller on its own.
+Wraps `windsor bootstrap`. `yes` is required for the same reason `destroy`'s `confirm` is: `windsor bootstrap` prompts for confirmation and can't tell a non-interactive caller from an interactive one.
 
 | Input | Description |
 | --- | --- |
@@ -138,9 +138,9 @@ Wraps `windsor check` — verifies required tools and cloud credentials. Takes o
 
 ### `windsorcli/action/plan-comment`
 
-Runs `windsor plan --summary --no-color` and posts the result as a sticky PR comment — updating the same comment on later pushes rather than piling up a new one each time. The comment is matched by a hidden marker keyed on the windsor context name, so a matrix of contexts posting to the same PR each get their own comment instead of overwriting one another.
+Runs `windsor plan --summary --no-color` and posts the result as a sticky PR comment. Later pushes update that same comment instead of piling up new ones. The comment is matched by a hidden marker keyed on the windsor context name, so a matrix of contexts each get their own comment on the same PR instead of overwriting each other.
 
-Requires `permissions: pull-requests: write` on the calling job. Defaults to the triggering PR (`github.event.pull_request.number`), so it's meant for a `pull_request`-triggered workflow; pass `pr-number` to use it elsewhere. A failed `windsor plan` still gets posted (with the real error, so reviewers can see what happened) — the step then fails afterwards so the job goes red.
+Requires `permissions: pull-requests: write` on the calling job. It defaults to the triggering PR (`github.event.pull_request.number`), so it's meant for a `pull_request`-triggered workflow — pass `pr-number` to use it elsewhere. A failed `windsor plan` still gets posted, real error included, so reviewers can see what happened. The step then fails, so the job still goes red.
 
 | Input | Description |
 | --- | --- |
@@ -158,7 +158,9 @@ steps:
 
 ### `windsorcli/action/support-bundle`
 
-Installs the [troubleshoot](https://troubleshoot.sh) `support-bundle` CLI, collects a bundle via `windsor exec -- support-bundle ...` against a given spec, and uploads the result as a workflow artifact — replacing what would otherwise be three separate hand-written steps (install, collect, upload). Meant to run behind `if: failure() || cancelled()` as a diagnostics step. Collection is best-effort: a failed collection (no cluster reachable, wrong credentials, ...) still uploads whatever was produced — including the real error in `collect.log` — rather than failing the step and losing the rest of the run's diagnostics.
+Installs the [troubleshoot](https://troubleshoot.sh) `support-bundle` CLI, collects a bundle via `windsor exec -- support-bundle ...` against a given spec, and uploads it as a workflow artifact. Run it behind `if: failure() || cancelled()`.
+
+Collection is best-effort. A failed run (no reachable cluster, bad credentials) still uploads its artifact, with the real error captured in `collect.log`.
 
 | Input | Description |
 | --- | --- |
