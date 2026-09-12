@@ -44,6 +44,98 @@ steps:
       workdir: .windsor/.tf_modules/cluster/talos
 ```
 
+## Lifecycle sub-actions
+
+Once the CLI is installed (the root action above, or `install-only: true` if you don't need context init / env injection), a set of sub-actions wrap the common windsor lifecycle verbs so a workflow doesn't need to hand-write `run: windsor ...` steps. Each one:
+
+- Expects `windsor` already on PATH — it doesn't install the CLI itself, and fails fast with an actionable message if it can't find one.
+- Takes an optional `workdir` input, resolved the same way as the root action's.
+- Emits a `context` output (the value of `windsor get context` after the command runs), so a later step can label an artifact or log line without an extra call.
+
+### `windsorcli/action/up`
+
+Wraps `windsor up`.
+
+| Input | Description |
+| --- | --- |
+| `wait` | Block until kustomizations report ready (`--wait`) |
+| `vm-driver` | `--vm-driver` |
+| `platform` | `--platform` |
+| `blueprint` | `--blueprint` |
+| `set` | Config overrides, one `key=value` per line, repeated as `--set` |
+
+```yaml
+- uses: windsorcli/action/up@v1
+  with:
+    wait: true
+    set: |
+      cluster.workers.count=3
+```
+
+### `windsorcli/action/apply`
+
+Wraps `windsor apply`. `terraform-component` and `kustomize-name` scope to a single layer, matching `windsor apply terraform <component>` / `windsor apply kustomize <name>` — they're mutually exclusive, and `wait`/`prune` aren't valid once scoped to `terraform-component` (that subcommand has neither flag).
+
+| Input | Description |
+| --- | --- |
+| `wait` | Block until kustomizations report ready (`--wait`) |
+| `prune` | Remove kustomizations the blueprint no longer declares (`--prune`) |
+| `terraform-component` | Scope to one terraform component |
+| `kustomize-name` | Scope to one kustomization |
+
+```yaml
+- uses: windsorcli/action/apply@v1
+  with:
+    wait: true
+    prune: true
+```
+
+### `windsorcli/action/destroy`
+
+Wraps `windsor destroy`. `confirm` is required — `windsor destroy` always asks for confirmation, and there's no TTY in CI to answer it, so this is the non-interactive equivalent of typing the expected token at the prompt.
+
+| Input | Description |
+| --- | --- |
+| `confirm` | **Required.** Context or component name to confirm destruction |
+| `component` | Destroy a single component instead of everything |
+| `layer` | Scope to one layer: `""` (both), `terraform`, or `kustomize` |
+| `continue` | Continue past per-component failures and report a summary (`--continue`, layer-wide only) |
+
+```yaml
+- uses: windsorcli/action/destroy@v1
+  with:
+    confirm: ${{ steps.setup.outputs.context }}
+```
+
+### `windsorcli/action/bootstrap`
+
+Wraps `windsor bootstrap`. `yes` is required for the same reason `destroy`'s `confirm` is: `windsor bootstrap` prompts for confirmation with no way to detect a non-interactive caller on its own.
+
+| Input | Description |
+| --- | --- |
+| `yes` | **Required.** Skip confirmation prompts (`--yes`) — pass `"true"` to proceed non-interactively |
+| `context` | Context to bootstrap (defaults to the current context) |
+| `platform` | `--platform` |
+| `blueprint` | `--blueprint` (OCI reference) |
+| `set` | Config overrides, one `key=value` per line, repeated as `--set` |
+
+```yaml
+- uses: windsorcli/action/bootstrap@v1
+  with:
+    context: staging
+    platform: aws
+    blueprint: oci://ghcr.io/myorg/blueprint:v1.0.0
+    yes: true
+```
+
+### `windsorcli/action/check`
+
+Wraps `windsor check` — verifies required tools and cloud credentials. Takes only `workdir`.
+
+```yaml
+- uses: windsorcli/action/check@v1
+```
+
 ## Security
 
 The action automatically detects and masks secrets in your workflow:

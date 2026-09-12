@@ -1,0 +1,64 @@
+name: 'Windsor Up'
+description: 'Bring up the local workstation environment (windsor up)'
+
+inputs:
+  workdir:
+    description: 'The working directory to run windsor from'
+    required: false
+    default: ""
+  wait:
+    description: 'Block until kustomizations report ready'
+    required: false
+    default: "false"
+  vm-driver:
+    description: 'VM driver: colima, colima-incus, docker-desktop, docker'
+    required: false
+    default: ""
+  platform:
+    description: 'Target platform: none, docker, incus, metal, hetzner, aws, azure, gcp, hyperv, vsphere'
+    required: false
+    default: ""
+  blueprint:
+    description: 'Blueprint OCI reference or local path'
+    required: false
+    default: ""
+  set:
+    description: 'Config overrides, one key=value per line (e.g. cluster.workers.count=3). Repeated as --set.'
+    required: false
+    default: ""
+
+outputs:
+  context:
+    description: 'The windsor context this step ran against'
+    value: ${{ steps.up.outputs.context }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: windsor up
+      id: up
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_WAIT: ${{ inputs.wait }}
+        INPUT_VM_DRIVER: ${{ inputs.vm-driver }}
+        INPUT_PLATFORM: ${{ inputs.platform }}
+        INPUT_BLUEPRINT: ${{ inputs.blueprint }}
+        INPUT_SET: ${{ inputs.set }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        require_windsor
+        resolve_workdir "$INPUT_WORKDIR"
+
+        args=(up)
+        [ "$INPUT_WAIT" = "true" ] && args+=(--wait)
+        [ -n "$INPUT_VM_DRIVER" ] && args+=(--vm-driver "$INPUT_VM_DRIVER")
+        [ -n "$INPUT_PLATFORM" ] && args+=(--platform "$INPUT_PLATFORM")
+        [ -n "$INPUT_BLUEPRINT" ] && args+=(--blueprint "$INPUT_BLUEPRINT")
+        collect_set_flags "$INPUT_SET"
+        args+=("${SET_ARGS[@]}")
+
+        windsor "${args[@]}"
+        emit_context_output

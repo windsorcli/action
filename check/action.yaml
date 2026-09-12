@@ -1,0 +1,31 @@
+name: 'Windsor Check'
+description: 'Verify required tools and cloud credentials are in place (windsor check)'
+
+inputs:
+  workdir:
+    description: 'The working directory to run windsor from'
+    required: false
+    default: ""
+
+outputs:
+  context:
+    description: 'The windsor context this step ran against'
+    value: ${{ steps.check.outputs.context }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: windsor check
+      id: check
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        require_windsor
+        resolve_workdir "$INPUT_WORKDIR"
+
+        windsor check
+        emit_context_output

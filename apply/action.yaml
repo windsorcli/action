@@ -1,0 +1,76 @@
+name: 'Windsor Apply'
+description: 'Run terraform and install the blueprint (windsor apply)'
+
+inputs:
+  workdir:
+    description: 'The working directory to run windsor from'
+    required: false
+    default: ""
+  wait:
+    description: 'Block until kustomizations report ready. Not valid with terraform-component.'
+    required: false
+    default: "false"
+  prune:
+    description: 'Remove kustomizations the blueprint no longer declares. Not valid with terraform-component or kustomize-name.'
+    required: false
+    default: "false"
+  terraform-component:
+    description: 'Scope to a single terraform component (windsor apply terraform <component>). Mutually exclusive with kustomize-name.'
+    required: false
+    default: ""
+  kustomize-name:
+    description: 'Scope to a single kustomization (windsor apply kustomize <name>). Mutually exclusive with terraform-component.'
+    required: false
+    default: ""
+
+outputs:
+  context:
+    description: 'The windsor context this step ran against'
+    value: ${{ steps.apply.outputs.context }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: windsor apply
+      id: apply
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_WAIT: ${{ inputs.wait }}
+        INPUT_PRUNE: ${{ inputs.prune }}
+        INPUT_TERRAFORM_COMPONENT: ${{ inputs.terraform-component }}
+        INPUT_KUSTOMIZE_NAME: ${{ inputs.kustomize-name }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        require_windsor
+        resolve_workdir "$INPUT_WORKDIR"
+
+        if [ -n "$INPUT_TERRAFORM_COMPONENT" ] && [ -n "$INPUT_KUSTOMIZE_NAME" ]; then
+          echo "::error::terraform-component and kustomize-name are mutually exclusive — apply scopes to one layer at a time." >&2
+          exit 1
+        fi
+
+        if [ -n "$INPUT_TERRAFORM_COMPONENT" ]; then
+          if [ "$INPUT_WAIT" = "true" ] || [ "$INPUT_PRUNE" = "true" ]; then
+            echo "::error::wait and prune are not supported with terraform-component — windsor apply terraform has no --wait/--prune flags." >&2
+            exit 1
+          fi
+          windsor apply terraform "$INPUT_TERRAFORM_COMPONENT"
+        elif [ -n "$INPUT_KUSTOMIZE_NAME" ]; then
+          if [ "$INPUT_PRUNE" = "true" ]; then
+            echo "::error::prune is not supported with kustomize-name — windsor apply kustomize has no --prune flag." >&2
+            exit 1
+          fi
+          args=(apply kustomize "$INPUT_KUSTOMIZE_NAME")
+          [ "$INPUT_WAIT" = "true" ] && args+=(--wait)
+          windsor "${args[@]}"
+        else
+          args=(apply)
+          [ "$INPUT_WAIT" = "true" ] && args+=(--wait)
+          [ "$INPUT_PRUNE" = "true" ] && args+=(--prune)
+          windsor "${args[@]}"
+        fi
+
+        emit_context_output
