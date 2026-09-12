@@ -158,7 +158,7 @@ steps:
 
 ## Recipes
 
-Patterns worth documenting without owning the extra code as a sub-action.
+These patterns aren't worth a dedicated sub-action — copy the snippet into your own workflow instead.
 
 ### Collecting a support bundle on failure
 
