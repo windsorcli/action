@@ -32,14 +32,9 @@ This GitHub Action installs and configures the Windsor CLI for use in GitHub Act
 - **Required**: No
 - **Default**: `"false"`
 
-### `cache-terraform-providers`
-- **Description**: Cache downloaded Terraform providers across runs, via `TF_PLUGIN_CACHE_DIR`. Opt-in: on a cold cache it adds a small amount of restore/save time for no benefit, so it's worth enabling once your workflow actually runs `terraform init` more than once (e.g. across a matrix, or on every push).
-- **Required**: No
-- **Default**: `"false"`
-
 ## Caching
 
-Building the CLI from a non-release `ref` (a branch or commit SHA) is cached automatically — no input needed. Enable `cache-terraform-providers` and subsequent `terraform init` runs reuse cached providers instead of re-downloading them.
+Building the CLI from a non-release `ref` (a branch or commit SHA) is cached automatically — no input needed.
 
 ## Usage
 
@@ -164,6 +159,33 @@ permissions:
 steps:
   - uses: windsorcli/action/plan-comment@v1
 ```
+
+## Recipes
+
+Patterns worth documenting without owning the extra code as a built-in input.
+
+### Caching Terraform providers across runs
+
+windsor never sets `TF_PLUGIN_CACHE_DIR` itself — it passes through whatever the environment already has to every `terraform` it runs. Set it yourself and cache the directory:
+
+```yaml
+- name: Set up Terraform provider cache
+  run: |
+    mkdir -p "$RUNNER_TEMP/tf-plugin-cache"
+    echo "TF_PLUGIN_CACHE_DIR=$RUNNER_TEMP/tf-plugin-cache" >> "$GITHUB_ENV"
+
+- uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+  with:
+    path: ${{ runner.temp }}/tf-plugin-cache
+    key: ${{ runner.os }}-tf-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
+    restore-keys: |
+      ${{ runner.os }}-tf-providers-
+
+- uses: windsorcli/action@v1
+  # ... your windsor apply / up / etc. steps
+```
+
+If you don't commit `.terraform.lock.hcl` files, `hashFiles` resolves to an empty string and every run shares one cache keyed just by OS — still correct (Terraform verifies each provider's checksum before using it), just less precisely scoped than a lockfile-keyed cache.
 
 ## Security
 

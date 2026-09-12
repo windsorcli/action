@@ -22,10 +22,6 @@ inputs:
     description: 'Whether to inject decrypted secrets into environment variables'
     required: false
     default: "false"
-  cache-terraform-providers:
-    description: 'Cache downloaded Terraform providers (via TF_PLUGIN_CACHE_DIR) across runs'
-    required: false
-    default: "false"
 
 runs:
   using: 'composite'
@@ -447,24 +443,3 @@ runs:
             console.error('Error running windsor env:', error.message);
             process.exit(1);
           }
-
-    # TF_PLUGIN_CACHE_DIR is a flat directory of downloaded provider binaries, unrelated to
-    # any specific project's root — unlike windsor's own OCI blueprint cache (keyed off a
-    # project root windsor discovers itself, which may not match `workdir`), there's no
-    # ambiguity about which directory this applies to. windsor never sets this itself; it
-    # just passes through whatever the environment already has to every `terraform` it runs.
-    - name: Restore Terraform provider cache
-      if: ${{ inputs.cache-terraform-providers == 'true' }}
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ runner.temp }}/windsor-terraform-plugin-cache
-        key: ${{ runner.os }}-windsor-terraform-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
-        restore-keys: |
-          ${{ runner.os }}-windsor-terraform-providers-
-
-    - name: Configure Terraform provider cache directory
-      if: ${{ inputs.cache-terraform-providers == 'true' }}
-      shell: bash
-      run: |
-        mkdir -p "$RUNNER_TEMP/windsor-terraform-plugin-cache"
-        echo "TF_PLUGIN_CACHE_DIR=$RUNNER_TEMP/windsor-terraform-plugin-cache" >> "$GITHUB_ENV"
