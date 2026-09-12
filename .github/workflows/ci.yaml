@@ -334,6 +334,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Shellcheck scripts/lib.sh
+        # Runs once rather than per OS — it's a static lint of one file, not
+        # platform-dependent behavior. ubuntu-latest ships shellcheck preinstalled.
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: shellcheck scripts/lib.sh
+
       - name: windsor check (no CLI on PATH)
         id: check-no-cli
         uses: ./check
@@ -406,6 +413,12 @@ jobs:
         with:
           terraform-component: cluster
 
+      - name: windsor apply (kustomize-scoped)
+        uses: ./apply
+        with:
+          kustomize-name: dns
+          wait: true
+
       - name: Assert apply invocations
         shell: bash
         run: |
@@ -413,7 +426,10 @@ jobs:
             echo "::error::expected unscoped windsor apply invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
           }
           grep -qxF "apply terraform cluster" "$WINDSOR_STUB_LOG" || {
-            echo "::error::expected scoped windsor apply invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+            echo "::error::expected terraform-scoped windsor apply invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+          grep -qxF "apply kustomize dns --wait" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected kustomize-scoped windsor apply invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
           }
 
       - name: windsor apply (conflicting scope)
@@ -432,6 +448,14 @@ jobs:
           wait: true
         continue-on-error: true
 
+      - name: windsor apply (prune with kustomize-name)
+        id: apply-bad-prune
+        uses: ./apply
+        with:
+          kustomize-name: dns
+          prune: true
+        continue-on-error: true
+
       - name: Assert apply validation failures
         shell: bash
         run: |
@@ -441,6 +465,10 @@ jobs:
           fi
           if [ "${{ steps.apply-bad-wait.outcome }}" != "failure" ]; then
             echo "::error::expected apply --wait with terraform-component to fail"
+            exit 1
+          fi
+          if [ "${{ steps.apply-bad-prune.outcome }}" != "failure" ]; then
+            echo "::error::expected apply --prune with kustomize-name to fail"
             exit 1
           fi
 
@@ -471,6 +499,22 @@ jobs:
         run: |
           if [ "${{ steps.destroy-no-confirm.outcome }}" != "failure" ]; then
             echo "::error::expected windsor destroy with no confirm to fail"
+            exit 1
+          fi
+
+      - name: windsor destroy (invalid layer)
+        id: destroy-bad-layer
+        uses: ./destroy
+        with:
+          confirm: my-context
+          layer: bogus
+        continue-on-error: true
+
+      - name: Assert destroy-bad-layer failed
+        shell: bash
+        run: |
+          if [ "${{ steps.destroy-bad-layer.outcome }}" != "failure" ]; then
+            echo "::error::expected windsor destroy with an invalid layer to fail"
             exit 1
           fi
 
