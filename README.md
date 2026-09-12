@@ -44,9 +44,9 @@ steps:
       workdir: .windsor/.tf_modules/cluster/talos
 ```
 
-## Lifecycle sub-actions
+## Sub-actions
 
-Once the CLI is installed (the root action above, or `install-only: true` if you don't need context init / env injection), a set of sub-actions wrap the common windsor lifecycle verbs so a workflow doesn't need to hand-write `run: windsor ...` steps. Each one:
+Once the CLI is installed (the root action above, or `install-only: true` if you don't need context init / env injection), a set of sub-actions wrap common windsor commands so a workflow doesn't need to hand-write `run: windsor ...` steps. Each one:
 
 - Expects `windsor` already on PATH — it doesn't install the CLI itself, and fails fast with an actionable message if it can't find one.
 - Takes an optional `workdir` input, resolved the same way as the root action's.
@@ -134,6 +134,26 @@ Wraps `windsor check` — verifies required tools and cloud credentials. Takes o
 
 ```yaml
 - uses: windsorcli/action/check@v1
+```
+
+### `windsorcli/action/plan-comment`
+
+Runs `windsor plan --summary --no-color` and posts the result as a sticky PR comment — updating the same comment on later pushes rather than piling up a new one each time. The comment is matched by a hidden marker keyed on the windsor context name, so a matrix of contexts posting to the same PR each get their own comment instead of overwriting one another.
+
+Requires `permissions: pull-requests: write` on the calling job. Defaults to the triggering PR (`github.event.pull_request.number`), so it's meant for a `pull_request`-triggered workflow; pass `pr-number` to use it elsewhere. A failed `windsor plan` still gets posted (with the real error, so reviewers can see what happened) — the step then fails afterwards so the job goes red.
+
+| Input | Description |
+| --- | --- |
+| `component` | Scope to a single component (both layers), like `windsor plan <component>` |
+| `pr-number` | Override the PR number (defaults to `github.event.pull_request.number`) |
+| `github-token` | Token used to read/write the comment (defaults to `github.token`) |
+
+```yaml
+permissions:
+  pull-requests: write
+
+steps:
+  - uses: windsorcli/action/plan-comment@v1
 ```
 
 ## Security
