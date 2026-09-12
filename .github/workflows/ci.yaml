@@ -384,6 +384,11 @@ jobs:
             echo '  fi'
             echo '  exit 0'
             echo 'fi'
+            echo 'if [ "$1" = "exec" ]; then'
+            echo '  shift'
+            echo '  [ "$1" = "--" ] && shift'
+            echo '  exec "$@"'
+            echo 'fi'
             echo 'exit 0'
           } > "$stub"
           chmod +x "$stub"
@@ -630,3 +635,37 @@ jobs:
           if PLAN_STATUS=failed bash "$RUNNER_TEMP/plan-comment-step2.sh"; then
             echo "::error::expected the fail-gate step to fail when PLAN_STATUS=failed"; exit 1
           fi
+
+      # Unlike plan-comment, support-bundle's only side effects are a public-release
+      # download and a local exec — nothing that mutates real state — so it's invoked
+      # for real here (on all 3 OSes, exercising the actual cross-platform installer)
+      # rather than stubbed. The stub windsor's `exec` passthrough really execs the
+      # downloaded support-bundle CLI, which fails to reach a cluster (there is none in
+      # this job) — that failure is expected and exercises the best-effort handling: the
+      # composite step must still succeed and still produce a collect.log to upload.
+      - name: windsor support-bundle
+        id: support-bundle-call
+        uses: ./support-bundle
+        with:
+          spec: scripts/test/fixtures/support-bundle-spec.yaml
+          artifact-name: test-support-bundle-${{ matrix.os }}
+
+      - name: Assert support-bundle ran and produced diagnostics
+        shell: bash
+        run: |
+          if [ "${{ steps.support-bundle-call.outputs.context }}" != "stub-context" ]; then
+            echo "::error::expected context output 'stub-context', got '${{ steps.support-bundle-call.outputs.context }}'"
+            exit 1
+          fi
+          if [ "${{ steps.support-bundle-call.outputs.artifact-name }}" != "test-support-bundle-${{ matrix.os }}" ]; then
+            echo "::error::expected artifact-name to pass through unchanged, got '${{ steps.support-bundle-call.outputs.artifact-name }}'"
+            exit 1
+          fi
+          bundle_dir="$RUNNER_TEMP/windsor-support-bundle"
+          if [ ! -s "$bundle_dir/collect.log" ]; then
+            echo "::error::expected a non-empty collect.log in $bundle_dir"
+            ls -la "$bundle_dir" || true
+            exit 1
+          fi
+          echo "collect.log:"
+          cat "$bundle_dir/collect.log"

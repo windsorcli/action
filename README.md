@@ -156,6 +156,24 @@ steps:
   - uses: windsorcli/action/plan-comment@v1
 ```
 
+### `windsorcli/action/support-bundle`
+
+Installs the [troubleshoot](https://troubleshoot.sh) `support-bundle` CLI, collects a bundle via `windsor exec -- support-bundle ...` against a given spec, and uploads the result as a workflow artifact — replacing what would otherwise be three separate hand-written steps (install, collect, upload). Meant to run behind `if: failure() || cancelled()` as a diagnostics step. Collection is best-effort: a failed collection (no cluster reachable, wrong credentials, ...) still uploads whatever was produced — including the real error in `collect.log` — rather than failing the step and losing the rest of the run's diagnostics.
+
+| Input | Description |
+| --- | --- |
+| `spec` | **Required.** Path to the support-bundle spec YAML, resolved relative to `workdir` |
+| `version` | `support-bundle` CLI version to install (default: a pinned release) |
+| `artifact-name` | Name for the uploaded artifact (default: `support-bundle-<context>-<run id>`) |
+| `retention-days` | How long to retain the artifact (default: `30`) |
+
+```yaml
+- if: failure() || cancelled()
+  uses: windsorcli/action/support-bundle@v1
+  with:
+    spec: .github/support-bundle.yaml
+```
+
 ## Security
 
 The action automatically detects and masks secrets in your workflow:

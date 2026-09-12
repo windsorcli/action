@@ -28,6 +28,26 @@ resolve_workdir() {
   esac
 }
 
+# absolute_workdir prints the absolute path $1 resolves to, joined onto
+# GITHUB_WORKSPACE the same way resolve_workdir does — but without cd'ing, and
+# printing GITHUB_WORKSPACE itself for a blank argument rather than no-op'ing.
+# For a sub-action whose steps need the trusted project directory but can't
+# share resolve_workdir's cd across them (a composite step's cwd doesn't
+# carry over to the next step in the same job), compute the path once here,
+# pass it through a step output, and set `working-directory:` on each step
+# that needs it.
+absolute_workdir() {
+  local workdir="$1"
+  if [ -z "$workdir" ]; then
+    echo "$GITHUB_WORKSPACE"
+    return 0
+  fi
+  case "$workdir" in
+    /*) echo "$workdir" ;;
+    *) echo "$GITHUB_WORKSPACE/$workdir" ;;
+  esac
+}
+
 # collect_set_flags splits a newline-separated string of key=value pairs into
 # repeated `--set key=value` arguments, populating the SET_ARGS array (declare
 # it in the caller before invoking this — bash arrays don't survive a

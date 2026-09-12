@@ -1,0 +1,150 @@
+name: 'Windsor Support Bundle'
+description: 'Collect a troubleshoot support bundle via windsor exec and upload it as a workflow artifact'
+
+inputs:
+  workdir:
+    description: 'The working directory to run windsor from'
+    required: false
+    default: ""
+  spec:
+    description: 'Path to the support-bundle spec YAML, resolved relative to workdir (or pass an absolute path)'
+    required: true
+  version:
+    description: 'support-bundle CLI version to install'
+    required: false
+    default: v0.134.0 # renovate: datasource=github-releases depName=replicatedhq/troubleshoot
+  artifact-name:
+    description: 'Name for the uploaded artifact. Defaults to support-bundle-<context>-<run id>.'
+    required: false
+    default: ""
+  retention-days:
+    description: 'How long to retain the uploaded artifact, in days'
+    required: false
+    default: "30"
+
+outputs:
+  context:
+    description: 'The windsor context this step ran against'
+    value: ${{ steps.setup.outputs.context }}
+  artifact-name:
+    description: 'The name the bundle was uploaded under'
+    value: ${{ steps.setup.outputs.artifact-name }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Resolves workdir and context here rather than inline in later steps: a `cd` doesn't
+    # carry over to the next step in the same job, so the actual project directory is
+    # threaded through as an output and applied via `working-directory:` on whichever
+    # later steps need it, instead of each step re-deriving it.
+    - name: Resolve context and workdir
+      id: setup
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        require_windsor
+        workdir_abs=$(absolute_workdir "$INPUT_WORKDIR")
+        resolve_workdir "$INPUT_WORKDIR"
+
+        context_name=$(windsor get context 2>/dev/null || true)
+        artifact_name="${INPUT_ARTIFACT_NAME:-support-bundle-${context_name}-${GITHUB_RUN_ID}}"
+
+        {
+          echo "workdir=$workdir_abs"
+          echo "context=$context_name"
+          echo "artifact-name=$artifact_name"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Install support-bundle CLI
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+      with:
+        script: |
+          const { execSync } = require('child_process');
+          const fs = require('fs');
+          const path = require('path');
+          const os = require('os');
+
+          const version = process.env.INPUT_VERSION;
+          const isWindows = os.platform() === 'win32';
+          const isDarwin = os.platform() === 'darwin';
+          const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
+          const binaryName = isWindows ? 'support-bundle.exe' : 'support-bundle';
+          const installFolder = path.join(process.env.RUNNER_TOOL_CACHE, 'support-bundle', version);
+          const binaryPath = path.join(installFolder, binaryName);
+
+          const execCommand = (command) => {
+            try {
+              execSync(command, { stdio: 'inherit' });
+            } catch (error) {
+              console.error(`Command failed: ${command}`);
+              throw error;
+            }
+          };
+
+          if (!fs.existsSync(binaryPath)) {
+            // darwin ships one universal binary; linux/windows ship per-arch assets.
+            const platformSegment = isWindows ? 'windows' : isDarwin ? 'darwin' : 'linux';
+            const archSegment = isDarwin ? 'all' : arch;
+            const ext = isWindows ? 'zip' : 'tar.gz';
+            const assetName = `support-bundle_${platformSegment}_${archSegment}.${ext}`;
+            const downloadUrl = `https://github.com/replicatedhq/troubleshoot/releases/download/${version}/${assetName}`;
+
+            console.log(`Downloading support-bundle ${version} for ${platformSegment}/${archSegment}`);
+            fs.mkdirSync(installFolder, { recursive: true });
+            execCommand(`curl -fsSL -o ${assetName} ${downloadUrl}`);
+            if (isWindows) {
+              execCommand(`powershell -Command "Expand-Archive -Path ${assetName} -DestinationPath ${installFolder} -Force"`);
+            } else {
+              execCommand(`tar -xzf ${assetName} -C "${installFolder}"`);
+              execCommand(`chmod +x "${binaryPath}"`);
+            }
+            fs.rmSync(assetName);
+          } else {
+            console.log(`support-bundle ${version} already cached at ${installFolder}`);
+          }
+
+          fs.appendFileSync(process.env.GITHUB_PATH, `${installFolder}\n`);
+          console.log(`Added support-bundle to PATH: ${installFolder}`);
+
+    - name: Collect support bundle
+      shell: bash
+      working-directory: ${{ steps.setup.outputs.workdir }}
+      env:
+        INPUT_SPEC: ${{ inputs.spec }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+        require_windsor
+
+        bundle_dir="$RUNNER_TEMP/windsor-support-bundle"
+        mkdir -p "$bundle_dir"
+
+        # Best-effort: a failed collection is a warning, not a fatal error. This step
+        # normally runs after something else in the job already failed — its own job is
+        # to grab whatever diagnostics it can, not to mask that original failure or add
+        # a second one on top of it.
+        collect_rc=0
+        windsor exec -- support-bundle --interactive=false \
+          --output="$bundle_dir/bundle" \
+          "$INPUT_SPEC" > "$bundle_dir/collect.log" 2>&1 || collect_rc=$?
+
+        cat "$bundle_dir/collect.log"
+        if [ "$collect_rc" -ne 0 ]; then
+          echo "::warning::support-bundle invocation failed (exit $collect_rc); see collect.log in the uploaded artifact"
+        fi
+        ls -la "$bundle_dir"
+
+    - name: Upload support bundle
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ steps.setup.outputs.artifact-name }}
+        path: ${{ runner.temp }}/windsor-support-bundle
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: warn
