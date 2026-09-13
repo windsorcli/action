@@ -1,0 +1,85 @@
+name: Bootstrap or destroy environment
+# Copy this file into your own repo's .github/workflows/ and adjust the
+# context name and blueprint for your project.
+#
+# Manually triggered. Pick "bootstrap" to stand up an environment, or
+# "destroy" to tear one down. This example targets AWS; see the cloud-auth
+# section of windsorcli/action's README for azure/gcp/hetzner inputs.
+#
+# Assumes contexts/<context>/ is already committed to the repo, with its
+# platform already declared (e.g. from a prior local `windsor init
+# <context> --platform aws`). cloud-auth detects the platform via `windsor
+# get contexts`, which only works once that config exists — so both jobs
+# run a full `windsor init` (not install-only) before cloud-auth, to load
+# it first.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'What to do'
+        type: choice
+        options: [bootstrap, destroy]
+        required: true
+      context:
+        description: 'windsor context to target'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # needed for cloud-auth's AWS OIDC role assumption
+
+jobs:
+  bootstrap:
+    if: inputs.action == 'bootstrap'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Windsor CLI
+        uses: windsorcli/action@v1
+        with:
+          ref: v1.0.0
+          context: ${{ inputs.context }}
+
+      - name: Authenticate to AWS
+        uses: windsorcli/action/cloud-auth@v1
+        with:
+          aws-role-arn: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Bootstrap environment
+        uses: windsorcli/action/bootstrap@v1
+        with:
+          context: ${{ inputs.context }}
+          platform: aws
+          blueprint: oci://ghcr.io/myorg/blueprint:v1.0.0
+          yes: true
+
+  destroy:
+    if: inputs.action == 'destroy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Windsor CLI
+        uses: windsorcli/action@v1
+        with:
+          ref: v1.0.0
+          context: ${{ inputs.context }}
+
+      - name: Authenticate to AWS
+        uses: windsorcli/action/cloud-auth@v1
+        with:
+          aws-role-arn: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # windsor destroy has no context argument of its own (unlike bootstrap)
+      # — it acts on whatever context windsor init just set above.
+      - name: Destroy environment
+        uses: windsorcli/action/destroy@v1
+        with:
+          confirm: ${{ inputs.context }}
