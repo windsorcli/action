@@ -1,0 +1,177 @@
+name: 'Windsor Cloud Auth'
+description: "Authenticate to the context's cloud platform: aws, azure, gcp, or hetzner"
+
+inputs:
+  workdir:
+    description: 'The working directory to run windsor from'
+    required: false
+    default: ""
+  aws-role-arn:
+    description: 'AWS role to assume. Required for aws.'
+    required: false
+    default: ""
+  aws-region:
+    description: 'AWS region. Required for aws.'
+    required: false
+    default: ""
+  azure-client-id:
+    description: 'Azure client ID. Required for azure.'
+    required: false
+    default: ""
+  azure-tenant-id:
+    description: 'Azure tenant ID. Required for azure.'
+    required: false
+    default: ""
+  azure-subscription-id:
+    description: 'Azure subscription ID. Required for azure.'
+    required: false
+    default: ""
+  azure-kubelogin-version:
+    description: 'kubelogin version to install. Used only for azure.'
+    required: false
+    default: v0.2.19 # renovate: datasource=github-releases depName=Azure/kubelogin
+  gcp-workload-identity-provider:
+    description: 'GCP workload identity provider. Required for gcp.'
+    required: false
+    default: ""
+  gcp-service-account:
+    description: 'GCP service account email. Required for gcp.'
+    required: false
+    default: ""
+  gcp-project-id:
+    description: 'GCP project ID. Optional, used only for gcp.'
+    required: false
+    default: ""
+  hetzner-token:
+    description: 'Hetzner API token. Required for hetzner. Exported as HCLOUD_TOKEN.'
+    required: false
+    default: ""
+
+outputs:
+  context:
+    description: 'The windsor context this step ran against'
+    value: ${{ steps.detect.outputs.context }}
+  platform:
+    description: 'The detected platform'
+    value: ${{ steps.detect.outputs.platform }}
+
+runs:
+  using: 'composite'
+  steps:
+    # This step validates every credential input before login runs. A missing
+    # input fails here with a clear message, not later as an unclear auth error.
+    - name: Detect platform
+      id: detect
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_AWS_ROLE_ARN: ${{ inputs.aws-role-arn }}
+        INPUT_AWS_REGION: ${{ inputs.aws-region }}
+        INPUT_AZURE_CLIENT_ID: ${{ inputs.azure-client-id }}
+        INPUT_AZURE_TENANT_ID: ${{ inputs.azure-tenant-id }}
+        INPUT_AZURE_SUBSCRIPTION_ID: ${{ inputs.azure-subscription-id }}
+        INPUT_GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ inputs.gcp-workload-identity-provider }}
+        INPUT_GCP_SERVICE_ACCOUNT: ${{ inputs.gcp-service-account }}
+        INPUT_HETZNER_TOKEN: ${{ inputs.hetzner-token }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        require_windsor
+        resolve_workdir "$INPUT_WORKDIR"
+
+        context_name=$(windsor get context 2>/dev/null || true)
+        if [ -z "$context_name" ]; then
+          echo "::error::could not determine the current windsor context ('windsor get context' returned nothing)" >&2
+          exit 1
+        fi
+
+        # 'windsor get contexts' prints a table: NAME PROVIDER BACKEND CURRENT.
+        # Match the context by name (column 1). This is simpler than matching
+        # the CURRENT marker column.
+        platform=$(windsor get contexts 2>/dev/null | awk -v ctx="$context_name" '$1 == ctx { print $2; exit }')
+        if [ -z "$platform" ]; then
+          echo "::error::could not determine the platform for context '$context_name' from 'windsor get contexts'" >&2
+          exit 1
+        fi
+
+        case "$platform" in
+          aws)
+            [ -z "$INPUT_AWS_ROLE_ARN" ] && { echo "::error::platform is 'aws' but aws-role-arn was not provided" >&2; exit 1; }
+            [ -z "$INPUT_AWS_REGION" ] && { echo "::error::platform is 'aws' but aws-region was not provided" >&2; exit 1; }
+            ;;
+          azure)
+            [ -z "$INPUT_AZURE_CLIENT_ID" ] && { echo "::error::platform is 'azure' but azure-client-id was not provided" >&2; exit 1; }
+            [ -z "$INPUT_AZURE_TENANT_ID" ] && { echo "::error::platform is 'azure' but azure-tenant-id was not provided" >&2; exit 1; }
+            [ -z "$INPUT_AZURE_SUBSCRIPTION_ID" ] && { echo "::error::platform is 'azure' but azure-subscription-id was not provided" >&2; exit 1; }
+            ;;
+          gcp)
+            [ -z "$INPUT_GCP_WORKLOAD_IDENTITY_PROVIDER" ] && { echo "::error::platform is 'gcp' but gcp-workload-identity-provider was not provided" >&2; exit 1; }
+            [ -z "$INPUT_GCP_SERVICE_ACCOUNT" ] && { echo "::error::platform is 'gcp' but gcp-service-account was not provided" >&2; exit 1; }
+            ;;
+          hetzner)
+            [ -z "$INPUT_HETZNER_TOKEN" ] && { echo "::error::platform is 'hetzner' but hetzner-token was not provided" >&2; exit 1; }
+            ;;
+          none|docker|incus|metal|hyperv|vsphere)
+            echo "platform '$platform' needs no cloud credentials; nothing to do"
+            ;;
+          *)
+            echo "::error::unrecognized platform '$platform' for context '$context_name'. Known platforms: aws, azure, gcp, hetzner (need auth) and none, docker, incus, metal, hyperv, vsphere (no auth needed). Update this action if windsor added a new platform." >&2
+            exit 1
+            ;;
+        esac
+
+        {
+          echo "context=$context_name"
+          echo "platform=$platform"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Configure AWS credentials
+      if: steps.detect.outputs.platform == 'aws'
+      uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+      with:
+        role-to-assume: ${{ inputs.aws-role-arn }}
+        aws-region: ${{ inputs.aws-region }}
+        role-session-name: windsorcli-action-${{ github.run_id }}
+
+    - name: Azure login
+      if: steps.detect.outputs.platform == 'azure'
+      uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+      with:
+        client-id: ${{ inputs.azure-client-id }}
+        tenant-id: ${{ inputs.azure-tenant-id }}
+        subscription-id: ${{ inputs.azure-subscription-id }}
+
+    # AKS auth needs kubelogin on PATH. azure/login only authenticates the Azure
+    # CLI. This step skips the token-refresh shim some long jobs need: kubelogin's
+    # workloadidentity mode does not refresh GitHub's short-lived OIDC token on
+    # its own. That's a separate fix, not part of Azure login. See the README recipe.
+    - name: Set up kubelogin
+      if: steps.detect.outputs.platform == 'azure'
+      uses: azure/use-kubelogin@0ce7c36141aa27d4934872cf00b0120804c98a29 # v1.3
+      with:
+        kubelogin-version: ${{ inputs.azure-kubelogin-version }}
+
+    - name: Authenticate to Google Cloud
+      if: steps.detect.outputs.platform == 'gcp'
+      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+      with:
+        workload_identity_provider: ${{ inputs.gcp-workload-identity-provider }}
+        service_account: ${{ inputs.gcp-service-account }}
+        project_id: ${{ inputs.gcp-project-id }}
+
+    # Terraform's kubernetes provider needs this plugin to auth against GKE.
+    # Neither google-github-actions/auth nor the runner's gcloud installs it.
+    - name: Install gke-gcloud-auth-plugin
+      if: steps.detect.outputs.platform == 'gcp'
+      uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      with:
+        install_components: gke-gcloud-auth-plugin
+
+    # Hetzner has no OIDC. The token is a static secret. Pass it through as an env var.
+    - name: Configure Hetzner token
+      if: steps.detect.outputs.platform == 'hetzner'
+      shell: bash
+      env:
+        INPUT_HETZNER_TOKEN: ${{ inputs.hetzner-token }}
+      run: echo "HCLOUD_TOKEN=$INPUT_HETZNER_TOKEN" >> "$GITHUB_ENV"
