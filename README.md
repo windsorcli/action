@@ -136,6 +136,38 @@ Wraps `windsor check` — verifies required tools and cloud credentials. Takes o
 - uses: windsorcli/action/check@v1
 ```
 
+### `windsorcli/action/cloud-auth`
+
+Detects the current context's platform (via `windsor get contexts`) and authenticates to it, dispatching to the matching upstream action: [`aws-actions/configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials) for `aws`, [`azure/login`](https://github.com/Azure/login) plus [`azure/use-kubelogin`](https://github.com/Azure/use-kubelogin) for `azure`, [`google-github-actions/auth`](https://github.com/google-github-actions/auth) plus the `gke-gcloud-auth-plugin` component for `gcp`, and a plain `HCLOUD_TOKEN` env var for `hetzner`. A platform that needs no cloud credentials (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) is a no-op. An unrecognized platform, or a required input missing for the detected platform, fails immediately — not silently, and not three steps later as an opaque auth error.
+
+You still supply your own OIDC/credential values, the same ones you'd pass to the upstream action directly — this only removes the per-platform `if:` branching, not the need to have OIDC trust already configured on the cloud side. Short-lived credentials (STS, Azure/GCP OIDC tokens) expire; call this action again later in a long job to refresh them.
+
+| Input | Description |
+| --- | --- |
+| `aws-role-arn`, `aws-region` | Required when the platform is `aws` |
+| `azure-client-id`, `azure-tenant-id`, `azure-subscription-id` | Required when the platform is `azure` |
+| `azure-kubelogin-version` | `kubelogin` version to install (`azure` only, default: a pinned release) |
+| `gcp-workload-identity-provider`, `gcp-service-account` | Required when the platform is `gcp` |
+| `gcp-project-id` | Optional (`gcp` only) |
+| `hetzner-token` | Required when the platform is `hetzner`, exported as `HCLOUD_TOKEN` |
+
+```yaml
+- uses: windsorcli/action/cloud-auth@v1
+  with:
+    aws-role-arn: ${{ vars.AWS_ROLE_ARN }}
+    aws-region: ${{ vars.AWS_REGION }}
+    azure-client-id: ${{ vars.AZURE_CLIENT_ID }}
+    azure-tenant-id: ${{ vars.AZURE_TENANT_ID }}
+    azure-subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    gcp-workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+    gcp-service-account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+    hetzner-token: ${{ secrets.HCLOUD_TOKEN }}
+```
+
+Only the inputs for your actual platform(s) are required; leave the rest blank.
+
+Not included: a fix for kubelogin's `workloadidentity` mode not refreshing GitHub's short-lived (~5 minute) OIDC token on its own, which only bites a long-running `windsor up`/`bootstrap`/`apply` against AKS. That's a workaround for a specific failure mode, not "authenticate to Azure" — see the recipe below if you hit it.
+
 ### `windsorcli/action/plan-comment`
 
 Runs `windsor plan --summary --no-color` and posts the result as a sticky PR comment. Later pushes update that same comment instead of piling up new ones. The comment is matched by a hidden marker keyed on the windsor context name, so a matrix of contexts each get their own comment on the same PR instead of overwriting each other.
@@ -210,6 +242,32 @@ windsor never sets `TF_PLUGIN_CACHE_DIR` itself — it passes through whatever t
 ```
 
 If you don't commit `.terraform.lock.hcl` files, `hashFiles` resolves to an empty string and every run shares one cache keyed just by OS — still correct (Terraform verifies each provider's checksum before using it), just less precisely scoped than a lockfile-keyed cache.
+
+### Refreshing kubelogin's Azure token on a long job
+
+`kubelogin`'s `workloadidentity` mode reads a federated token from a file once; it doesn't refresh it. GitHub's own OIDC token lasts about 5 minutes, so a `windsor up`/`bootstrap`/`apply` against AKS that runs longer than that can start failing kubelogin auth partway through. The fix is a small wrapper script that re-mints the token from GitHub's own OIDC endpoint before each `kubelogin` invocation:
+
+```yaml
+- name: Wrap kubelogin with a token refresh
+  if: <your azure condition>
+  run: |
+    real_kubelogin="$(command -v kubelogin)"
+    token_file="$RUNNER_TEMP/azure-federated-token"
+    shim_dir="$RUNNER_TEMP/kubelogin-shim"
+    mkdir -p "$shim_dir"
+    cat > "$shim_dir/kubelogin" <<SHIM
+    #!/usr/bin/env bash
+    curl -sSL -H "Authorization: bearer \$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \\
+      "\$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" \\
+      | jq -r '.value' > "$token_file"
+    exec "$real_kubelogin" "\$@"
+    SHIM
+    chmod +x "$shim_dir/kubelogin"
+    echo "$shim_dir" >> "$GITHUB_PATH"
+    echo "AZURE_FEDERATED_TOKEN_FILE=$token_file" >> "$GITHUB_ENV"
+```
+
+Needs `permissions: id-token: write` on the job (for `ACTIONS_ID_TOKEN_REQUEST_TOKEN`/`_URL`) and `jq` on the runner. Test this against your own AKS setup before relying on it — it's adapted from a working internal tool, not verified as a drop-in here.
 
 ## Security
 

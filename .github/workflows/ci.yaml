@@ -374,6 +374,11 @@ jobs:
             echo '  echo "stub-context"'
             echo '  exit 0'
             echo 'fi'
+            echo 'if [ "$1" = "get" ] && [ "$2" = "contexts" ]; then'
+            echo '  printf "NAME          PROVIDER  BACKEND  CURRENT\n"'
+            echo '  printf "stub-context  %s  <none>   *\n" "${WINDSOR_STUB_PLATFORM:-docker}"'
+            echo '  exit 0'
+            echo 'fi'
             echo 'echo "$*" >> "$WINDSOR_STUB_LOG"'
             echo 'if [ "$1" = "plan" ]; then'
             echo '  echo "Terraform"'
@@ -629,4 +634,81 @@ jobs:
 
           if PLAN_STATUS=failed bash "$RUNNER_TEMP/plan-comment-step2.sh"; then
             echo "::error::expected the fail-gate step to fail when PLAN_STATUS=failed"; exit 1
+          fi
+
+      # cloud-auth's later steps call real aws-actions/configure-aws-credentials,
+      # azure/login, etc. — invoking the whole composite for a cloud platform would
+      # either need real credentials or fail on a real (if expected) auth error. Its
+      # detect/validate step is tested in isolation instead, the same way plan-comment's
+      # github-script step is; the full composite is only invoked end-to-end for a
+      # no-op platform (docker), which never reaches those steps.
+      - name: Test cloud-auth platform detection and validation
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          python3 scripts/test/extract-step.py cloud-auth/action.yaml 0 > "$RUNNER_TEMP/cloud-auth-detect.sh"
+
+          run_detect() {
+            WINDSOR_STUB_PLATFORM="$1" \
+            INPUT_WORKDIR="" \
+            INPUT_AWS_ROLE_ARN="${2:-}" INPUT_AWS_REGION="${3:-}" \
+            INPUT_AZURE_CLIENT_ID="${4:-}" INPUT_AZURE_TENANT_ID="${5:-}" INPUT_AZURE_SUBSCRIPTION_ID="${6:-}" \
+            INPUT_GCP_WORKLOAD_IDENTITY_PROVIDER="${7:-}" INPUT_GCP_SERVICE_ACCOUNT="${8:-}" \
+            INPUT_HETZNER_TOKEN="${9:-}" \
+            GITHUB_OUTPUT="$RUNNER_TEMP/cloud-auth-outputs.txt" \
+              bash "$RUNNER_TEMP/cloud-auth-detect.sh"
+          }
+
+          : > "$RUNNER_TEMP/cloud-auth-outputs.txt"
+          if ! run_detect aws arn:aws:iam::123:role/x us-east-1; then
+            echo "::error::expected aws with all inputs to succeed"; exit 1
+          fi
+          grep -qxF "platform=aws" "$RUNNER_TEMP/cloud-auth-outputs.txt" || {
+            echo "::error::expected platform=aws in outputs"; cat "$RUNNER_TEMP/cloud-auth-outputs.txt"; exit 1;
+          }
+
+          if run_detect aws arn:aws:iam::123:role/x ""; then
+            echo "::error::expected aws with missing aws-region to fail"; exit 1
+          fi
+
+          if ! run_detect azure "" "" cid tid sid; then
+            echo "::error::expected azure with all inputs to succeed"; exit 1
+          fi
+
+          if run_detect gcp "" "" "" "" "" projects/1/providers/x ""; then
+            echo "::error::expected gcp with missing gcp-service-account to fail"; exit 1
+          fi
+
+          if ! run_detect hetzner "" "" "" "" "" "" "" htz-token; then
+            echo "::error::expected hetzner with a token to succeed"; exit 1
+          fi
+
+          : > "$RUNNER_TEMP/cloud-auth-outputs.txt"
+          if ! run_detect docker; then
+            echo "::error::expected docker (no cloud credentials needed) to succeed"; exit 1
+          fi
+          grep -qxF "platform=docker" "$RUNNER_TEMP/cloud-auth-outputs.txt" || {
+            echo "::error::expected platform=docker in outputs"; cat "$RUNNER_TEMP/cloud-auth-outputs.txt"; exit 1;
+          }
+
+          if run_detect marsnet; then
+            echo "::error::expected an unrecognized platform to fail rather than silently skip"; exit 1
+          fi
+
+      - name: cloud-auth (docker, no-op)
+        id: cloud-auth-noop
+        uses: ./cloud-auth
+        env:
+          WINDSOR_STUB_PLATFORM: docker
+
+      - name: Assert cloud-auth no-op outputs
+        shell: bash
+        run: |
+          if [ "${{ steps.cloud-auth-noop.outputs.platform }}" != "docker" ]; then
+            echo "::error::expected platform output 'docker', got '${{ steps.cloud-auth-noop.outputs.platform }}'"
+            exit 1
+          fi
+          if [ "${{ steps.cloud-auth-noop.outputs.context }}" != "stub-context" ]; then
+            echo "::error::expected context output 'stub-context', got '${{ steps.cloud-auth-noop.outputs.context }}'"
+            exit 1
           fi
