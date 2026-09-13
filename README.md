@@ -204,7 +204,7 @@ steps:
 
 ## Examples
 
-[`examples/bootstrap-and-destroy.yaml`](examples/bootstrap-and-destroy.yaml) — a full workflow chaining the root action, `cloud-auth`, and `bootstrap`/`destroy`. Manually triggered, targets AWS, and stands up or tears down an environment in one job.
+[`examples/bootstrap-and-destroy.yaml`](examples/bootstrap-and-destroy.yaml) — a full workflow chaining the root action, `cloud-auth`, and `bootstrap`/`destroy`. Manually triggered, and runs a matrix with one leg per cloud (aws, azure, gcp, hetzner) to stand up or tear down all four.
 
 ## Recipes
 
