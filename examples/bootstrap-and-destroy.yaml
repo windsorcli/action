@@ -1,24 +1,9 @@
 name: Bootstrap or destroy environment
-# Copy this file into your own repo's .github/workflows/ and adjust the
-# matrix contexts and blueprint for your project.
-#
-# Manually triggered. Pick "bootstrap" to stand up every environment below,
-# or "destroy" to tear them all down. One matrix leg per cloud (aws, azure,
-# gcp, hetzner) — context names below match their platform for clarity, but
-# a context name is arbitrary; only its committed config declares the
-# platform.
-#
-# Assumes contexts/<context>/ is already committed for each of the four,
-# with its platform already declared (e.g. from a prior local `windsor
-# init <context> --platform <platform>`). Both jobs still run a full
-# `windsor init` (not install-only) before cloud-auth, for a different
-# reason now: destroy has no context argument of its own (unlike
-# bootstrap), so it needs init to set the context it acts on.
-#
-# Each leg passes cloud-auth its own platform directly (skipping detection
-# — the matrix already states it) and only that platform's credentials.
-# Matrix keys use underscores, not hyphens: `matrix.aws-role-arn` would
-# parse as subtraction in an expression.
+# Copy into your own repo's .github/workflows/ and adjust the contexts and
+# blueprint. Manually triggered: bootstrap stands up all four clouds below,
+# destroy tears them down. Assumes contexts/<context>/ already exists and
+# declares its platform (e.g. from a prior local `windsor init <context>
+# --platform <platform>`).
 
 on:
   workflow_dispatch:
@@ -134,8 +119,8 @@ jobs:
           gcp-service-account: ${{ matrix.gcp_service_account }}
           hetzner-token: ${{ matrix.hetzner_token }}
 
-      # windsor destroy has no context argument of its own (unlike bootstrap)
-      # — it acts on whatever context windsor init just set above.
+      # windsor destroy has no context argument — it acts on whatever
+      # context windsor init already set.
       - name: Destroy environment
         uses: windsorcli/action/destroy@v1
         with:
