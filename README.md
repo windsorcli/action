@@ -138,18 +138,31 @@ Wraps `windsor check` — verifies required tools and cloud credentials. Takes o
 
 ### `windsorcli/action/cloud-auth`
 
-Detects the current context's platform (via `windsor get contexts`) and authenticates to it, dispatching to the matching upstream action: [`aws-actions/configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials) for `aws`, [`azure/login`](https://github.com/Azure/login) plus [`azure/use-kubelogin`](https://github.com/Azure/use-kubelogin) for `azure`, [`google-github-actions/auth`](https://github.com/google-github-actions/auth) plus the `gke-gcloud-auth-plugin` component for `gcp`, and a plain `HCLOUD_TOKEN` env var for `hetzner`. A platform that needs no cloud credentials (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) is a no-op. An unrecognized platform, or a required input missing for the detected platform, fails immediately — not silently, and not three steps later as an opaque auth error.
+Detects the context's platform via `windsor get contexts`. It then authenticates using the matching action:
 
-You still supply your own OIDC/credential values, the same ones you'd pass to the upstream action directly — this only removes the per-platform `if:` branching, not the need to have OIDC trust already configured on the cloud side. Short-lived credentials (STS, Azure/GCP OIDC tokens) expire; call this action again later in a long job to refresh them.
+| Platform | Uses |
+| --- | --- |
+| `aws` | [`aws-actions/configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials) |
+| `azure` | [`azure/login`](https://github.com/Azure/login) and [`azure/use-kubelogin`](https://github.com/Azure/use-kubelogin) |
+| `gcp` | [`google-github-actions/auth`](https://github.com/google-github-actions/auth) and the `gke-gcloud-auth-plugin` component |
+| `hetzner` | A plain `HCLOUD_TOKEN` env var |
+
+A platform that needs no cloud credentials (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) is a no-op.
+
+An unrecognized platform fails. A missing required input also fails. Both fail immediately, not later as an opaque auth error.
+
+You still supply your own OIDC and credential values — the same ones you'd pass to the upstream action directly. This only removes the per-platform `if:` branching. You still need OIDC trust set up on the cloud side.
+
+Short-lived credentials expire. Call this action again later in a long job to refresh them.
 
 | Input | Description |
 | --- | --- |
-| `aws-role-arn`, `aws-region` | Required when the platform is `aws` |
-| `azure-client-id`, `azure-tenant-id`, `azure-subscription-id` | Required when the platform is `azure` |
-| `azure-kubelogin-version` | `kubelogin` version to install (`azure` only, default: a pinned release) |
-| `gcp-workload-identity-provider`, `gcp-service-account` | Required when the platform is `gcp` |
+| `aws-role-arn`, `aws-region` | Required for `aws` |
+| `azure-client-id`, `azure-tenant-id`, `azure-subscription-id` | Required for `azure` |
+| `azure-kubelogin-version` | `kubelogin` version. Default: a pinned release. `azure` only. |
+| `gcp-workload-identity-provider`, `gcp-service-account` | Required for `gcp` |
 | `gcp-project-id` | Optional (`gcp` only) |
-| `hetzner-token` | Required when the platform is `hetzner`, exported as `HCLOUD_TOKEN` |
+| `hetzner-token` | Required for `hetzner`. Exported as `HCLOUD_TOKEN`. |
 
 ```yaml
 - uses: windsorcli/action/cloud-auth@v1
@@ -164,9 +177,9 @@ You still supply your own OIDC/credential values, the same ones you'd pass to th
     hetzner-token: ${{ secrets.HCLOUD_TOKEN }}
 ```
 
-Only the inputs for your actual platform(s) are required; leave the rest blank.
+Only the inputs for your platform are required. Leave the rest blank.
 
-Not included: a fix for kubelogin's `workloadidentity` mode not refreshing GitHub's short-lived (~5 minute) OIDC token on its own, which only bites a long-running `windsor up`/`bootstrap`/`apply` against AKS. That's a workaround for a specific failure mode, not "authenticate to Azure" — see the recipe below if you hit it.
+Not included: a fix for kubelogin's token refresh. kubelogin's `workloadidentity` mode does not refresh GitHub's short-lived OIDC token (about 5 minutes) on its own. This only affects a long `windsor up`, `bootstrap`, or `apply` against AKS. See the recipe below if you hit it.
 
 ### `windsorcli/action/plan-comment`
 
@@ -245,7 +258,9 @@ If you don't commit `.terraform.lock.hcl` files, `hashFiles` resolves to an empt
 
 ### Refreshing kubelogin's Azure token on a long job
 
-`kubelogin`'s `workloadidentity` mode reads a federated token from a file once; it doesn't refresh it. GitHub's own OIDC token lasts about 5 minutes, so a `windsor up`/`bootstrap`/`apply` against AKS that runs longer than that can start failing kubelogin auth partway through. The fix is a small wrapper script that re-mints the token from GitHub's own OIDC endpoint before each `kubelogin` invocation:
+`kubelogin`'s `workloadidentity` mode reads a federated token from a file once. It does not refresh the token. GitHub's own OIDC token lasts about 5 minutes. A long `windsor up`, `bootstrap`, or `apply` against AKS can fail partway through once that token expires.
+
+The fix: a wrapper script that gets a fresh token from GitHub's OIDC endpoint before each `kubelogin` call.
 
 ```yaml
 - name: Wrap kubelogin with a token refresh
@@ -267,7 +282,9 @@ If you don't commit `.terraform.lock.hcl` files, `hashFiles` resolves to an empt
     echo "AZURE_FEDERATED_TOKEN_FILE=$token_file" >> "$GITHUB_ENV"
 ```
 
-Needs `permissions: id-token: write` on the job (for `ACTIONS_ID_TOKEN_REQUEST_TOKEN`/`_URL`) and `jq` on the runner. Test this against your own AKS setup before relying on it — it's adapted from a working internal tool, not verified as a drop-in here.
+Needs `permissions: id-token: write` on the job, for `ACTIONS_ID_TOKEN_REQUEST_TOKEN` and `_URL`. Also needs `jq` on the runner.
+
+Test this against your own AKS setup first. It's adapted from a working internal tool. It is not verified as a drop-in here.
 
 ## Security
 

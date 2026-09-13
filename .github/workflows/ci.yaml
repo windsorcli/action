@@ -636,12 +636,10 @@ jobs:
             echo "::error::expected the fail-gate step to fail when PLAN_STATUS=failed"; exit 1
           fi
 
-      # cloud-auth's later steps call real aws-actions/configure-aws-credentials,
-      # azure/login, etc. — invoking the whole composite for a cloud platform would
-      # either need real credentials or fail on a real (if expected) auth error. Its
-      # detect/validate step is tested in isolation instead, the same way plan-comment's
-      # github-script step is; the full composite is only invoked end-to-end for a
-      # no-op platform (docker), which never reaches those steps.
+      # cloud-auth's later steps call real cloud login actions. Running the whole
+      # composite for a cloud platform would need real credentials. So this tests
+      # the detect/validate step alone, the same way as plan-comment's github-script
+      # step. It runs the full composite only for a no-op platform (docker).
       - name: Test cloud-auth platform detection and validation
         if: matrix.os == 'ubuntu-latest'
         shell: bash

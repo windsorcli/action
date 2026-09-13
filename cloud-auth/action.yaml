@@ -1,5 +1,5 @@
 name: 'Windsor Cloud Auth'
-description: "Authenticate to the current context's cloud platform (aws/azure/gcp/hetzner), detected via windsor"
+description: "Authenticate to the context's cloud platform: aws, azure, gcp, or hetzner"
 
 inputs:
   workdir:
@@ -7,43 +7,43 @@ inputs:
     required: false
     default: ""
   aws-role-arn:
-    description: 'AWS role to assume (role-to-assume). Required when the context platform is aws.'
+    description: 'AWS role to assume. Required for aws.'
     required: false
     default: ""
   aws-region:
-    description: 'AWS region. Required when the context platform is aws.'
+    description: 'AWS region. Required for aws.'
     required: false
     default: ""
   azure-client-id:
-    description: 'Azure service principal client ID. Required when the context platform is azure.'
+    description: 'Azure client ID. Required for azure.'
     required: false
     default: ""
   azure-tenant-id:
-    description: 'Azure tenant ID. Required when the context platform is azure.'
+    description: 'Azure tenant ID. Required for azure.'
     required: false
     default: ""
   azure-subscription-id:
-    description: 'Azure subscription ID. Required when the context platform is azure.'
+    description: 'Azure subscription ID. Required for azure.'
     required: false
     default: ""
   azure-kubelogin-version:
-    description: 'kubelogin version to install for AKS auth (azure platform only)'
+    description: 'kubelogin version to install. Used only for azure.'
     required: false
     default: v0.2.19 # renovate: datasource=github-releases depName=Azure/kubelogin
   gcp-workload-identity-provider:
-    description: 'GCP workload identity provider. Required when the context platform is gcp.'
+    description: 'GCP workload identity provider. Required for gcp.'
     required: false
     default: ""
   gcp-service-account:
-    description: 'GCP service account email. Required when the context platform is gcp.'
+    description: 'GCP service account email. Required for gcp.'
     required: false
     default: ""
   gcp-project-id:
-    description: 'GCP project ID (gcp platform only, optional)'
+    description: 'GCP project ID. Optional, used only for gcp.'
     required: false
     default: ""
   hetzner-token:
-    description: 'Hetzner Cloud API token, exported as HCLOUD_TOKEN. Required when the context platform is hetzner.'
+    description: 'Hetzner API token. Required for hetzner. Exported as HCLOUD_TOKEN.'
     required: false
     default: ""
 
@@ -52,15 +52,14 @@ outputs:
     description: 'The windsor context this step ran against'
     value: ${{ steps.detect.outputs.context }}
   platform:
-    description: 'The detected platform for the current context'
+    description: 'The detected platform'
     value: ${{ steps.detect.outputs.platform }}
 
 runs:
   using: 'composite'
   steps:
-    # Every credential-shaped input is validated here, before any cloud login step runs,
-    # so a missing input fails immediately at this step with a clear message — not three
-    # steps later as an opaque auth error from whichever upstream action needed it.
+    # This step validates every credential input before login runs. A missing
+    # input fails here with a clear message, not later as an unclear auth error.
     - name: Detect platform
       id: detect
       shell: bash
@@ -87,9 +86,9 @@ runs:
           exit 1
         fi
 
-        # 'windsor get contexts' prints a tab-aligned table: NAME PROVIDER BACKEND CURRENT.
-        # Match by name (column 1) rather than the CURRENT marker column, since that's a
-        # simpler, more direct match for the context windsor already told us is active.
+        # 'windsor get contexts' prints a table: NAME PROVIDER BACKEND CURRENT.
+        # Match the context by name (column 1). This is simpler than matching
+        # the CURRENT marker column.
         platform=$(windsor get contexts 2>/dev/null | awk -v ctx="$context_name" '$1 == ctx { print $2; exit }')
         if [ -z "$platform" ]; then
           echo "::error::could not determine the platform for context '$context_name' from 'windsor get contexts'" >&2
@@ -117,7 +116,7 @@ runs:
             echo "platform '$platform' needs no cloud credentials; nothing to do"
             ;;
           *)
-            echo "::error::unrecognized platform '$platform' for context '$context_name' — this action only knows aws, azure, gcp, hetzner (cloud) and none, docker, incus, metal, hyperv, vsphere (no auth needed). If windsor added a new platform, this action needs updating rather than silently skipping it." >&2
+            echo "::error::unrecognized platform '$platform' for context '$context_name'. Known platforms: aws, azure, gcp, hetzner (need auth) and none, docker, incus, metal, hyperv, vsphere (no auth needed). Update this action if windsor added a new platform." >&2
             exit 1
             ;;
         esac
@@ -143,12 +142,10 @@ runs:
         tenant-id: ${{ inputs.azure-tenant-id }}
         subscription-id: ${{ inputs.azure-subscription-id }}
 
-    # AKS auth (via terraform's kubernetes provider, kubectl, etc.) needs kubelogin on
-    # PATH; azure/login alone only authenticates the Azure CLI. This does not include
-    # the federated-token-refresh shim a long-running job may need (kubelogin's
-    # workloadidentity mode doesn't refresh GitHub's ~5-minute OIDC token on its own) —
-    # that's a workaround for a specific failure mode, not "authenticate to Azure", so
-    # it's a documented recipe instead. See the README.
+    # AKS auth needs kubelogin on PATH. azure/login only authenticates the Azure
+    # CLI. This step skips the token-refresh shim some long jobs need: kubelogin's
+    # workloadidentity mode does not refresh GitHub's short-lived OIDC token on
+    # its own. That's a separate fix, not part of Azure login. See the README recipe.
     - name: Set up kubelogin
       if: steps.detect.outputs.platform == 'azure'
       uses: azure/use-kubelogin@0ce7c36141aa27d4934872cf00b0120804c98a29 # v1.3
@@ -163,17 +160,15 @@ runs:
         service_account: ${{ inputs.gcp-service-account }}
         project_id: ${{ inputs.gcp-project-id }}
 
-    # Terraform's kubernetes provider (used by gitops/flux) needs this plugin for
-    # kubectl/client-go auth against GKE — not bundled with google-github-actions/auth
-    # or the runner's preinstalled gcloud.
+    # Terraform's kubernetes provider needs this plugin to auth against GKE.
+    # Neither google-github-actions/auth nor the runner's gcloud installs it.
     - name: Install gke-gcloud-auth-plugin
       if: steps.detect.outputs.platform == 'gcp'
       uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       with:
         install_components: gke-gcloud-auth-plugin
 
-    # Hetzner has no OIDC product; the token is a long-lived static secret passed straight
-    # through as an env var, not a login flow.
+    # Hetzner has no OIDC. The token is a static secret. Pass it through as an env var.
     - name: Configure Hetzner token
       if: steps.detect.outputs.platform == 'hetzner'
       shell: bash
