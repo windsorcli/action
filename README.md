@@ -202,6 +202,10 @@ steps:
   - uses: windsorcli/action/plan-comment@v1
 ```
 
+## Examples
+
+[`examples/bootstrap-and-destroy.yaml`](examples/bootstrap-and-destroy.yaml) — a full workflow chaining the root action, `cloud-auth`, and `bootstrap`/`destroy`. Manually triggered, and runs a matrix with one leg per cloud (aws, azure, gcp, hetzner) to stand up or tear down all four.
+
 ## Recipes
 
 These patterns aren't worth a dedicated sub-action — copy the snippet into your own workflow instead.
