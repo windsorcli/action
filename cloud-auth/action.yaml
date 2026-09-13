@@ -6,6 +6,10 @@ inputs:
     description: 'The working directory to run windsor from'
     required: false
     default: ""
+  platform:
+    description: 'Skip detection and use this platform directly. One of: aws, azure, gcp, hetzner, none, docker, incus, metal, hyperv, vsphere.'
+    required: false
+    default: ""
   aws-role-arn:
     description: 'AWS role to assume. Required for aws.'
     required: false
@@ -65,6 +69,7 @@ runs:
       shell: bash
       env:
         INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_PLATFORM: ${{ inputs.platform }}
         INPUT_AWS_ROLE_ARN: ${{ inputs.aws-role-arn }}
         INPUT_AWS_REGION: ${{ inputs.aws-region }}
         INPUT_AZURE_CLIENT_ID: ${{ inputs.azure-client-id }}
@@ -86,13 +91,19 @@ runs:
           exit 1
         fi
 
-        # 'windsor get contexts' prints a table: NAME PROVIDER BACKEND CURRENT.
-        # Match the context by name (column 1). This is simpler than matching
-        # the CURRENT marker column.
-        platform=$(windsor get contexts 2>/dev/null | awk -v ctx="$context_name" '$1 == ctx { print $2; exit }')
-        if [ -z "$platform" ]; then
-          echo "::error::could not determine the platform for context '$context_name' from 'windsor get contexts'" >&2
-          exit 1
+        if [ -n "$INPUT_PLATFORM" ]; then
+          # Caller already knows the platform (e.g. from its own build matrix) —
+          # skip the lookup below and use it directly.
+          platform="$INPUT_PLATFORM"
+        else
+          # 'windsor get contexts' prints a table: NAME PROVIDER BACKEND CURRENT.
+          # Match the context by name (column 1). This is simpler than matching
+          # the CURRENT marker column.
+          platform=$(windsor get contexts 2>/dev/null | awk -v ctx="$context_name" '$1 == ctx { print $2; exit }')
+          if [ -z "$platform" ]; then
+            echo "::error::could not determine the platform for context '$context_name' from 'windsor get contexts'. Pass the platform input to skip detection." >&2
+            exit 1
+          fi
         fi
 
         case "$platform" in

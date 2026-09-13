@@ -138,7 +138,7 @@ Wraps `windsor check` — verifies required tools and cloud credentials. Takes o
 
 ### `windsorcli/action/cloud-auth`
 
-Detects the context's platform via `windsor get contexts`. It then authenticates using the matching action:
+Detects the context's platform via `windsor get contexts`, or use it directly with the `platform` input if the caller already knows it (e.g. from its own build matrix) — this skips the detection lookup entirely. Either way, it then authenticates using the matching action:
 
 | Platform | Uses |
 | --- | --- |
@@ -157,6 +157,7 @@ Short-lived credentials expire. Call this action again later in a long job to re
 
 | Input | Description |
 | --- | --- |
+| `platform` | Skip detection, use this platform directly |
 | `aws-role-arn`, `aws-region` | Required for `aws` |
 | `azure-client-id`, `azure-tenant-id`, `azure-subscription-id` | Required for `azure` |
 | `azure-kubelogin-version` | `kubelogin` version. Default: a pinned release. `azure` only. |

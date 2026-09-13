@@ -653,6 +653,7 @@ jobs:
             INPUT_AZURE_CLIENT_ID="${4:-}" INPUT_AZURE_TENANT_ID="${5:-}" INPUT_AZURE_SUBSCRIPTION_ID="${6:-}" \
             INPUT_GCP_WORKLOAD_IDENTITY_PROVIDER="${7:-}" INPUT_GCP_SERVICE_ACCOUNT="${8:-}" \
             INPUT_HETZNER_TOKEN="${9:-}" \
+            INPUT_PLATFORM="${10:-}" \
             GITHUB_OUTPUT="$RUNNER_TEMP/cloud-auth-outputs.txt" \
               bash "$RUNNER_TEMP/cloud-auth-detect.sh"
           }
@@ -692,6 +693,15 @@ jobs:
           if run_detect marsnet; then
             echo "::error::expected an unrecognized platform to fail rather than silently skip"; exit 1
           fi
+
+          # The stub context's real platform is azure; the platform input must win.
+          : > "$RUNNER_TEMP/cloud-auth-outputs.txt"
+          if ! run_detect azure arn:aws:iam::123:role/x us-east-1 "" "" "" "" "" "" aws; then
+            echo "::error::expected the platform input (aws) to override detection (azure)"; exit 1
+          fi
+          grep -qxF "platform=aws" "$RUNNER_TEMP/cloud-auth-outputs.txt" || {
+            echo "::error::expected platform=aws (from the override) in outputs"; cat "$RUNNER_TEMP/cloud-auth-outputs.txt"; exit 1;
+          }
 
       - name: cloud-auth (docker, no-op)
         id: cloud-auth-noop
