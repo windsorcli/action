@@ -1,5 +1,5 @@
 name: 'Windsor Cloud Auth'
-description: "Authenticate to the context's cloud platform: aws, azure, gcp, or hetzner"
+description: "Authenticate to the context's cloud platform via OIDC: aws, azure, or gcp"
 
 inputs:
   workdir:
@@ -7,7 +7,7 @@ inputs:
     required: false
     default: ""
   platform:
-    description: 'Skip detection and use this platform directly. One of: aws, azure, gcp, hetzner, none, docker, incus, metal, hyperv, vsphere.'
+    description: 'Skip detection and use this platform directly. One of: aws, azure, gcp, none, docker, incus, metal, hyperv, vsphere. hetzner has no OIDC — set HCLOUD_TOKEN directly in your workflow instead.'
     required: false
     default: ""
   aws-role-arn:
@@ -46,10 +46,6 @@ inputs:
     description: 'GCP project ID. Optional, used only for gcp.'
     required: false
     default: ""
-  hetzner-token:
-    description: 'Hetzner API token. Required for hetzner. Exported as HCLOUD_TOKEN.'
-    required: false
-    default: ""
 
 outputs:
   context:
@@ -77,7 +73,6 @@ runs:
         INPUT_AZURE_SUBSCRIPTION_ID: ${{ inputs.azure-subscription-id }}
         INPUT_GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ inputs.gcp-workload-identity-provider }}
         INPUT_GCP_SERVICE_ACCOUNT: ${{ inputs.gcp-service-account }}
-        INPUT_HETZNER_TOKEN: ${{ inputs.hetzner-token }}
       run: |
         set -eo pipefail
         source "${{ github.action_path }}/../scripts/lib.sh"
@@ -85,26 +80,9 @@ runs:
         require_windsor
         resolve_workdir "$INPUT_WORKDIR"
 
-        context_name=$(windsor get context 2>/dev/null || true)
-        if [ -z "$context_name" ]; then
-          echo "::error::could not determine the current windsor context ('windsor get context' returned nothing)" >&2
-          exit 1
-        fi
-
-        if [ -n "$INPUT_PLATFORM" ]; then
-          # Caller already knows the platform (e.g. from its own build matrix) —
-          # skip the lookup below and use it directly.
-          platform="$INPUT_PLATFORM"
-        else
-          # 'windsor get contexts' prints a table: NAME PROVIDER BACKEND CURRENT.
-          # Match the context by name (column 1). This is simpler than matching
-          # the CURRENT marker column.
-          platform=$(windsor get contexts 2>/dev/null | awk -v ctx="$context_name" '$1 == ctx { print $2; exit }')
-          if [ -z "$platform" ]; then
-            echo "::error::could not determine the platform for context '$context_name' from 'windsor get contexts'. Pass the platform input to skip detection." >&2
-            exit 1
-          fi
-        fi
+        detect_platform "$INPUT_PLATFORM"
+        context_name="$DETECTED_CONTEXT"
+        platform="$DETECTED_PLATFORM"
 
         case "$platform" in
           aws)
@@ -121,13 +99,14 @@ runs:
             [ -z "$INPUT_GCP_SERVICE_ACCOUNT" ] && { echo "::error::platform is 'gcp' but gcp-service-account was not provided" >&2; exit 1; }
             ;;
           hetzner)
-            [ -z "$INPUT_HETZNER_TOKEN" ] && { echo "::error::platform is 'hetzner' but hetzner-token was not provided" >&2; exit 1; }
+            echo "::error::platform is 'hetzner', which has no OIDC — cloud-auth only authenticates OIDC-based clouds (aws, azure, gcp). Set HCLOUD_TOKEN directly in your workflow instead; see the README's Hetzner recipe." >&2
+            exit 1
             ;;
           none|docker|incus|metal|hyperv|vsphere)
             echo "platform '$platform' needs no cloud credentials; nothing to do"
             ;;
           *)
-            echo "::error::unrecognized platform '$platform' for context '$context_name'. Known platforms: aws, azure, gcp, hetzner (need auth) and none, docker, incus, metal, hyperv, vsphere (no auth needed). Update this action if windsor added a new platform." >&2
+            echo "::error::unrecognized platform '$platform' for context '$context_name'. Known platforms: aws, azure, gcp (OIDC, need auth via this action) and none, docker, incus, metal, hyperv, vsphere (no auth needed). Update this action if windsor added a new platform." >&2
             exit 1
             ;;
         esac
@@ -178,11 +157,3 @@ runs:
       uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       with:
         install_components: gke-gcloud-auth-plugin
-
-    # Hetzner has no OIDC. The token is a static secret. Pass it through as an env var.
-    - name: Configure Hetzner token
-      if: steps.detect.outputs.platform == 'hetzner'
-      shell: bash
-      env:
-        INPUT_HETZNER_TOKEN: ${{ inputs.hetzner-token }}
-      run: echo "HCLOUD_TOKEN=$INPUT_HETZNER_TOKEN" >> "$GITHUB_ENV"

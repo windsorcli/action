@@ -652,8 +652,7 @@ jobs:
             INPUT_AWS_ROLE_ARN="${2:-}" INPUT_AWS_REGION="${3:-}" \
             INPUT_AZURE_CLIENT_ID="${4:-}" INPUT_AZURE_TENANT_ID="${5:-}" INPUT_AZURE_SUBSCRIPTION_ID="${6:-}" \
             INPUT_GCP_WORKLOAD_IDENTITY_PROVIDER="${7:-}" INPUT_GCP_SERVICE_ACCOUNT="${8:-}" \
-            INPUT_HETZNER_TOKEN="${9:-}" \
-            INPUT_PLATFORM="${10:-}" \
+            INPUT_PLATFORM="${9:-}" \
             GITHUB_OUTPUT="$RUNNER_TEMP/cloud-auth-outputs.txt" \
               bash "$RUNNER_TEMP/cloud-auth-detect.sh"
           }
@@ -678,8 +677,8 @@ jobs:
             echo "::error::expected gcp with missing gcp-service-account to fail"; exit 1
           fi
 
-          if ! run_detect hetzner "" "" "" "" "" "" "" htz-token; then
-            echo "::error::expected hetzner with a token to succeed"; exit 1
+          if run_detect hetzner; then
+            echo "::error::expected hetzner to fail — it has no OIDC, cloud-auth doesn't handle it"; exit 1
           fi
 
           : > "$RUNNER_TEMP/cloud-auth-outputs.txt"
@@ -696,7 +695,7 @@ jobs:
 
           # The stub context's real platform is azure; the platform input must win.
           : > "$RUNNER_TEMP/cloud-auth-outputs.txt"
-          if ! run_detect azure arn:aws:iam::123:role/x us-east-1 "" "" "" "" "" "" aws; then
+          if ! run_detect azure arn:aws:iam::123:role/x us-east-1 "" "" "" "" "" aws; then
             echo "::error::expected the platform input (aws) to override detection (azure)"; exit 1
           fi
           grep -qxF "platform=aws" "$RUNNER_TEMP/cloud-auth-outputs.txt" || {
@@ -720,3 +719,153 @@ jobs:
             echo "::error::expected context output 'stub-context', got '${{ steps.cloud-auth-noop.outputs.context }}'"
             exit 1
           fi
+
+      # Like cloud-auth, kubeconfig's later steps call real cloud CLIs (aws/az/gcloud)
+      # against a real cluster. This tests the detect/validate step alone, and runs
+      # the full composite only for a no-op platform (docker).
+      - name: Test kubeconfig platform detection and validation
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          python3 scripts/test/extract-step.py kubeconfig/action.yaml 0 > "$RUNNER_TEMP/kubeconfig-detect.sh"
+
+          run_detect() {
+            WINDSOR_STUB_PLATFORM="$1" \
+            INPUT_WORKDIR="" \
+            INPUT_AWS_CLUSTER_NAME="${2:-}" INPUT_AWS_REGION="${3:-}" \
+            INPUT_AZURE_RESOURCE_GROUP="${4:-}" INPUT_AZURE_CLUSTER_NAME="${5:-}" \
+            INPUT_GCP_CLUSTER_NAME="${6:-}" INPUT_GCP_REGION="${7:-}" INPUT_GCP_PROJECT_ID="${8:-}" \
+            INPUT_PLATFORM="${9:-}" \
+            GITHUB_OUTPUT="$RUNNER_TEMP/kubeconfig-outputs.txt" \
+              bash "$RUNNER_TEMP/kubeconfig-detect.sh"
+          }
+
+          : > "$RUNNER_TEMP/kubeconfig-outputs.txt"
+          if ! KUBECONFIG="$RUNNER_TEMP/fake-kubeconfig" run_detect aws my-cluster us-east-1; then
+            echo "::error::expected aws with all inputs to succeed"; exit 1
+          fi
+          grep -qxF "platform=aws" "$RUNNER_TEMP/kubeconfig-outputs.txt" || {
+            echo "::error::expected platform=aws in outputs"; cat "$RUNNER_TEMP/kubeconfig-outputs.txt"; exit 1;
+          }
+
+          if KUBECONFIG="$RUNNER_TEMP/fake-kubeconfig" run_detect aws my-cluster ""; then
+            echo "::error::expected aws with missing aws-region to fail"; exit 1
+          fi
+
+          if run_detect aws my-cluster us-east-1; then
+            echo "::error::expected aws with no KUBECONFIG set to fail"; exit 1
+          fi
+
+          if ! KUBECONFIG="$RUNNER_TEMP/fake-kubeconfig" run_detect azure "" "" my-rg my-cluster; then
+            echo "::error::expected azure with all inputs to succeed"; exit 1
+          fi
+
+          if KUBECONFIG="$RUNNER_TEMP/fake-kubeconfig" run_detect azure "" "" my-rg ""; then
+            echo "::error::expected azure with missing azure-cluster-name to fail"; exit 1
+          fi
+
+          if ! KUBECONFIG="$RUNNER_TEMP/fake-kubeconfig" run_detect gcp "" "" "" "" my-cluster us-central1 my-project; then
+            echo "::error::expected gcp with all inputs to succeed"; exit 1
+          fi
+
+          if KUBECONFIG="$RUNNER_TEMP/fake-kubeconfig" run_detect gcp "" "" "" "" my-cluster us-central1 ""; then
+            echo "::error::expected gcp with missing gcp-project-id to fail"; exit 1
+          fi
+
+          if ! run_detect hetzner; then
+            echo "::error::expected hetzner (no managed control-plane API) to succeed"; exit 1
+          fi
+
+          : > "$RUNNER_TEMP/kubeconfig-outputs.txt"
+          if ! run_detect docker; then
+            echo "::error::expected docker (no cluster) to succeed"; exit 1
+          fi
+          grep -qxF "platform=docker" "$RUNNER_TEMP/kubeconfig-outputs.txt" || {
+            echo "::error::expected platform=docker in outputs"; cat "$RUNNER_TEMP/kubeconfig-outputs.txt"; exit 1;
+          }
+
+          if run_detect marsnet; then
+            echo "::error::expected an unrecognized platform to fail rather than silently skip"; exit 1
+          fi
+
+          # The stub context's real platform is azure; the platform input must win.
+          : > "$RUNNER_TEMP/kubeconfig-outputs.txt"
+          if ! KUBECONFIG="$RUNNER_TEMP/fake-kubeconfig" run_detect azure my-cluster us-east-1 "" "" "" "" "" aws; then
+            echo "::error::expected the platform input (aws) to override detection (azure)"; exit 1
+          fi
+          grep -qxF "platform=aws" "$RUNNER_TEMP/kubeconfig-outputs.txt" || {
+            echo "::error::expected platform=aws (from the override) in outputs"; cat "$RUNNER_TEMP/kubeconfig-outputs.txt"; exit 1;
+          }
+
+      - name: kubeconfig (docker, no-op)
+        id: kubeconfig-noop
+        uses: ./kubeconfig
+        env:
+          WINDSOR_STUB_PLATFORM: docker
+
+      - name: Assert kubeconfig no-op outputs
+        shell: bash
+        run: |
+          if [ "${{ steps.kubeconfig-noop.outputs.platform }}" != "docker" ]; then
+            echo "::error::expected platform output 'docker', got '${{ steps.kubeconfig-noop.outputs.platform }}'"
+            exit 1
+          fi
+          if [ "${{ steps.kubeconfig-noop.outputs.context }}" != "stub-context" ]; then
+            echo "::error::expected context output 'stub-context', got '${{ steps.kubeconfig-noop.outputs.context }}'"
+            exit 1
+          fi
+
+      # There's no real cluster in CI to authenticate against, so this can't test
+      # that these calls succeed. It tests something narrower but still useful:
+      # aws-cli and gcloud are preinstalled on GitHub-hosted runners, and kubelogin
+      # is installed below, so the real CLIs run for real against fake identifiers.
+      # A typo'd or renamed flag fails differently (a parsing/usage error) than a
+      # real credential failure does — this catches the former without needing
+      # live infra. convert_kubelogin_mode doesn't call out to Azure at all, so
+      # it's asserted to fully succeed against a fixture instead.
+      - name: Install kubelogin (for CLI flag validation below)
+        if: matrix.os == 'ubuntu-latest'
+        uses: azure/use-kubelogin@0ce7c36141aa27d4934872cf00b0120804c98a29 # v1.3
+        with:
+          kubelogin-version: v0.2.19 # renovate: datasource=github-releases depName=Azure/kubelogin package=Azure/kubelogin
+
+      - name: Verify kubeconfig's cloud CLI calls use valid flags
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          set -eo pipefail
+          source scripts/lib.sh
+
+          # A missing/renamed flag fails differently per CLI: argparse-style
+          # ("unrecognized arguments"), Cobra-style ("unknown flag"), or an
+          # explicit required-argument complaint (az's "arguments are required").
+          assert_credential_failure() {
+            local label="$1" out="$2" rc="$3"
+            if [ "$rc" -eq 0 ]; then
+              echo "::error::expected '$label' to fail with no credentials configured, but it succeeded"; exit 1
+            fi
+            if echo "$out" | grep -qiE "unknown (flag|option|command)|unrecognized arguments|invalid choice|no such option|unexpected argument|arguments are required|expected one argument"; then
+              echo "::error::'$label' failed on flag parsing, not credentials:"; echo "$out"; exit 1
+            fi
+          }
+
+          out=$(AWS_CONFIG_FILE=/dev/null AWS_SHARED_CREDENTIALS_FILE=/dev/null \
+            fetch_eks_kubeconfig ci-test-cluster us-east-1 "$RUNNER_TEMP/ci-test-kubeconfig-aws" 2>&1) && rc=0 || rc=$?
+          assert_credential_failure "fetch_eks_kubeconfig" "$out" "$rc"
+
+          out=$(AZURE_CONFIG_DIR="$RUNNER_TEMP/az-config-empty" \
+            fetch_aks_kubeconfig ci-test-rg ci-test-cluster "$RUNNER_TEMP/ci-test-kubeconfig-az" workloadidentity 2>&1) && rc=0 || rc=$?
+          assert_credential_failure "fetch_aks_kubeconfig" "$out" "$rc"
+
+          out=$(CLOUDSDK_CONFIG="$RUNNER_TEMP/gcloud-config-empty" \
+            fetch_gke_kubeconfig ci-test-cluster us-central1 ci-test-project 2>&1) && rc=0 || rc=$?
+          assert_credential_failure "fetch_gke_kubeconfig" "$out" "$rc"
+
+          # Doesn't call out to Azure — only rewrites the file — so this is a real
+          # success-path assertion, not just "didn't fail on flags".
+          fixture="$RUNNER_TEMP/ci-test-kubeconfig-kubelogin.yaml"
+          cp scripts/test/fixtures/aks-kubeconfig.yaml "$fixture"
+          convert_kubelogin_mode "$fixture" workloadidentity
+          grep -q "command: kubelogin" "$fixture" || {
+            echo "::error::expected convert_kubelogin_mode to rewrite the user's auth-provider into an exec block"; cat "$fixture"; exit 1;
+          }
