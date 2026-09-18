@@ -35,7 +35,7 @@ inputs:
     required: false
     default: ""
   gcp-region:
-    description: 'Region the GKE cluster is in. Required for gcp. Zonal clusters are not supported — pass the zone here if that''s what your cluster uses; gcloud accepts either for this flag.'
+    description: 'Region (or zone) the GKE cluster is in. Required for gcp.'
     required: false
     default: ""
   gcp-project-id:
@@ -54,15 +54,9 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    # This step assumes the matching cloud-auth login already ran in this job —
-    # it authenticates to the cluster's control plane API but does not itself
-    # obtain cloud credentials. It regenerates the kubeconfig windsor's own
-    # KubeEnvPrinter points KUBECONFIG at; it does not create one from scratch
-    # for a context that never had a cluster.
-    #
-    # This step validates every input before the fetch runs, the same way
-    # cloud-auth validates credential inputs before login runs. A missing
-    # input fails here with a clear message, not later as an unclear CLI error.
+    # Assumes cloud-auth already authenticated in this job. Validates every
+    # input before the fetch runs, so a missing one fails here with a clear
+    # message, not later as an unclear CLI error.
     - name: Detect platform
       id: detect
       shell: bash
@@ -146,10 +140,8 @@ runs:
       run: |
         set -eo pipefail
         source "${{ github.action_path }}/../scripts/lib.sh"
-        # kubelogin's non-workloadidentity default embeds an interactive AAD
-        # device-code flow, which cloud-auth's non-interactive OIDC login can't
-        # satisfy. azure-kubelogin-mode converts to the mode cloud-auth's
-        # kubelogin setup expects.
+        # kubelogin's default login mode needs an interactive AAD flow, which
+        # cloud-auth's OIDC login can't satisfy non-interactively.
         fetch_aks_kubeconfig "$INPUT_AZURE_RESOURCE_GROUP" "$INPUT_AZURE_CLUSTER_NAME" "$KUBECONFIG" "$INPUT_AZURE_KUBELOGIN_MODE"
 
     - name: Fetch GKE kubeconfig
@@ -162,7 +154,6 @@ runs:
       run: |
         set -eo pipefail
         source "${{ github.action_path }}/../scripts/lib.sh"
-        # gke-gcloud-auth-plugin (installed by cloud-auth) makes the exec-based
-        # auth this writes into the kubeconfig work non-interactively. gcloud
-        # writes to the path in KUBECONFIG (already set by the root action).
+        # gke-gcloud-auth-plugin (installed by cloud-auth) makes the kubeconfig's
+        # exec-based auth work non-interactively.
         fetch_gke_kubeconfig "$INPUT_GCP_CLUSTER_NAME" "$INPUT_GCP_REGION" "$INPUT_GCP_PROJECT_ID"

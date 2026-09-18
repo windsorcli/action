@@ -7,7 +7,7 @@ inputs:
     required: false
     default: ""
   platform:
-    description: 'Skip detection and use this platform directly. One of: aws, azure, gcp, none, docker, incus, metal, hyperv, vsphere. hetzner has no OIDC — set HCLOUD_TOKEN directly in your workflow instead.'
+    description: 'Skip detection and use this platform directly. One of: aws, azure, gcp, none, docker, incus, metal, hyperv, vsphere. hetzner has no OIDC. Set HCLOUD_TOKEN directly in your workflow instead.'
     required: false
     default: ""
   aws-role-arn:
@@ -99,14 +99,14 @@ runs:
             [ -z "$INPUT_GCP_SERVICE_ACCOUNT" ] && { echo "::error::platform is 'gcp' but gcp-service-account was not provided" >&2; exit 1; }
             ;;
           hetzner)
-            echo "::error::platform is 'hetzner', which has no OIDC — cloud-auth only authenticates OIDC-based clouds (aws, azure, gcp). Set HCLOUD_TOKEN directly in your workflow instead; see the README's Hetzner recipe." >&2
+            echo "::error::platform is 'hetzner'. It has no OIDC, so cloud-auth doesn't handle it. Set HCLOUD_TOKEN directly in your workflow instead." >&2
             exit 1
             ;;
           none|docker|incus|metal|hyperv|vsphere)
             echo "platform '$platform' needs no cloud credentials; nothing to do"
             ;;
           *)
-            echo "::error::unrecognized platform '$platform' for context '$context_name'. Known platforms: aws, azure, gcp (OIDC, need auth via this action) and none, docker, incus, metal, hyperv, vsphere (no auth needed). Update this action if windsor added a new platform." >&2
+            echo "::error::unrecognized platform '$platform' for context '$context_name'. Known platforms: aws, azure, gcp (need OIDC auth via this action) and none, docker, incus, metal, hyperv, vsphere (no auth needed). Update this action if windsor added a new platform." >&2
             exit 1
             ;;
         esac

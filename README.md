@@ -146,7 +146,7 @@ Authenticates to OIDC-based clouds only: aws, azure, gcp. Detects the context's 
 | `azure` | [`azure/login`](https://github.com/Azure/login) and [`azure/use-kubelogin`](https://github.com/Azure/use-kubelogin) |
 | `gcp` | [`google-github-actions/auth`](https://github.com/google-github-actions/auth) and the `gke-gcloud-auth-plugin` component |
 
-A platform that needs no cloud credentials (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) is a no-op. `hetzner` fails — it has no OIDC, so there's nothing for this action to do; set `HCLOUD_TOKEN` directly in your workflow instead (see the recipe below).
+A platform that needs no cloud credentials (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) is a no-op. `hetzner` fails: it has no OIDC. Set `HCLOUD_TOKEN` directly in your workflow instead — see the recipe below.
 
 An unrecognized platform fails. A missing required input also fails. Both fail immediately, not later as an opaque auth error.
 
@@ -181,7 +181,7 @@ Not included: a fix for kubelogin's token refresh. kubelogin's `workloadidentity
 
 ### `windsorcli/action/kubeconfig`
 
-Regenerates the local kubeconfig for an already-provisioned cluster. `windsor env` always points `KUBECONFIG` at a fixed path, but only writes that file's contents as a side effect of the cluster-creating Terraform component actually applying — so a job that didn't run that apply itself (e.g. a `destroy` job split out from `bootstrap`, running on its own runner) starts with no kubeconfig at all. This fetches one, given `cloud-auth` already authenticated in the same job:
+Regenerates the local kubeconfig for an already-provisioned cluster. `windsor env` points `KUBECONFIG` at a fixed path, but only writes its contents when the cluster-creating Terraform component applies. A `destroy` job split out from `bootstrap`, running on its own runner, never ran that apply — it starts with no kubeconfig at all. This fetches one, given `cloud-auth` already authenticated in the same job:
 
 | Platform | Uses |
 | --- | --- |
@@ -189,9 +189,9 @@ Regenerates the local kubeconfig for an already-provisioned cluster. `windsor en
 | `azure` | `az aks get-credentials`, then `kubelogin convert-kubeconfig` |
 | `gcp` | `gcloud container clusters get-credentials` |
 
-`hetzner` and the no-auth platforms (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) are a no-op — Hetzner has no managed control-plane API to fetch credentials from.
+`hetzner` and the no-auth platforms (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) are a no-op. Hetzner has no managed control-plane API to fetch credentials from.
 
-Detection and validation work the same way as `cloud-auth`: `platform` skips the `windsor get contexts` lookup, an unrecognized platform fails, and a missing required input for the detected platform fails immediately rather than as an opaque CLI error later. This action does not obtain cloud credentials itself — run `cloud-auth` first in the same job.
+Detection and validation work the same way as `cloud-auth`. `platform` skips the `windsor get contexts` lookup. An unrecognized platform fails, and a missing required input fails immediately rather than as an opaque CLI error later. This action doesn't obtain cloud credentials itself — run `cloud-auth` first in the same job.
 
 | Input | Description |
 | --- | --- |
@@ -199,7 +199,7 @@ Detection and validation work the same way as `cloud-auth`: `platform` skips the
 | `aws-cluster-name`, `aws-region` | Required for `aws` |
 | `azure-resource-group`, `azure-cluster-name` | Required for `azure` |
 | `azure-kubelogin-mode` | `kubelogin` conversion mode. Default: `workloadidentity`. Empty skips conversion. `azure` only. |
-| `gcp-cluster-name`, `gcp-region`, `gcp-project-id` | Required for `gcp`. `gcp-region` also accepts a zone — gcloud doesn't distinguish for this flag. |
+| `gcp-cluster-name`, `gcp-region`, `gcp-project-id` | Required for `gcp`; `gcp-region` also accepts a zone. |
 
 ```yaml
 - uses: windsorcli/action/cloud-auth@v1
@@ -213,7 +213,7 @@ Detection and validation work the same way as `cloud-auth`: `platform` skips the
     aws-region: ${{ vars.AWS_REGION }}
 ```
 
-Cluster identity (name, resource group, project) isn't something `windsor` exposes today — it only exists as Terraform output on the cluster component. Pass it explicitly, the same way you already pass `cloud-auth`'s OIDC inputs; it's static per environment, not something to auto-detect.
+Cluster identity (name, resource group, project) isn't something `windsor` exposes today. It only exists as Terraform output on the cluster component. Pass it explicitly, the same way you already pass `cloud-auth`'s OIDC inputs — it's static per environment, not something to auto-detect.
 
 ### `windsorcli/action/plan-comment`
 
@@ -245,14 +245,14 @@ These patterns aren't worth a dedicated sub-action — copy the snippet into you
 
 ### Authenticating to Hetzner
 
-Hetzner has no OIDC — `cloud-auth` doesn't handle it, and there's no upstream login action to wrap. The token is a static secret; just export it:
+Hetzner has no OIDC. `cloud-auth` doesn't handle it, and there's no upstream login action to wrap. The token is a static secret — export it:
 
 ```yaml
 - name: Configure Hetzner credentials
   run: echo "HCLOUD_TOKEN=${{ secrets.HCLOUD_TOKEN }}" >> "$GITHUB_ENV"
 ```
 
-Unlike `aws-role-arn`/`azure-client-id`/etc., this value never expires and never needs refreshing mid-job.
+Unlike the OIDC-based inputs, this value never expires and never needs refreshing mid-job.
 
 ### Collecting a support bundle on failure
 

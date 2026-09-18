@@ -43,11 +43,8 @@ collect_set_flags() {
   done <<< "$raw"
 }
 
-# detect_platform resolves the platform for the current windsor context,
-# honoring an optional override (skips the `windsor get contexts` lookup
-# entirely — useful when the caller already knows the platform, e.g. from its
-# own build matrix). Sets DETECTED_CONTEXT and DETECTED_PLATFORM. Fails with
-# an actionable message if the context or platform can't be determined.
+# detect_platform resolves the platform for the current context, honoring an
+# optional override. Sets DETECTED_CONTEXT and DETECTED_PLATFORM.
 detect_platform() {
   local platform_override="$1"
 
@@ -73,18 +70,13 @@ detect_platform() {
 }
 
 # fetch_eks_kubeconfig writes an EKS cluster's kubeconfig via the AWS CLI.
-# Factored out of kubeconfig/action.yaml so CI can exercise this exact call
-# (real aws-cli, fake cluster, no credentials) to catch a flag typo without
-# needing a real cluster.
 fetch_eks_kubeconfig() {
   local cluster_name="$1" region="$2" kubeconfig_path="$3"
   aws eks update-kubeconfig --name "$cluster_name" --region "$region" --kubeconfig "$kubeconfig_path"
 }
 
 # convert_kubelogin_mode rewrites a kubeconfig's Azure auth-provider entries
-# into kubelogin's exec-based auth for the given login mode (e.g.
-# workloadidentity). A blank mode is a no-op. Doesn't call out to Azure —
-# it only rewrites the file — so this is testable without any credentials.
+# to kubelogin's exec-based auth for the given mode. A blank mode is a no-op.
 convert_kubelogin_mode() {
   local kubeconfig_path="$1" mode="$2"
   [ -z "$mode" ] && return 0
@@ -92,15 +84,10 @@ convert_kubelogin_mode() {
 }
 
 # fetch_aks_kubeconfig writes an AKS cluster's kubeconfig via the Azure CLI,
-# then converts it via convert_kubelogin_mode. Writes into a temp file and
-# only replaces the real one on success, so az can't merge onto a stale
-# current-context, and a failed fetch never leaves the path with no
-# kubeconfig at all — mirrors null_resource.kubeconfig in
-# core/terraform/cluster/azure-aks. Each step guards its own failure with
-# `|| return $?` rather than relying on the caller's `set -e`, so a failed az
-# call can't fall through into mv/kubelogin acting on a file that was never
-# written — this matters for a caller (like a test) that must suspend
-# errexit to inspect this function's own failure output.
+# then converts it via convert_kubelogin_mode. Writes to a temp file first,
+# then moves it into place, so a failed fetch never leaves a corrupt or
+# missing kubeconfig. Each step returns on its own failure instead of
+# relying on the caller's `set -e`.
 fetch_aks_kubeconfig() {
   local resource_group="$1" cluster_name="$2" kubeconfig_path="$3" kubelogin_mode="$4"
   local tmp
@@ -115,8 +102,8 @@ fetch_aks_kubeconfig() {
   convert_kubelogin_mode "$kubeconfig_path" "$kubelogin_mode"
 }
 
-# fetch_gke_kubeconfig writes a GKE cluster's kubeconfig via gcloud, which
-# writes to the path in the caller's own KUBECONFIG env var.
+# fetch_gke_kubeconfig writes a GKE cluster's kubeconfig via gcloud, using
+# KUBECONFIG from the environment.
 fetch_gke_kubeconfig() {
   local cluster_name="$1" region="$2" project_id="$3"
   gcloud container clusters get-credentials "$cluster_name" --region "$region" --project "$project_id"

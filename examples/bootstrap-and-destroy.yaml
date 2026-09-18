@@ -52,8 +52,7 @@ jobs:
           ref: v1.0.0
           context: ${{ matrix.context }}
 
-      # cloud-auth only handles OIDC-based clouds (aws, azure, gcp) — Hetzner
-      # has no OIDC, so its leg sets HCLOUD_TOKEN directly below instead.
+      # Hetzner has no OIDC, so cloud-auth doesn't handle it.
       - name: Authenticate to cloud
         if: matrix.platform != 'hetzner'
         uses: windsorcli/action/cloud-auth@v1
@@ -118,8 +117,7 @@ jobs:
           ref: v1.0.0
           context: ${{ matrix.context }}
 
-      # cloud-auth only handles OIDC-based clouds (aws, azure, gcp) — Hetzner
-      # has no OIDC, so its leg sets HCLOUD_TOKEN directly below instead.
+      # Hetzner has no OIDC, so cloud-auth doesn't handle it.
       - name: Authenticate to cloud
         if: matrix.platform != 'hetzner'
         uses: windsorcli/action/cloud-auth@v1
@@ -137,10 +135,7 @@ jobs:
         if: matrix.platform == 'hetzner'
         run: echo "HCLOUD_TOKEN=${{ matrix.hetzner_token }}" >> "$GITHUB_ENV"
 
-      # This job runs on its own fresh runner — it never ran bootstrap's apply, so
-      # there's no local kubeconfig yet for windsor destroy's kustomize teardown to
-      # use. Fetch one now that cloud-auth has authenticated above. No-op for
-      # hetzner (no managed control-plane API to fetch credentials from).
+      # This job never ran bootstrap's apply, so there's no local kubeconfig yet.
       - name: Regenerate kubeconfig
         uses: windsorcli/action/kubeconfig@v1
         with:

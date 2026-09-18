@@ -678,7 +678,7 @@ jobs:
           fi
 
           if run_detect hetzner; then
-            echo "::error::expected hetzner to fail — it has no OIDC, cloud-auth doesn't handle it"; exit 1
+            echo "::error::expected hetzner to fail (no OIDC, not handled here)"; exit 1
           fi
 
           : > "$RUNNER_TEMP/cloud-auth-outputs.txt"
@@ -720,9 +720,8 @@ jobs:
             exit 1
           fi
 
-      # Like cloud-auth, kubeconfig's later steps call real cloud CLIs (aws/az/gcloud)
-      # against a real cluster. This tests the detect/validate step alone, and runs
-      # the full composite only for a no-op platform (docker).
+      # Like cloud-auth, this tests the detect/validate step alone and runs the
+      # full composite only for a no-op platform (docker).
       - name: Test kubeconfig platform detection and validation
         if: matrix.os == 'ubuntu-latest'
         shell: bash
@@ -815,14 +814,9 @@ jobs:
             exit 1
           fi
 
-      # There's no real cluster in CI to authenticate against, so this can't test
-      # that these calls succeed. It tests something narrower but still useful:
-      # aws-cli and gcloud are preinstalled on GitHub-hosted runners, and kubelogin
-      # is installed below, so the real CLIs run for real against fake identifiers.
-      # A typo'd or renamed flag fails differently (a parsing/usage error) than a
-      # real credential failure does — this catches the former without needing
-      # live infra. convert_kubelogin_mode doesn't call out to Azure at all, so
-      # it's asserted to fully succeed against a fixture instead.
+      # No real cluster to authenticate against, so this checks something
+      # narrower: real aws/az/gcloud CLIs, fake identifiers. A typo'd flag
+      # fails differently than a credential failure does.
       - name: Install kubelogin (for CLI flag validation below)
         if: matrix.os == 'ubuntu-latest'
         uses: azure/use-kubelogin@0ce7c36141aa27d4934872cf00b0120804c98a29 # v1.3
@@ -836,9 +830,8 @@ jobs:
           set -eo pipefail
           source scripts/lib.sh
 
-          # A missing/renamed flag fails differently per CLI: argparse-style
-          # ("unrecognized arguments"), Cobra-style ("unknown flag"), or an
-          # explicit required-argument complaint (az's "arguments are required").
+          # Each CLI phrases a bad flag differently: "unrecognized arguments",
+          # "unknown flag", or az's "arguments are required".
           assert_credential_failure() {
             local label="$1" out="$2" rc="$3"
             if [ "$rc" -eq 0 ]; then
@@ -861,8 +854,7 @@ jobs:
             fetch_gke_kubeconfig ci-test-cluster us-central1 ci-test-project 2>&1) && rc=0 || rc=$?
           assert_credential_failure "fetch_gke_kubeconfig" "$out" "$rc"
 
-          # Doesn't call out to Azure — only rewrites the file — so this is a real
-          # success-path assertion, not just "didn't fail on flags".
+          # Doesn't call out to Azure, so this asserts success, not just "no flag error".
           fixture="$RUNNER_TEMP/ci-test-kubeconfig-kubelogin.yaml"
           cp scripts/test/fixtures/aks-kubeconfig.yaml "$fixture"
           convert_kubelogin_mode "$fixture" workloadidentity
