@@ -1,0 +1,128 @@
+name: 'Windsor Matrix'
+description: 'Compute a GitHub Actions matrix from the contexts/ directories in this project'
+
+inputs:
+  workdir:
+    description: 'The working directory containing contexts/'
+    required: false
+    default: ""
+  contexts:
+    description: 'Restrict to these context names, comma-separated. Applied after changed-since/watch-paths.'
+    required: false
+    default: ""
+  platform:
+    description: 'Restrict to contexts with this platform. Applied after changed-since/watch-paths.'
+    required: false
+    default: ""
+  changed-since:
+    description: 'A git ref. When set, the matrix includes only contexts whose own contexts/<name>/ changed since this ref (plus watch-paths matches), instead of every context. Requires enough checkout depth to reach this ref — actions/checkout''s default shallow clone usually isn''t enough; use fetch-depth: 0 or a depth that covers it.'
+    required: false
+    default: ""
+  watch-paths:
+    description: 'Comma-separated path prefixes. If changed-since is set and any changed file starts with one of these, every context is included, not just ones whose own directory changed — for shared Terraform/Kustomize files a context depends on without contexts/<name>/ itself changing.'
+    required: false
+    default: ""
+
+outputs:
+  matrix:
+    description: 'JSON matrix ({"include":[{"context":...,"platform":...}, ...]}) — pass through fromJSON() into strategy.matrix'
+    value: ${{ steps.compute.outputs.matrix }}
+  count:
+    description: 'Number of contexts in the matrix'
+    value: ${{ steps.compute.outputs.count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Compute matrix
+      id: compute
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_CONTEXTS: ${{ inputs.contexts }}
+        INPUT_PLATFORM: ${{ inputs.platform }}
+        INPUT_CHANGED_SINCE: ${{ inputs.changed-since }}
+        INPUT_WATCH_PATHS: ${{ inputs.watch-paths }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        resolve_workdir "$INPUT_WORKDIR"
+
+        discover_contexts
+        if [ ${#CONTEXT_NAMES[@]} -eq 0 ]; then
+          echo "::error::no contexts found under contexts/ (workdir: ${INPUT_WORKDIR:-.})" >&2
+          exit 1
+        fi
+
+        if [ -n "$INPUT_CHANGED_SINCE" ]; then
+          require_diffable_ref "$INPUT_CHANGED_SINCE"
+
+          if any_watch_path_changed "$INPUT_CHANGED_SINCE" "$(printf '%s' "$INPUT_WATCH_PATHS" | tr ',' '\n')"; then
+            selected=("${CONTEXT_NAMES[@]}")
+          else
+            selected=()
+            while IFS= read -r name; do
+              [ -z "$name" ] && continue
+              if platform_for_context "$name" >/dev/null 2>&1; then
+                selected+=("$name")
+              fi
+            done <<< "$(changed_context_names "$INPUT_CHANGED_SINCE")"
+          fi
+        else
+          selected=("${CONTEXT_NAMES[@]}")
+        fi
+
+        if [ -n "$INPUT_CONTEXTS" ]; then
+          wanted="$(printf '%s' "$INPUT_CONTEXTS" | tr ',' '\n')"
+          filtered=()
+          for name in "${selected[@]}"; do
+            while IFS= read -r want; do
+              [ -z "$want" ] && continue
+              if [ "$name" = "$want" ]; then
+                filtered+=("$name")
+                break
+              fi
+            done <<< "$wanted"
+          done
+          selected=("${filtered[@]}")
+        fi
+
+        if [ -n "$INPUT_PLATFORM" ]; then
+          filtered=()
+          for name in "${selected[@]}"; do
+            if [ "$(platform_for_context "$name")" = "$INPUT_PLATFORM" ]; then
+              filtered+=("$name")
+            fi
+          done
+          selected=("${filtered[@]}")
+        fi
+
+        # De-duplicate and sort, for stable output run to run.
+        if [ ${#selected[@]} -gt 0 ]; then
+          sorted=()
+          while IFS= read -r name; do
+            [ -z "$name" ] && continue
+            sorted+=("$name")
+          done < <(printf '%s\n' "${selected[@]}" | sort -u)
+          selected=("${sorted[@]}")
+        fi
+
+        # Built as an array and joined with printf, not string concatenation —
+        # `pairs+="$(printf ...)"` would strip each line's trailing newline
+        # (command substitution does that), running every row together.
+        pair_lines=()
+        for name in "${selected[@]}"; do
+          pair_lines+=("$(printf '%s\t%s' "$name" "$(platform_for_context "$name")")")
+        done
+        pairs=""
+        [ ${#pair_lines[@]} -gt 0 ] && pairs="$(printf '%s\n' "${pair_lines[@]}")"
+
+        matrix_json="$(build_matrix_json "$pairs")"
+
+        {
+          echo "matrix=$matrix_json"
+          echo "count=${#selected[@]}"
+        } >> "$GITHUB_OUTPUT"
+
+        echo "Matrix: $matrix_json"

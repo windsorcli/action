@@ -235,6 +235,40 @@ steps:
   - uses: windsorcli/action/plan-comment@v1
 ```
 
+### `windsorcli/action/matrix`
+
+Computes a `strategy.matrix` from the `contexts/<name>/` directories in your project, for a job that runs something (plan, apply, bootstrap) against a collection of contexts. Unlike the sub-actions above, this doesn't need `windsor` on PATH — it reads `contexts/<name>/values.yaml` directly, so it can run as the first step of a job that only *then* decides which contexts to install `windsor` for.
+
+With no inputs, the matrix is every context found. `contexts` and `platform` filter it further. `changed-since` switches to change-based selection: only contexts whose own `contexts/<name>/` directory changed since that ref, which needs enough checkout depth to reach it (`actions/checkout`'s default shallow clone usually isn't enough — use `fetch-depth: 0` or a depth that covers your base ref). `watch-paths` covers the gap that leaves: a shared Terraform module or Kustomize base can change without any `contexts/` file changing, so if a changed file starts with one of these prefixes, every context is included, not just ones with their own directory touched.
+
+| Input | Description |
+| --- | --- |
+| `contexts` | Restrict to these context names, comma-separated |
+| `platform` | Restrict to contexts with this platform |
+| `changed-since` | A git ref. Only contexts changed since it (plus `watch-paths` matches) are included, instead of every context |
+| `watch-paths` | Comma-separated path prefixes. A match brings every context back in, even ones with no `contexts/` change of their own |
+
+Outputs `matrix` (the JSON object, `${{ fromJSON(...) }}` into `strategy.matrix`) and `count`.
+
+```yaml
+# nightly: apply everything
+- uses: windsorcli/action/matrix@v1
+  id: matrix
+
+# PR: only plan what actually changed
+- uses: windsorcli/action/matrix@v1
+  id: matrix
+  with:
+    changed-since: ${{ github.event.pull_request.base.sha }}
+    watch-paths: terraform/,kustomize/
+
+- strategy:
+    matrix: ${{ fromJSON(steps.matrix.outputs.matrix) }}
+  # ... a step per context, using matrix.context / matrix.platform
+```
+
+Filtering is deliberately limited to name, platform, and path-based change detection — it doesn't encode cadence policy (nightly vs. PR, smoke vs. full, etc.). That belongs in your own workflow's `if:` conditions, built on top of this action's output.
+
 ## Examples
 
 [`examples/bootstrap-and-destroy.yaml`](examples/bootstrap-and-destroy.yaml) — a full workflow chaining the root action, `cloud-auth`, and `bootstrap`/`destroy`. Manually triggered, and runs a matrix with one leg per cloud (aws, azure, gcp, hetzner) to stand up or tear down all four.

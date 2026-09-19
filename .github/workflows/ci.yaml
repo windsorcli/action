@@ -861,3 +861,104 @@ jobs:
           grep -q "command: kubelogin" "$fixture" || {
             echo "::error::expected convert_kubelogin_mode to rewrite the user's auth-provider into an exec block"; cat "$fixture"; exit 1;
           }
+
+      # Needs a real git history to diff against, so this builds a scratch
+      # repo rather than using this repo's own commits.
+      - name: Test matrix action against a scratch git fixture
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          set -eo pipefail
+          python3 scripts/test/extract-step.py matrix/action.yaml 0 > "$RUNNER_TEMP/matrix-step.sh"
+
+          fixture="$RUNNER_TEMP/matrix-fixture"
+          mkdir -p "$fixture"/contexts/{aws,azure,gcp} "$fixture"/terraform/shared-module
+          cd "$fixture"
+          git init -q -b main
+          git config user.email test@example.com
+          git config user.name test
+          echo "platform: aws" > contexts/aws/values.yaml
+          echo "platform: azure" > contexts/azure/values.yaml
+          echo "platform: gcp" > contexts/gcp/values.yaml
+          echo 'resource "x" {}' > terraform/shared-module/main.tf
+          git add -A && git commit -q -m initial
+          base=$(git rev-parse HEAD)
+          echo "extra: true" >> contexts/aws/values.yaml
+          git add -A && git commit -q -m "touch aws context"
+
+          run_matrix() {
+            : > "$fixture/out.txt"
+            GITHUB_OUTPUT="$fixture/out.txt" \
+            INPUT_WORKDIR="" \
+            INPUT_CONTEXTS="${1:-}" \
+            INPUT_PLATFORM="${2:-}" \
+            INPUT_CHANGED_SINCE="${3:-}" \
+            INPUT_WATCH_PATHS="${4:-}" \
+              bash "$RUNNER_TEMP/matrix-step.sh"
+          }
+
+          if ! run_matrix; then
+            echo "::error::expected discover-all (no filters) to succeed"; exit 1
+          fi
+          grep -qxF 'count=3' "$fixture/out.txt" || {
+            echo "::error::expected 3 contexts with no filters"; cat "$fixture/out.txt"; exit 1;
+          }
+
+          if ! run_matrix "" "" "$base"; then
+            echo "::error::expected changed-since to succeed"; exit 1
+          fi
+          grep -q '"context":"aws"' "$fixture/out.txt" || {
+            echo "::error::expected only the aws context for changed-since=\$base"; cat "$fixture/out.txt"; exit 1;
+          }
+          grep -qxF 'count=1' "$fixture/out.txt" || {
+            echo "::error::expected exactly 1 context for changed-since=\$base"; cat "$fixture/out.txt"; exit 1;
+          }
+
+          if ! run_matrix "azure,gcp"; then
+            echo "::error::expected an explicit contexts filter to succeed"; exit 1
+          fi
+          grep -qxF 'count=2' "$fixture/out.txt" || {
+            echo "::error::expected 2 contexts for contexts=azure,gcp"; cat "$fixture/out.txt"; exit 1;
+          }
+
+          if ! run_matrix "" "gcp"; then
+            echo "::error::expected a platform filter to succeed"; exit 1
+          fi
+          grep -qxF 'count=1' "$fixture/out.txt" || {
+            echo "::error::expected 1 context for platform=gcp"; cat "$fixture/out.txt"; exit 1;
+          }
+
+          if run_matrix "" "" "not-a-real-ref"; then
+            echo "::error::expected an unresolvable changed-since ref to fail"; exit 1
+          fi
+
+          # A shared file outside contexts/ changing, matched by watch-paths,
+          # brings every context back in — not just ones with their own
+          # contexts/<name>/ change.
+          echo 'resource "y" {}' >> terraform/shared-module/main.tf
+          git add -A && git commit -q -m "shared terraform change"
+          if ! run_matrix "" "" "$base" "terraform/"; then
+            echo "::error::expected changed-since with a matching watch-path to succeed"; exit 1
+          fi
+          grep -qxF 'count=3' "$fixture/out.txt" || {
+            echo "::error::expected a watch-paths match to bring back all 3 contexts"; cat "$fixture/out.txt"; exit 1;
+          }
+
+      - name: matrix (repo's own test fixture)
+        id: matrix-call
+        uses: ./matrix
+        with:
+          workdir: test
+
+      - name: Assert matrix output shape
+        shell: bash
+        run: |
+          echo '${{ steps.matrix-call.outputs.matrix }}' | grep -q '"context":"test"' || {
+            echo "::error::expected the 'test' context in the matrix output"
+            echo '${{ steps.matrix-call.outputs.matrix }}'
+            exit 1
+          }
+          if [ "${{ steps.matrix-call.outputs.count }}" != "1" ]; then
+            echo "::error::expected count=1, got '${{ steps.matrix-call.outputs.count }}'"
+            exit 1
+          fi
