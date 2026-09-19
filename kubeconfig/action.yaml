@@ -1,0 +1,159 @@
+name: 'Windsor Kubeconfig'
+description: 'Regenerate the local kubeconfig for an already-provisioned cluster, given cloud auth is already in place'
+
+inputs:
+  workdir:
+    description: 'The working directory to run windsor from'
+    required: false
+    default: ""
+  platform:
+    description: 'Skip detection and use this platform directly. One of: aws, azure, gcp, hetzner, none, docker, incus, metal, hyperv, vsphere.'
+    required: false
+    default: ""
+  aws-cluster-name:
+    description: 'EKS cluster name. Required for aws.'
+    required: false
+    default: ""
+  aws-region:
+    description: 'AWS region the cluster is in. Required for aws.'
+    required: false
+    default: ""
+  azure-resource-group:
+    description: 'Resource group the AKS cluster is in. Required for azure.'
+    required: false
+    default: ""
+  azure-cluster-name:
+    description: 'AKS cluster name. Required for azure.'
+    required: false
+    default: ""
+  azure-kubelogin-mode:
+    description: 'kubelogin mode to convert the fetched kubeconfig to (e.g. workloadidentity). Empty skips conversion. Used only for azure.'
+    required: false
+    default: workloadidentity
+  gcp-cluster-name:
+    description: 'GKE cluster name. Required for gcp.'
+    required: false
+    default: ""
+  gcp-region:
+    description: 'Region (or zone) the GKE cluster is in. Required for gcp.'
+    required: false
+    default: ""
+  gcp-project-id:
+    description: 'GCP project ID. Required for gcp.'
+    required: false
+    default: ""
+
+outputs:
+  context:
+    description: 'The windsor context this step ran against'
+    value: ${{ steps.detect.outputs.context }}
+  platform:
+    description: 'The detected platform'
+    value: ${{ steps.detect.outputs.platform }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Assumes cloud-auth already authenticated in this job. Validates every
+    # input before the fetch runs, so a missing one fails here with a clear
+    # message, not later as an unclear CLI error.
+    - name: Detect platform
+      id: detect
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_PLATFORM: ${{ inputs.platform }}
+        INPUT_AWS_CLUSTER_NAME: ${{ inputs.aws-cluster-name }}
+        INPUT_AWS_REGION: ${{ inputs.aws-region }}
+        INPUT_AZURE_RESOURCE_GROUP: ${{ inputs.azure-resource-group }}
+        INPUT_AZURE_CLUSTER_NAME: ${{ inputs.azure-cluster-name }}
+        INPUT_GCP_CLUSTER_NAME: ${{ inputs.gcp-cluster-name }}
+        INPUT_GCP_REGION: ${{ inputs.gcp-region }}
+        INPUT_GCP_PROJECT_ID: ${{ inputs.gcp-project-id }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        require_windsor
+        resolve_workdir "$INPUT_WORKDIR"
+
+        detect_platform "$INPUT_PLATFORM"
+        context_name="$DETECTED_CONTEXT"
+        platform="$DETECTED_PLATFORM"
+
+        case "$platform" in
+          aws)
+            [ -z "$INPUT_AWS_CLUSTER_NAME" ] && { echo "::error::platform is 'aws' but aws-cluster-name was not provided" >&2; exit 1; }
+            [ -z "$INPUT_AWS_REGION" ] && { echo "::error::platform is 'aws' but aws-region was not provided" >&2; exit 1; }
+            ;;
+          azure)
+            [ -z "$INPUT_AZURE_RESOURCE_GROUP" ] && { echo "::error::platform is 'azure' but azure-resource-group was not provided" >&2; exit 1; }
+            [ -z "$INPUT_AZURE_CLUSTER_NAME" ] && { echo "::error::platform is 'azure' but azure-cluster-name was not provided" >&2; exit 1; }
+            ;;
+          gcp)
+            [ -z "$INPUT_GCP_CLUSTER_NAME" ] && { echo "::error::platform is 'gcp' but gcp-cluster-name was not provided" >&2; exit 1; }
+            [ -z "$INPUT_GCP_REGION" ] && { echo "::error::platform is 'gcp' but gcp-region was not provided" >&2; exit 1; }
+            [ -z "$INPUT_GCP_PROJECT_ID" ] && { echo "::error::platform is 'gcp' but gcp-project-id was not provided" >&2; exit 1; }
+            ;;
+          hetzner)
+            echo "platform 'hetzner' has no managed control-plane API to fetch a kubeconfig from; nothing to do"
+            ;;
+          none|docker|incus|metal|hyperv|vsphere)
+            echo "platform '$platform' has no cluster to fetch a kubeconfig for; nothing to do"
+            ;;
+          *)
+            echo "::error::unrecognized platform '$platform' for context '$context_name'. Known platforms: aws, azure, gcp (fetch a kubeconfig), hetzner (no managed control-plane API), and none, docker, incus, metal, hyperv, vsphere (no cluster). Update this action if windsor added a new platform." >&2
+            exit 1
+            ;;
+        esac
+
+        if [ "$platform" = "aws" ] || [ "$platform" = "azure" ] || [ "$platform" = "gcp" ]; then
+          if [ -z "${KUBECONFIG:-}" ]; then
+            echo "::error::KUBECONFIG is not set. Run the root windsorcli/action (which evaluates 'windsor env') before this step." >&2
+            exit 1
+          fi
+        fi
+
+        {
+          echo "context=$context_name"
+          echo "platform=$platform"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Fetch EKS kubeconfig
+      if: steps.detect.outputs.platform == 'aws'
+      shell: bash
+      env:
+        INPUT_AWS_CLUSTER_NAME: ${{ inputs.aws-cluster-name }}
+        INPUT_AWS_REGION: ${{ inputs.aws-region }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+        fetch_eks_kubeconfig "$INPUT_AWS_CLUSTER_NAME" "$INPUT_AWS_REGION" "$KUBECONFIG"
+
+    - name: Fetch AKS kubeconfig
+      if: steps.detect.outputs.platform == 'azure'
+      shell: bash
+      env:
+        INPUT_AZURE_RESOURCE_GROUP: ${{ inputs.azure-resource-group }}
+        INPUT_AZURE_CLUSTER_NAME: ${{ inputs.azure-cluster-name }}
+        INPUT_AZURE_KUBELOGIN_MODE: ${{ inputs.azure-kubelogin-mode }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+        # kubelogin's default login mode needs an interactive AAD flow, which
+        # cloud-auth's OIDC login can't satisfy non-interactively.
+        fetch_aks_kubeconfig "$INPUT_AZURE_RESOURCE_GROUP" "$INPUT_AZURE_CLUSTER_NAME" "$KUBECONFIG" "$INPUT_AZURE_KUBELOGIN_MODE"
+
+    - name: Fetch GKE kubeconfig
+      if: steps.detect.outputs.platform == 'gcp'
+      shell: bash
+      env:
+        INPUT_GCP_CLUSTER_NAME: ${{ inputs.gcp-cluster-name }}
+        INPUT_GCP_REGION: ${{ inputs.gcp-region }}
+        INPUT_GCP_PROJECT_ID: ${{ inputs.gcp-project-id }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+        # gke-gcloud-auth-plugin (installed by cloud-auth) makes the kubeconfig's
+        # exec-based auth work non-interactively.
+        fetch_gke_kubeconfig "$INPUT_GCP_CLUSTER_NAME" "$INPUT_GCP_REGION" "$INPUT_GCP_PROJECT_ID"

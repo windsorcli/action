@@ -138,16 +138,15 @@ Wraps `windsor check` — verifies required tools and cloud credentials. Takes o
 
 ### `windsorcli/action/cloud-auth`
 
-Detects the context's platform via `windsor get contexts`, or use it directly with the `platform` input if the caller already knows it (e.g. from its own build matrix) — this skips the detection lookup entirely. Either way, it then authenticates using the matching action:
+Authenticates to OIDC-based clouds only: aws, azure, gcp. Detects the context's platform via `windsor get contexts`, or use it directly with the `platform` input if the caller already knows it (e.g. from its own build matrix) — this skips the detection lookup entirely. Either way, it then authenticates using the matching action:
 
 | Platform | Uses |
 | --- | --- |
 | `aws` | [`aws-actions/configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials) |
 | `azure` | [`azure/login`](https://github.com/Azure/login) and [`azure/use-kubelogin`](https://github.com/Azure/use-kubelogin) |
 | `gcp` | [`google-github-actions/auth`](https://github.com/google-github-actions/auth) and the `gke-gcloud-auth-plugin` component |
-| `hetzner` | A plain `HCLOUD_TOKEN` env var |
 
-A platform that needs no cloud credentials (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) is a no-op.
+A platform that needs no cloud credentials (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) is a no-op. `hetzner` fails: it has no OIDC. Set `HCLOUD_TOKEN` directly in your workflow instead — see the recipe below.
 
 An unrecognized platform fails. A missing required input also fails. Both fail immediately, not later as an opaque auth error.
 
@@ -163,7 +162,6 @@ Short-lived credentials expire. Call this action again later in a long job to re
 | `azure-kubelogin-version` | `kubelogin` version. Default: a pinned release. `azure` only. |
 | `gcp-workload-identity-provider`, `gcp-service-account` | Required for `gcp` |
 | `gcp-project-id` | Optional (`gcp` only) |
-| `hetzner-token` | Required for `hetzner`. Exported as `HCLOUD_TOKEN`. |
 
 ```yaml
 - uses: windsorcli/action/cloud-auth@v1
@@ -175,12 +173,47 @@ Short-lived credentials expire. Call this action again later in a long job to re
     azure-subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
     gcp-workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
     gcp-service-account: ${{ vars.GCP_SERVICE_ACCOUNT }}
-    hetzner-token: ${{ secrets.HCLOUD_TOKEN }}
 ```
 
 Only the inputs for your platform are required. Leave the rest blank.
 
 Not included: a fix for kubelogin's token refresh. kubelogin's `workloadidentity` mode does not refresh GitHub's short-lived OIDC token (about 5 minutes) on its own. This only affects a long `windsor up`, `bootstrap`, or `apply` against AKS. See the recipe below if you hit it.
+
+### `windsorcli/action/kubeconfig`
+
+Regenerates the local kubeconfig for an already-provisioned cluster. `windsor env` points `KUBECONFIG` at a fixed path, but only writes its contents when the cluster-creating Terraform component applies. A `destroy` job split out from `bootstrap`, running on its own runner, never ran that apply — it starts with no kubeconfig at all. This fetches one, given `cloud-auth` already authenticated in the same job:
+
+| Platform | Uses |
+| --- | --- |
+| `aws` | `aws eks update-kubeconfig` |
+| `azure` | `az aks get-credentials`, then `kubelogin convert-kubeconfig` |
+| `gcp` | `gcloud container clusters get-credentials` |
+
+`hetzner` and the no-auth platforms (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) are a no-op. Hetzner has no managed control-plane API to fetch credentials from.
+
+Detection and validation work the same way as `cloud-auth`. `platform` skips the `windsor get contexts` lookup. An unrecognized platform fails, and a missing required input fails immediately rather than as an opaque CLI error later. This action doesn't obtain cloud credentials itself — run `cloud-auth` first in the same job.
+
+| Input | Description |
+| --- | --- |
+| `platform` | Skip detection, use this platform directly |
+| `aws-cluster-name`, `aws-region` | Required for `aws` |
+| `azure-resource-group`, `azure-cluster-name` | Required for `azure` |
+| `azure-kubelogin-mode` | `kubelogin` conversion mode. Default: `workloadidentity`. Empty skips conversion. `azure` only. |
+| `gcp-cluster-name`, `gcp-region`, `gcp-project-id` | Required for `gcp`; `gcp-region` also accepts a zone. |
+
+```yaml
+- uses: windsorcli/action/cloud-auth@v1
+  with:
+    aws-role-arn: ${{ vars.AWS_ROLE_ARN }}
+    aws-region: ${{ vars.AWS_REGION }}
+
+- uses: windsorcli/action/kubeconfig@v1
+  with:
+    aws-cluster-name: ${{ vars.AWS_CLUSTER_NAME }}
+    aws-region: ${{ vars.AWS_REGION }}
+```
+
+Cluster identity (name, resource group, project) isn't something `windsor` exposes today. It only exists as Terraform output on the cluster component. Pass it explicitly, the same way you already pass `cloud-auth`'s OIDC inputs — it's static per environment, not something to auto-detect.
 
 ### `windsorcli/action/plan-comment`
 
@@ -209,6 +242,17 @@ steps:
 ## Recipes
 
 These patterns aren't worth a dedicated sub-action — copy the snippet into your own workflow instead.
+
+### Authenticating to Hetzner
+
+Hetzner has no OIDC. `cloud-auth` doesn't handle it, and there's no upstream login action to wrap. The token is a static secret — export it:
+
+```yaml
+- name: Configure Hetzner credentials
+  run: echo "HCLOUD_TOKEN=${{ secrets.HCLOUD_TOKEN }}" >> "$GITHUB_ENV"
+```
+
+Unlike the OIDC-based inputs, this value never expires and never needs refreshing mid-job.
 
 ### Collecting a support bundle on failure
 

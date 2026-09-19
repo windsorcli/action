@@ -43,6 +43,72 @@ collect_set_flags() {
   done <<< "$raw"
 }
 
+# detect_platform resolves the platform for the current context, honoring an
+# optional override. Sets DETECTED_CONTEXT and DETECTED_PLATFORM.
+detect_platform() {
+  local platform_override="$1"
+
+  DETECTED_CONTEXT=$(windsor get context 2>/dev/null || true)
+  if [ -z "$DETECTED_CONTEXT" ]; then
+    echo "::error::could not determine the current windsor context ('windsor get context' returned nothing)" >&2
+    exit 1
+  fi
+
+  if [ -n "$platform_override" ]; then
+    DETECTED_PLATFORM="$platform_override"
+    return 0
+  fi
+
+  # 'windsor get contexts' prints a table: NAME PROVIDER BACKEND CURRENT.
+  # Match the context by name (column 1). This is simpler than matching
+  # the CURRENT marker column.
+  DETECTED_PLATFORM=$(windsor get contexts 2>/dev/null | awk -v ctx="$DETECTED_CONTEXT" '$1 == ctx { print $2; exit }')
+  if [ -z "$DETECTED_PLATFORM" ]; then
+    echo "::error::could not determine the platform for context '$DETECTED_CONTEXT' from 'windsor get contexts'. Pass the platform input to skip detection." >&2
+    exit 1
+  fi
+}
+
+# fetch_eks_kubeconfig writes an EKS cluster's kubeconfig via the AWS CLI.
+fetch_eks_kubeconfig() {
+  local cluster_name="$1" region="$2" kubeconfig_path="$3"
+  aws eks update-kubeconfig --name "$cluster_name" --region "$region" --kubeconfig "$kubeconfig_path"
+}
+
+# convert_kubelogin_mode rewrites a kubeconfig's Azure auth-provider entries
+# to kubelogin's exec-based auth for the given mode. A blank mode is a no-op.
+convert_kubelogin_mode() {
+  local kubeconfig_path="$1" mode="$2"
+  [ -z "$mode" ] && return 0
+  kubelogin convert-kubeconfig -l "$mode" --kubeconfig "$kubeconfig_path"
+}
+
+# fetch_aks_kubeconfig writes an AKS cluster's kubeconfig via the Azure CLI,
+# then converts it via convert_kubelogin_mode. Writes to a temp file first,
+# then moves it into place, so a failed fetch never leaves a corrupt or
+# missing kubeconfig. Each step returns on its own failure instead of
+# relying on the caller's `set -e`.
+fetch_aks_kubeconfig() {
+  local resource_group="$1" cluster_name="$2" kubeconfig_path="$3" kubelogin_mode="$4"
+  local tmp
+  tmp="$(mktemp)"
+  rm -f "$tmp"
+  az aks get-credentials \
+    --resource-group "$resource_group" \
+    --name "$cluster_name" \
+    --file "$tmp" \
+    --only-show-errors || return $?
+  mv -f "$tmp" "$kubeconfig_path" || return $?
+  convert_kubelogin_mode "$kubeconfig_path" "$kubelogin_mode"
+}
+
+# fetch_gke_kubeconfig writes a GKE cluster's kubeconfig via gcloud, using
+# KUBECONFIG from the environment.
+fetch_gke_kubeconfig() {
+  local cluster_name="$1" region="$2" project_id="$3"
+  gcloud container clusters get-credentials "$cluster_name" --region "$region" --project "$project_id"
+}
+
 # emit_context_output writes the current windsor context to GITHUB_OUTPUT as
 # `context`, so a workflow can key an artifact name or log line off it without
 # an extra `windsor get context` step. Best-effort: a context read failure
