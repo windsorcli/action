@@ -162,6 +162,7 @@ Short-lived credentials expire. Call this action again later in a long job to re
 | `azure-kubelogin-version` | `kubelogin` version. Default: a pinned release. `azure` only. |
 | `gcp-workload-identity-provider`, `gcp-service-account` | Required for `gcp` |
 | `gcp-project-id` | Optional (`gcp` only) |
+| `gcp-cli-version` | gcloud CLI version. Default: a pinned release, bumped manually — no renovate datasource tracks it. `gcp` only. |
 
 ```yaml
 - uses: windsorcli/action/cloud-auth@v1

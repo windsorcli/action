@@ -46,6 +46,10 @@ inputs:
     description: 'GCP project ID. Optional, used only for gcp.'
     required: false
     default: ""
+  gcp-cli-version:
+    description: 'gcloud CLI version to install. Used only for gcp. No renovate datasource tracks this (gcloud isn''t distributed via GitHub releases) — bump manually.'
+    required: false
+    default: "585.0.0"
 
 outputs:
   context:
@@ -152,8 +156,11 @@ runs:
 
     # Terraform's kubernetes provider needs this plugin to auth against GKE.
     # Neither google-github-actions/auth nor the runner's gcloud installs it.
+    # Also pins gcloud itself — otherwise it floats on whatever version the
+    # runner image happens to ship.
     - name: Install gke-gcloud-auth-plugin
       if: steps.detect.outputs.platform == 'gcp'
       uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       with:
+        version: ${{ inputs.gcp-cli-version }}
         install_components: gke-gcloud-auth-plugin
