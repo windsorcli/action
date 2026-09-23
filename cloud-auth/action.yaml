@@ -33,7 +33,7 @@ inputs:
   azure-kubelogin-version:
     description: 'kubelogin version to install. Used only for azure.'
     required: false
-    default: v0.2.19 # renovate: datasource=github-releases depName=Azure/kubelogin
+    default: v0.2.20 # renovate: datasource=github-releases depName=Azure/kubelogin
   gcp-workload-identity-provider:
     description: 'GCP workload identity provider. Required for gcp.'
     required: false
