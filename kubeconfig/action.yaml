@@ -7,7 +7,7 @@ inputs:
     required: false
     default: ""
   platform:
-    description: 'Skip detection and use this platform directly. One of: aws, azure, gcp, hetzner, none, docker, incus, metal, hyperv, vsphere.'
+    description: 'Skip detection and use this platform directly. One of: aws, azure, gcp, hetzner, none, docker, incus, metal, hyperv, vsphere, proxmox.'
     required: false
     default: ""
   aws-cluster-name:
@@ -98,11 +98,11 @@ runs:
           hetzner)
             echo "platform 'hetzner' has no managed control-plane API to fetch a kubeconfig from; nothing to do"
             ;;
-          none|docker|incus|metal|hyperv|vsphere)
+          none|docker|incus|metal|hyperv|vsphere|proxmox)
             echo "platform '$platform' has no cluster to fetch a kubeconfig for; nothing to do"
             ;;
           *)
-            echo "::error::unrecognized platform '$platform' for context '$context_name'. Known platforms: aws, azure, gcp (fetch a kubeconfig), hetzner (no managed control-plane API), and none, docker, incus, metal, hyperv, vsphere (no cluster). Update this action if windsor added a new platform." >&2
+            echo "::error::unrecognized platform '$platform' for context '$context_name'. Known platforms: aws, azure, gcp (fetch a kubeconfig), hetzner (no managed control-plane API), and none, docker, incus, metal, hyperv, vsphere, proxmox (no cluster). Update this action if windsor added a new platform." >&2
             exit 1
             ;;
         esac
