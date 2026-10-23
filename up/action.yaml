@@ -15,7 +15,7 @@ inputs:
     required: false
     default: ""
   platform:
-    description: 'Target platform: none, docker, incus, metal, hetzner, aws, azure, gcp, hyperv, vsphere'
+    description: 'Target platform: none, docker, incus, metal, hetzner, aws, azure, gcp, hyperv, vsphere, proxmox'
     required: false
     default: ""
   blueprint:

@@ -14,7 +14,7 @@ inputs:
     description: 'Skip windsor bootstrap''s confirmation prompt(s). Required — there is no TTY in CI to answer them, so windsor bootstrap otherwise fails closed. Pass "true" to proceed non-interactively.'
     required: true
   platform:
-    description: 'Target platform: none, docker, incus, metal, hetzner, aws, azure, gcp, hyperv, vsphere'
+    description: 'Target platform: none, docker, incus, metal, hetzner, aws, azure, gcp, hyperv, vsphere, proxmox'
     required: false
     default: ""
   blueprint:

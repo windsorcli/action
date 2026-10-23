@@ -146,7 +146,7 @@ Authenticates to OIDC-based clouds only: aws, azure, gcp. Detects the context's 
 | `azure` | [`azure/login`](https://github.com/Azure/login) and [`azure/use-kubelogin`](https://github.com/Azure/use-kubelogin) |
 | `gcp` | [`google-github-actions/auth`](https://github.com/google-github-actions/auth) and the `gke-gcloud-auth-plugin` component |
 
-A platform that needs no cloud credentials (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) is a no-op. `hetzner` fails: it has no OIDC. Set `HCLOUD_TOKEN` directly in your workflow instead — see the recipe below.
+A platform that needs no cloud credentials (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`, `proxmox`) is a no-op. `hetzner` fails: it has no OIDC. Set `HCLOUD_TOKEN` directly in your workflow instead — see the recipe below.
 
 An unrecognized platform fails. A missing required input also fails. Both fail immediately, not later as an opaque auth error.
 
@@ -189,7 +189,7 @@ Regenerates the local kubeconfig for an already-provisioned cluster. `windsor en
 | `azure` | `az aks get-credentials`, then `kubelogin convert-kubeconfig` |
 | `gcp` | `gcloud container clusters get-credentials` |
 
-`hetzner` and the no-auth platforms (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`) are a no-op. Hetzner has no managed control-plane API to fetch credentials from.
+`hetzner` and the no-auth platforms (`none`, `docker`, `incus`, `metal`, `hyperv`, `vsphere`, `proxmox`) are a no-op. Hetzner has no managed control-plane API to fetch credentials from.
 
 Detection and validation work the same way as `cloud-auth`. `platform` skips the `windsor get contexts` lookup. An unrecognized platform fails, and a missing required input fails immediately rather than as an opaque CLI error later. This action doesn't obtain cloud credentials itself — run `cloud-auth` first in the same job.
 
