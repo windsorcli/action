@@ -157,3 +157,12 @@ runs:
       uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       with:
         install_components: gke-gcloud-auth-plugin
+
+    # gcloud config-helper stores the loaded credential under core.account
+    # and fails when core.account is not set. The auth step sets no account.
+    - name: Set the active gcloud account
+      if: steps.detect.outputs.platform == 'gcp'
+      shell: bash
+      env:
+        GCP_SERVICE_ACCOUNT: ${{ inputs.gcp-service-account }}
+      run: echo "CLOUDSDK_CORE_ACCOUNT=$GCP_SERVICE_ACCOUNT" >> "$GITHUB_ENV"
