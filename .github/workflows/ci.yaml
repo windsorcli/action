@@ -380,6 +380,10 @@ jobs:
             echo '  exit 0'
             echo 'fi'
             echo 'echo "$*" >> "$WINDSOR_STUB_LOG"'
+            echo 'if [ "$1" = "show" ] && [ "$2" = "artifacts" ]; then'
+            echo '  cat "$WINDSOR_STUB_ARTIFACTS"'
+            echo '  exit 0'
+            echo 'fi'
             echo 'if [ "$1" = "plan" ]; then'
             echo '  echo "Terraform"'
             echo '  echo "  cluster   ~ update"'
@@ -573,6 +577,120 @@ jobs:
           }
           if [ "${{ steps.check-call.outputs.context }}" != "stub-context" ]; then
             echo "::error::expected context output 'stub-context', got '${{ steps.check-call.outputs.context }}'"
+            exit 1
+          fi
+
+      - name: Install stub flux CLI
+        shell: bash
+        run: |
+          stub_dir="$RUNNER_TEMP/flux-stub"
+          mkdir -p "$stub_dir"
+          stub_log="$RUNNER_TEMP/flux-calls.log"
+          stub_stdin="$RUNNER_TEMP/flux-stdin.yaml"
+          : > "$stub_log"
+          # Records each call, and keeps the config that mirror sync reads on stdin.
+          stub="$stub_dir/flux"
+          {
+            echo '#!/usr/bin/env bash'
+            echo 'echo "$*" >> "$FLUX_STUB_LOG"'
+            echo 'if [ "$1" = "mirror" ] && [ "$2" = "sync" ]; then'
+            echo '  cat > "$FLUX_STUB_STDIN"'
+            echo 'fi'
+            echo 'exit 0'
+          } > "$stub"
+          chmod +x "$stub"
+          echo "$stub_dir" >> "$GITHUB_PATH"
+          echo "FLUX_STUB_LOG=$stub_log" >> "$GITHUB_ENV"
+          echo "FLUX_STUB_STDIN=$stub_stdin" >> "$GITHUB_ENV"
+
+          # The config that the stub windsor prints for show artifacts.
+          artifacts="$RUNNER_TEMP/windsor-artifacts.yaml"
+          {
+            echo 'apiVersion: mirror.plugin.fluxcd.io/v1beta2'
+            echo 'kind: Config'
+            echo 'charts:'
+            echo '  - name: cert-manager'
+            echo '    source: https://charts.jetstack.io'
+            echo '    destination: oci://charts.test:5000/windsor'
+            echo '    version: v1.17.0'
+            echo 'artifacts:'
+            echo '  - source: ghcr.io/fluxcd/source-controller'
+            echo '    destination: charts.test:5000/windsor/ghcr.io/fluxcd/source-controller'
+            echo '    selector:'
+            echo '      tags:'
+            echo '        - v1.6.0'
+            echo '    includeReferrers: true'
+            echo '  - source: docker.io/library/nginx'
+            echo '    destination: charts.test:50001/docker.io/library/nginx'
+            echo '    selector:'
+            echo '      tags:'
+            echo '        - 1.27.0'
+            echo '    includeReferrers: true'
+          } > "$artifacts"
+          echo "WINDSOR_STUB_ARTIFACTS=$artifacts" >> "$GITHUB_ENV"
+
+      - name: windsor mirror (no push-host)
+        id: mirror-call
+        uses: ./mirror
+        with:
+          charts-to: charts.test:5000/windsor
+
+      - name: Assert mirror invocation and output
+        shell: bash
+        run: |
+          grep -qxF "show artifacts -o flux-mirror --charts-to charts.test:5000/windsor" "$WINDSOR_STUB_LOG" || {
+            echo "::error::expected windsor show artifacts invocation not found"; cat "$WINDSOR_STUB_LOG"; exit 1;
+          }
+          grep -qxF "plugin install mirror@0.16.0" "$FLUX_STUB_LOG" || {
+            echo "::error::expected flux plugin install invocation not found"; cat "$FLUX_STUB_LOG"; exit 1;
+          }
+          grep -qxF "mirror sync --no-progress -" "$FLUX_STUB_LOG" || {
+            echo "::error::expected flux mirror sync invocation not found"; cat "$FLUX_STUB_LOG"; exit 1;
+          }
+          diff "$WINDSOR_STUB_ARTIFACTS" "$FLUX_STUB_STDIN" || {
+            echo "::error::expected flux mirror sync to read the config unchanged"; exit 1;
+          }
+          if [ "${{ steps.mirror-call.outputs.context }}" != "stub-context" ]; then
+            echo "::error::expected context output 'stub-context', got '${{ steps.mirror-call.outputs.context }}'"
+            exit 1
+          fi
+
+      - name: windsor mirror (push-host)
+        uses: ./mirror
+        with:
+          charts-to: oci://charts.test:5000/windsor
+          push-host: 172.18.0.2:5000
+          mirror-version: 0.15.0
+
+      - name: Assert mirror push-host rewrite
+        shell: bash
+        run: |
+          grep -qxF "plugin install mirror@0.15.0" "$FLUX_STUB_LOG" || {
+            echo "::error::expected flux plugin install of mirror@0.15.0 not found"; cat "$FLUX_STUB_LOG"; exit 1;
+          }
+          got=$(grep 'destination:' "$FLUX_STUB_STDIN")
+          want=$(printf '%s\n' \
+            '    destination: oci://172.18.0.2:5000/windsor' \
+            '    destination: 172.18.0.2:5000/windsor/ghcr.io/fluxcd/source-controller' \
+            '    destination: charts.test:50001/docker.io/library/nginx')
+          if [ "$got" != "$want" ]; then
+            echo "::error::expected only the charts-to host to change in the destinations"
+            echo "$got"
+            exit 1
+          fi
+
+      - name: windsor mirror (push-host with no charts-to)
+        id: mirror-no-charts-to
+        uses: ./mirror
+        continue-on-error: true
+        with:
+          push-host: 172.18.0.2:5000
+
+      - name: Assert mirror-no-charts-to failed
+        shell: bash
+        run: |
+          if [ "${{ steps.mirror-no-charts-to.outcome }}" != "failure" ]; then
+            echo "::error::expected windsor mirror with push-host and no charts-to to fail"
             exit 1
           fi
 

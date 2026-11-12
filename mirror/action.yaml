@@ -1,0 +1,91 @@
+name: 'Windsor Mirror'
+description: 'Copy each tagged chart and image of the project into a registry (windsor show artifacts | flux mirror sync)'
+
+inputs:
+  workdir:
+    description: 'The working directory to run windsor from'
+    required: false
+    default: ""
+  charts-to:
+    description: 'The OCI registry and path that receives the charts (--charts-to). Required when the context pulls a chart.'
+    required: false
+    default: ""
+  push-host:
+    description: 'Push to this host:port in place of the host of charts-to. Use it when the runner reaches the registry at an address other than its name. Needs charts-to.'
+    required: false
+    default: ""
+  mirror-version:
+    description: 'Flux Mirror plugin version to install'
+    required: false
+    default: v0.16.0 # renovate: datasource=github-releases depName=fluxcd/flux-mirror
+  flux-version:
+    description: 'Flux CLI version to install. Used only when flux is not on PATH.'
+    required: false
+    default: v2.10.0 # renovate: datasource=github-releases depName=fluxcd/flux2
+
+outputs:
+  context:
+    description: 'The windsor context this step ran against'
+    value: ${{ steps.mirror.outputs.context }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Find flux
+      id: flux
+      shell: bash
+      env:
+        INPUT_FLUX_VERSION: ${{ inputs.flux-version }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        require_windsor
+        if command -v flux >/dev/null 2>&1; then
+          echo "found=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "found=false" >> "$GITHUB_OUTPUT"
+        fi
+        echo "version=${INPUT_FLUX_VERSION#v}" >> "$GITHUB_OUTPUT"
+
+    - name: Install flux
+      if: steps.flux.outputs.found != 'true'
+      uses: fluxcd/flux2/action@3fa784edd773d56630bb9f62645e08f70c2cff0a # v2.10.0
+      with:
+        version: ${{ steps.flux.outputs.version }}
+
+    - name: windsor show artifacts | flux mirror sync
+      id: mirror
+      shell: bash
+      env:
+        INPUT_WORKDIR: ${{ inputs.workdir }}
+        INPUT_CHARTS_TO: ${{ inputs.charts-to }}
+        INPUT_PUSH_HOST: ${{ inputs.push-host }}
+        INPUT_MIRROR_VERSION: ${{ inputs.mirror-version }}
+      run: |
+        set -eo pipefail
+        source "${{ github.action_path }}/../scripts/lib.sh"
+
+        resolve_workdir "$INPUT_WORKDIR"
+
+        if [ -n "$INPUT_PUSH_HOST" ] && [ -z "$INPUT_CHARTS_TO" ]; then
+          echo "::error::push-host needs charts-to. Set charts-to to the registry name that push-host replaces." >&2
+          exit 1
+        fi
+
+        flux plugin install "mirror@${INPUT_MIRROR_VERSION#v}"
+
+        args=(show artifacts -o flux-mirror)
+        [ -n "$INPUT_CHARTS_TO" ] && args+=(--charts-to "$INPUT_CHARTS_TO")
+
+        if [ -n "$INPUT_PUSH_HOST" ]; then
+          charts_host="${INPUT_CHARTS_TO#oci://}"
+          charts_host="${charts_host%%/*}"
+          windsor "${args[@]}" \
+            | rewrite_destination_host "$charts_host" "$INPUT_PUSH_HOST" \
+            | flux mirror sync --no-progress -
+        else
+          windsor "${args[@]}" | flux mirror sync --no-progress -
+        fi
+
+        emit_context_output

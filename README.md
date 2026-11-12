@@ -235,6 +235,28 @@ steps:
   - uses: windsorcli/action/plan-comment@v1
 ```
 
+### `windsorcli/action/mirror`
+
+Copies each tagged chart and image of the project into a registry. It runs `windsor show artifacts -o flux-mirror` and gives the output to `flux mirror sync --no-progress -`. [Flux Mirror](https://fluxcd.io/flux/cli-plugins/flux-mirror/) copies the charts to `charts-to` and each image to the mirror that `docker.registries` sets for its host.
+
+The action uses the `flux` CLI on PATH. When there is none, it installs `flux-version`. It then installs the Flux Mirror plugin with `flux plugin install mirror@<mirror-version>`.
+
+Use `push-host` when the runner reaches the registry at an address other than its name. For example, a Windsor workstation registry is `charts.test:5000` on its Docker network, but the runner pushes over plain HTTP to the container IP. The action puts `push-host` in place of the `charts-to` host at the start of each destination. Destinations on other hosts do not change.
+
+| Input | Description |
+| --- | --- |
+| `charts-to` | The OCI registry and path that receives the charts (`--charts-to`). Required when the context pulls a chart. |
+| `push-host` | Push to this `host:port` in place of the `charts-to` host. Needs `charts-to`. |
+| `mirror-version` | Flux Mirror plugin version. Default: a pinned release. |
+| `flux-version` | Flux CLI version to install when `flux` is not on PATH. Default: a pinned release. |
+
+```yaml
+- uses: windsorcli/action/mirror@v1
+  with:
+    charts-to: charts.test:5000/windsor
+    push-host: ${{ steps.registry.outputs.ip }}:5000
+```
+
 ### `windsorcli/action/matrix`
 
 Computes a `strategy.matrix` from the `contexts/<name>/` directories in your project, for a job that runs something (plan, apply, bootstrap) against a collection of contexts. Unlike the sub-actions above, this doesn't need `windsor` on PATH — it reads `contexts/<name>/values.yaml` directly, so it can run as the first step of a job that only *then* decides which contexts to install `windsor` for.
