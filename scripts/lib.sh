@@ -122,6 +122,18 @@ emit_context_output() {
   fi
 }
 
+# rewrite_destination_host reads a Flux Mirror config on stdin and writes it
+# to stdout. In each destination that starts with host $1, with or without
+# oci://, it puts host $2 in place of $1. Other destinations do not change.
+# The config is the -o flux-mirror output of windsor show artifacts, which
+# writes each destination as a plain scalar.
+rewrite_destination_host() {
+  local from="$1" to="$2" from_re to_sub
+  from_re=$(printf '%s' "$from" | sed -e 's/[][\.*^$+?(){}|#]/\\&/g')
+  to_sub=$(printf '%s' "$to" | sed -e 's/[\&#]/\\&/g')
+  sed -E "s#^([[:space:]-]*destination:[[:space:]]*(oci://)?)${from_re}(/|\$)#\\1${to_sub}\\3#"
+}
+
 # discover_contexts populates the parallel arrays CONTEXT_NAMES and
 # CONTEXT_PLATFORMS from every contexts/<name>/ directory in the current
 # directory. Platform is read from the top-level `platform:` key in each
