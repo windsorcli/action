@@ -47,6 +47,13 @@
       "labels": [
         "dependencies"
       ]
+    },
+    {
+      "description": "Review Flux Mirror bumps by hand, since CI tests the mirror sub-action only against a stub flux",
+      "matchPackageNames": [
+        "fluxcd/flux-mirror"
+      ],
+      "automerge": false
     }
   ],
   "customManagers": [
