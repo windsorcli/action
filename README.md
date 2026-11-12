@@ -239,7 +239,7 @@ steps:
 
 Copies each tagged chart and image of the project into a registry. It runs `windsor show artifacts -o flux-mirror` and gives the output to `flux mirror sync --no-progress -`. [Flux Mirror](https://fluxcd.io/flux/cli-plugins/flux-mirror/) copies the charts to `charts-to` and each image to the mirror that `docker.registries` sets for its host.
 
-The action uses the `flux` CLI on PATH. When there is none, it installs `flux-version`. It then installs the Flux Mirror plugin with `flux plugin install mirror@<mirror-version>`.
+The action uses the `flux` CLI on PATH. When there is none, it installs `flux-version`. It then installs the Flux Mirror plugin with `flux plugin install mirror@<mirror-version>`. Flux Mirror reads the registry credentials from the Docker config, so log in to each registry that needs auth (for example, with `docker/login-action`) before this step.
 
 Use `push-host` when the runner reaches the registry at an address other than its name. For example, a Windsor workstation registry is `charts.test:5000` on its Docker network, but the runner pushes over plain HTTP to the container IP. The action puts `push-host` in place of the `charts-to` host at the start of each destination. Destinations on other hosts do not change.
 
