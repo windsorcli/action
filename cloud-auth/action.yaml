@@ -35,9 +35,9 @@ inputs:
     required: false
     default: v0.2.21 # renovate: datasource=github-releases depName=Azure/kubelogin
   azure-refresh-federated-token:
-    description: "Set to true to wrap kubelogin so it fetches a fresh GitHub OIDC token on each get-token call. Use it for a long job: kubelogin does not refresh the token, which expires after about 5 minutes. Needs 'permissions: id-token: write'. Used only for azure."
+    description: "Keep the federated-token file for kubelogin's workloadidentity mode fresh. kubelogin does not refresh it, and GitHub's OIDC token expires after about 5 minutes. Set to false to skip. Needs node on the runner and 'permissions: id-token: write'. Used only for azure."
     required: false
-    default: 'false'
+    default: 'true'
   gcp-workload-identity-provider:
     description: 'GCP workload identity provider. Required for gcp.'
     required: false
@@ -137,7 +137,7 @@ runs:
         subscription-id: ${{ inputs.azure-subscription-id }}
 
     # AKS auth needs kubelogin on PATH. azure/login only authenticates the Azure
-    # CLI. The refresh shim for long jobs is a separate opt-in step below.
+    # CLI. The federated-token refresh for kubelogin is the next step.
     - name: Set up kubelogin
       if: steps.detect.outputs.platform == 'azure'
       uses: azure/use-kubelogin@0ce7c36141aa27d4934872cf00b0120804c98a29 # v1.3
@@ -145,29 +145,17 @@ runs:
         kubelogin-version: ${{ inputs.azure-kubelogin-version }}
 
     # kubelogin's workloadidentity mode reads the federated token from a file
-    # once. This step puts scripts/kubelogin-shim.sh ahead of the real binary on
-    # PATH. The shim rewrites the file on each get-token call. The step skips
-    # the real binary lookup on a second run, so the shim never wraps itself.
-    - name: Wrap kubelogin with a federated-token refresh
+    # once and never refreshes it. This step writes the file, then starts a
+    # background process that rewrites it every 2 minutes until the job ends.
+    - name: Keep the Azure federated token fresh
       if: steps.detect.outputs.platform == 'azure' && inputs.azure-refresh-federated-token == 'true'
       shell: bash
       run: |
         set -eo pipefail
-        shim_dir="$RUNNER_TEMP/kubelogin-shim"
-        real="${KUBELOGIN_SHIM_REAL:-}"
-        if [ -z "$real" ] || [ ! -x "$real" ]; then
-          clean_path="$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$shim_dir" | paste -sd: -)"
-          real="$(PATH="$clean_path" command -v kubelogin || true)"
-        fi
-        [ -z "$real" ] && { echo "::error::kubelogin is not on PATH, so the refresh shim has nothing to wrap" >&2; exit 1; }
-        mkdir -p "$shim_dir"
-        install -m 0755 "${{ github.action_path }}/../scripts/kubelogin-shim.sh" "$shim_dir/kubelogin"
-        {
-          echo "KUBELOGIN_SHIM_REAL=$real"
-          echo "AZURE_FEDERATED_TOKEN_FILE=$RUNNER_TEMP/azure-federated-token"
-          echo "KUBELOGIN_SHIM_LOG=$RUNNER_TEMP/kubelogin-shim.log"
-        } >> "$GITHUB_ENV"
-        echo "$shim_dir" >> "$GITHUB_PATH"
+        command -v node >/dev/null || { echo "::error::node is not on PATH. The federated-token refresher needs it. Install node, or set azure-refresh-federated-token to false." >&2; exit 1; }
+        token_file="$RUNNER_TEMP/azure-federated-token"
+        echo "AZURE_FEDERATED_TOKEN_FILE=$token_file" >> "$GITHUB_ENV"
+        AZURE_FEDERATED_TOKEN_FILE="$token_file" node "${{ github.action_path }}/../scripts/refresh-federated-token.js" start
 
     - name: Authenticate to Google Cloud
       if: steps.detect.outputs.platform == 'gcp'
