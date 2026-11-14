@@ -838,6 +838,115 @@ jobs:
             exit 1
           fi
 
+      # The cloud-auth kubelogin shim step and the shim script. Neither calls Azure:
+      # the real kubelogin is a stub, and a curl stub stands in for GitHub's OIDC endpoint.
+      - name: Test cloud-auth kubelogin shim install step
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          python3 scripts/test/extract-step.py cloud-auth/action.yaml 4 > "$RUNNER_TEMP/shim-install.sh"
+          install_script="$RUNNER_TEMP/shim-install.sh"
+          export RUNNER_TEMP="$RUNNER_TEMP/shim-install"
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/usr/bin/env bash\necho real-kubelogin "$@"\n' > "$RUNNER_TEMP/bin/kubelogin"
+          chmod +x "$RUNNER_TEMP/bin/kubelogin"
+          export GITHUB_ENV="$RUNNER_TEMP/env.txt" GITHUB_PATH="$RUNNER_TEMP/path.txt"
+          : > "$GITHUB_ENV"; : > "$GITHUB_PATH"
+
+          PATH="$RUNNER_TEMP/bin:$PATH" bash "$install_script"
+          shim_dir="$RUNNER_TEMP/kubelogin-shim"
+          [ -x "$shim_dir/kubelogin" ] || { echo "::error::expected the shim at $shim_dir/kubelogin"; exit 1; }
+          grep -qxF "$shim_dir" "$GITHUB_PATH" || { echo "::error::expected the shim dir in GITHUB_PATH"; cat "$GITHUB_PATH"; exit 1; }
+          grep -qxF "KUBELOGIN_SHIM_REAL=$RUNNER_TEMP/bin/kubelogin" "$GITHUB_ENV" || { echo "::error::expected KUBELOGIN_SHIM_REAL in GITHUB_ENV"; cat "$GITHUB_ENV"; exit 1; }
+          grep -qxF "AZURE_FEDERATED_TOKEN_FILE=$RUNNER_TEMP/azure-federated-token" "$GITHUB_ENV" || { echo "::error::expected AZURE_FEDERATED_TOKEN_FILE in GITHUB_ENV"; exit 1; }
+          grep -qxF "KUBELOGIN_SHIM_LOG=$RUNNER_TEMP/kubelogin-shim.log" "$GITHUB_ENV" || { echo "::error::expected KUBELOGIN_SHIM_LOG in GITHUB_ENV"; exit 1; }
+
+          # A second run, with the shim first on PATH, must keep the real binary.
+          : > "$GITHUB_ENV"
+          PATH="$shim_dir:$RUNNER_TEMP/bin:$PATH" bash "$install_script"
+          grep -qxF "KUBELOGIN_SHIM_REAL=$RUNNER_TEMP/bin/kubelogin" "$GITHUB_ENV" || { echo "::error::expected a second run to keep the real kubelogin, not the shim"; cat "$GITHUB_ENV"; exit 1; }
+
+          # With no kubelogin on PATH, the step must fail with a clear message.
+          rm "$RUNNER_TEMP/bin/kubelogin"
+          if PATH="/usr/bin:/bin" KUBELOGIN_SHIM_REAL="" bash "$install_script"; then
+            echo "::error::expected the install step to fail with no kubelogin on PATH"; exit 1
+          fi
+
+      - name: Test kubelogin shim script
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          shellcheck scripts/kubelogin-shim.sh
+          shim="$PWD/scripts/kubelogin-shim.sh"
+          work="$RUNNER_TEMP/shim-test"
+          mkdir -p "$work/bin"
+
+          # Real kubelogin stub: prints its arguments.
+          printf '#!/usr/bin/env bash\necho "real-kubelogin $*"\n' > "$work/real-kubelogin"
+          # curl stub: records each call. CURL_STUB_MODE picks the answer.
+          {
+            echo '#!/usr/bin/env bash'
+            echo 'echo "$*" >> "$CURL_STUB_LOG"'
+            echo 'case "$CURL_STUB_MODE" in'
+            echo '  ok) echo "{\"value\":\"fresh-token\"}" ;;'
+            echo '  empty) echo "{}" ;;'
+            echo '  fail) exit 22 ;;'
+            echo 'esac'
+          } > "$work/bin/curl"
+          chmod +x "$work/real-kubelogin" "$work/bin/curl"
+
+          export KUBELOGIN_SHIM_REAL="$work/real-kubelogin"
+          export AZURE_FEDERATED_TOKEN_FILE="$work/token"
+          export KUBELOGIN_SHIM_LOG="$work/shim.log"
+          export CURL_STUB_LOG="$work/curl.log"
+          export ACTIONS_ID_TOKEN_REQUEST_TOKEN=req-token
+          export ACTIONS_ID_TOKEN_REQUEST_URL="https://oidc.test/token?api-version=2.0"
+          export PATH="$work/bin:$PATH"
+          : > "$CURL_STUB_LOG"
+
+          # Other calls pass through with no fetch.
+          out="$(CURL_STUB_MODE=ok "$shim" --version)"
+          [ "$out" = "real-kubelogin --version" ] || { echo "::error::expected --version to pass through, got '$out'"; exit 1; }
+          [ ! -s "$CURL_STUB_LOG" ] || { echo "::error::expected no token fetch for --version"; cat "$CURL_STUB_LOG"; exit 1; }
+          [ ! -e "$AZURE_FEDERATED_TOKEN_FILE" ] || { echo "::error::expected no token file for --version"; exit 1; }
+
+          # get-token fetches once, writes the token, and passes every argument through.
+          out="$(CURL_STUB_MODE=ok "$shim" get-token --login workloadidentity --server-id abc)"
+          [ "$out" = "real-kubelogin get-token --login workloadidentity --server-id abc" ] || { echo "::error::expected get-token arguments unchanged, got '$out'"; exit 1; }
+          [ "$(wc -l < "$CURL_STUB_LOG")" -eq 1 ] || { echo "::error::expected one token fetch"; cat "$CURL_STUB_LOG"; exit 1; }
+          grep -qF -- "--retry 3 --retry-all-errors" "$CURL_STUB_LOG" || { echo "::error::expected curl retry flags"; cat "$CURL_STUB_LOG"; exit 1; }
+          grep -qF "bearer req-token" "$CURL_STUB_LOG" || { echo "::error::expected the request token in the curl call"; exit 1; }
+          grep -qF "api://AzureADTokenExchange" "$CURL_STUB_LOG" || { echo "::error::expected the Azure audience in the curl call"; exit 1; }
+          [ "$(cat "$AZURE_FEDERATED_TOKEN_FILE")" = "fresh-token" ] || { echo "::error::expected the token file to hold the fresh token"; exit 1; }
+
+          # --login azurecli is not rewritten.
+          out="$(CURL_STUB_MODE=ok "$shim" get-token --login azurecli)"
+          [ "$out" = "real-kubelogin get-token --login azurecli" ] || { echo "::error::expected --login azurecli unchanged, got '$out'"; exit 1; }
+
+          # A failed fetch fails the call and keeps the old token file.
+          if CURL_STUB_MODE=fail "$shim" get-token 2> "$work/err.txt"; then
+            echo "::error::expected get-token to fail when the fetch fails"; exit 1
+          fi
+          grep -qF "could not fetch a federated token" "$work/err.txt" || { echo "::error::expected a clear message on fetch failure"; cat "$work/err.txt"; exit 1; }
+          [ "$(cat "$AZURE_FEDERATED_TOKEN_FILE")" = "fresh-token" ] || { echo "::error::expected the old token file to stay after a failed fetch"; exit 1; }
+
+          # An empty token fails the call and leaves no temp file.
+          if CURL_STUB_MODE=empty "$shim" get-token 2> "$work/err.txt"; then
+            echo "::error::expected get-token to fail on an empty token"; exit 1
+          fi
+          grep -qF "could not fetch a federated token" "$work/err.txt" || { echo "::error::expected a clear message on an empty token"; cat "$work/err.txt"; exit 1; }
+          if compgen -G "$work/token.*" > /dev/null; then
+            echo "::error::expected no leftover temp files"; ls "$work"; exit 1
+          fi
+
+          # Missing required env fails with a clear message.
+          if env -u KUBELOGIN_SHIM_REAL "$shim" --version 2> "$work/err.txt"; then
+            echo "::error::expected the shim to fail with KUBELOGIN_SHIM_REAL unset"; exit 1
+          fi
+          grep -q "KUBELOGIN_SHIM_REAL" "$work/err.txt" || { echo "::error::expected the missing variable named in the error"; cat "$work/err.txt"; exit 1; }
+
+          grep -qF "federated token OK" "$KUBELOGIN_SHIM_LOG" || { echo "::error::expected the shim log to record a successful fetch"; exit 1; }
+
       # Like cloud-auth, this tests the detect/validate step alone and runs the
       # full composite only for a no-op platform (docker).
       - name: Test kubeconfig platform detection and validation

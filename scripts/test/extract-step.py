@@ -12,8 +12,8 @@ Usage:
 
 Prints the extracted script to stdout:
 - For a `run:` step, the raw shell script, with the
-  `${{ github.action_path }}/../scripts/lib.sh` reference rewritten to an
-  absolute path (there's no real action_path outside an actual Actions run).
+  `${{ github.action_path }}/../scripts` prefix rewritten to the absolute
+  path of the scripts directory (there's no real action_path outside an actual Actions run).
 - For a `uses: actions/github-script` step (pass --wrap-js), the `with.script`
   text wrapped as `async function main(core, github, context) { ... }` so it
   can be require()'d and driven with mocks — see plan-comment.test.js.
@@ -41,10 +41,10 @@ def main() -> None:
 
     script = step["run"]
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(action_file)))
-    lib_path = os.path.join(repo_root, "scripts", "lib.sh")
+    scripts_dir = os.path.join(repo_root, "scripts")
     script = script.replace(
-        '"${{ github.action_path }}/../scripts/lib.sh"',
-        f'"{lib_path}"',
+        "${{ github.action_path }}/../scripts",
+        scripts_dir,
     )
     print("#!/usr/bin/env bash")
     print(script)
