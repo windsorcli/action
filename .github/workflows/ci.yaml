@@ -838,6 +838,110 @@ jobs:
             exit 1
           fi
 
+      # The Azure federated-token refresher. A fake OIDC endpoint stands in for GitHub's,
+      # so no test calls Azure. The server and the refresher run in the background, and
+      # separate steps check them, so these tests also prove that a background process
+      # survives the end of its step on each OS.
+      - name: Start fake OIDC endpoint
+        shell: bash
+        run: |
+          work="$RUNNER_TEMP/fed-test"
+          node scripts/test/fake-oidc-server.js start "$work"
+          port="$(cat "$work/port")"
+          {
+            echo "FED_TEST_DIR=$work"
+            echo "FED_TEST_URL=http://127.0.0.1:$port/token?api-version=2.0"
+          } >> "$GITHUB_ENV"
+
+      - name: Start the federated-token refresher
+        shell: bash
+        run: |
+          export ACTIONS_ID_TOKEN_REQUEST_TOKEN=req-token ACTIONS_ID_TOKEN_REQUEST_URL="$FED_TEST_URL"
+          export AZURE_FEDERATED_TOKEN_FILE="$FED_TEST_DIR/token" FEDERATED_TOKEN_REFRESH_INTERVAL=1
+
+          node scripts/refresh-federated-token.js start
+          grep -qE '^token-[0-9]+$' "$AZURE_FEDERATED_TOKEN_FILE" || { echo "::error::expected a token in the file after start"; cat "$AZURE_FEDERATED_TOKEN_FILE"; exit 1; }
+          cp "$AZURE_FEDERATED_TOKEN_FILE" "$FED_TEST_DIR/first"
+          cp "$AZURE_FEDERATED_TOKEN_FILE.pid" "$FED_TEST_DIR/first.pid"
+
+          # A second start refreshes the file and starts no second process.
+          node scripts/refresh-federated-token.js start
+          cmp "$AZURE_FEDERATED_TOKEN_FILE.pid" "$FED_TEST_DIR/first.pid" || { echo "::error::expected a second start to keep the first refresher"; exit 1; }
+
+      - name: Test the federated-token refresher keeps the file fresh
+        shell: bash
+        run: |
+          # This is a later step than the one that started the refresher. The file must
+          # still change, so the background process must survive the end of its step.
+          file="$FED_TEST_DIR/token"
+          wait_for_change() {
+            for _ in $(seq 1 20); do
+              if [ "$(cat "$file")" != "$1" ]; then return 0; fi
+              sleep 1
+            done
+            return 1
+          }
+
+          wait_for_change "$(cat "$FED_TEST_DIR/first")" || { echo "::error::expected the token file to change after the start step ended"; cat "$file.log"; exit 1; }
+
+          # A failed refresh keeps the old token. The next good refresh replaces it.
+          touch "$FED_TEST_DIR/fail"
+          sleep 3
+          before="$(cat "$file")"
+          grep -qE '^token-[0-9]+$' "$file" || { echo "::error::expected the old token to stay while refreshes fail"; cat "$file"; exit 1; }
+          grep -q "refresh failed" "$file.log" || { echo "::error::expected the log to record a failed refresh"; cat "$file.log"; exit 1; }
+          rm "$FED_TEST_DIR/fail"
+          wait_for_change "$before" || { echo "::error::expected the refresher to recover after a failed refresh"; cat "$file.log"; exit 1; }
+
+          if grep -q "token-" "$file.log"; then
+            echo "::error::expected the log to never hold a token"; cat "$file.log"; exit 1
+          fi
+
+      - name: Test the federated-token refresher failures
+        shell: bash
+        run: |
+          export ACTIONS_ID_TOKEN_REQUEST_TOKEN=req-token ACTIONS_ID_TOKEN_REQUEST_URL="$FED_TEST_URL"
+          export AZURE_FEDERATED_TOKEN_FILE="$FED_TEST_DIR/failing-token"
+
+          # A failed first fetch fails the step, with no file and no refresher.
+          touch "$FED_TEST_DIR/fail"
+          if node scripts/refresh-federated-token.js start 2> "$FED_TEST_DIR/err.txt"; then
+            echo "::error::expected start to fail when the first fetch fails"; exit 1
+          fi
+          grep -q "Could not fetch a federated token" "$FED_TEST_DIR/err.txt" || { echo "::error::expected a clear message on a failed fetch"; cat "$FED_TEST_DIR/err.txt"; exit 1; }
+          [ ! -e "$AZURE_FEDERATED_TOKEN_FILE" ] || { echo "::error::expected no token file after a failed fetch"; exit 1; }
+          [ ! -e "$AZURE_FEDERATED_TOKEN_FILE.pid" ] || { echo "::error::expected no refresher after a failed fetch"; exit 1; }
+          rm "$FED_TEST_DIR/fail"
+
+          # Missing GitHub variables fail with a message that names the permission.
+          if env -u ACTIONS_ID_TOKEN_REQUEST_TOKEN node scripts/refresh-federated-token.js start 2> "$FED_TEST_DIR/err.txt"; then
+            echo "::error::expected start to fail with no request token"; exit 1
+          fi
+          grep -q "id-token: write" "$FED_TEST_DIR/err.txt" || { echo "::error::expected the message to name the id-token permission"; cat "$FED_TEST_DIR/err.txt"; exit 1; }
+
+      - name: Test the cloud-auth federated-token step
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          step_script="$RUNNER_TEMP/refresh-step.sh"
+          python3 scripts/test/extract-step.py cloud-auth/action.yaml 4 > "$step_script"
+          export ACTIONS_ID_TOKEN_REQUEST_TOKEN=req-token ACTIONS_ID_TOKEN_REQUEST_URL="$FED_TEST_URL"
+          export GITHUB_ENV="$RUNNER_TEMP/refresh-env.txt" RUNNER_TEMP="$FED_TEST_DIR/step-run"
+          mkdir -p "$RUNNER_TEMP"
+          : > "$GITHUB_ENV"
+          bash "$step_script"
+          grep -qxF "AZURE_FEDERATED_TOKEN_FILE=$RUNNER_TEMP/azure-federated-token" "$GITHUB_ENV" || { echo "::error::expected AZURE_FEDERATED_TOKEN_FILE in GITHUB_ENV"; cat "$GITHUB_ENV"; exit 1; }
+          grep -qE '^token-[0-9]+$' "$RUNNER_TEMP/azure-federated-token" || { echo "::error::expected the step to write a token"; exit 1; }
+          [ -s "$RUNNER_TEMP/azure-federated-token.pid" ] || { echo "::error::expected the step to start the refresher"; exit 1; }
+          node -e 'process.kill(Number(require("fs").readFileSync(process.argv[1], "utf8")))' "$RUNNER_TEMP/azure-federated-token.pid"
+
+      - name: Stop the fake OIDC endpoint and refresher
+        shell: bash
+        run: |
+          for pid_file in "$FED_TEST_DIR/token.pid" "$FED_TEST_DIR/server.pid"; do
+            node -e 'try { process.kill(Number(require("fs").readFileSync(process.argv[1], "utf8"))) } catch (_) {}' "$pid_file"
+          done
+
       # Like cloud-auth, this tests the detect/validate step alone and runs the
       # full composite only for a no-op platform (docker).
       - name: Test kubeconfig platform detection and validation

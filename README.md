@@ -160,6 +160,7 @@ Short-lived credentials expire. Call this action again later in a long job to re
 | `aws-role-arn`, `aws-region` | Required for `aws` |
 | `azure-client-id`, `azure-tenant-id`, `azure-subscription-id` | Required for `azure` |
 | `azure-kubelogin-version` | `kubelogin` version. Default: a pinned release. `azure` only. |
+| `azure-refresh-federated-token` | Keep kubelogin's federated-token file fresh. Default: `true`. Set `false` to skip. `azure` only. See [Refreshing kubelogin's Azure token on a long job](#refreshing-kubelogins-azure-token-on-a-long-job). |
 | `gcp-workload-identity-provider`, `gcp-service-account` | Required for `gcp` |
 | `gcp-project-id` | Optional (`gcp` only) |
 
@@ -177,7 +178,7 @@ Short-lived credentials expire. Call this action again later in a long job to re
 
 Only the inputs for your platform are required. Leave the rest blank.
 
-Not included: a fix for kubelogin's token refresh. kubelogin's `workloadidentity` mode does not refresh GitHub's short-lived OIDC token (about 5 minutes) on its own. This only affects a long `windsor up`, `bootstrap`, or `apply` against AKS. See the recipe below if you hit it.
+For `azure`, the action also keeps kubelogin's federated token fresh. kubelogin's `workloadidentity` mode reads GitHub's short-lived OIDC token (about 5 minutes) from a file and does not refresh it. See [Refreshing kubelogin's Azure token on a long job](#refreshing-kubelogins-azure-token-on-a-long-job).
 
 ### `windsorcli/action/kubeconfig`
 
@@ -365,31 +366,18 @@ If you don't commit `.terraform.lock.hcl` files, `hashFiles` resolves to an empt
 
 `kubelogin`'s `workloadidentity` mode reads a federated token from a file once. It does not refresh the token. GitHub's own OIDC token lasts about 5 minutes. A long `windsor up`, `bootstrap`, or `apply` against AKS can fail partway through once that token expires.
 
-The fix: a wrapper script that gets a fresh token from GitHub's OIDC endpoint before each `kubelogin` call.
+For `azure`, `cloud-auth` handles this. After `azure/use-kubelogin`, it runs [`scripts/refresh-federated-token.js`](scripts/refresh-federated-token.js), which does two things:
 
-```yaml
-- name: Wrap kubelogin with a token refresh
-  if: <your azure condition>
-  run: |
-    real_kubelogin="$(command -v kubelogin)"
-    token_file="$RUNNER_TEMP/azure-federated-token"
-    shim_dir="$RUNNER_TEMP/kubelogin-shim"
-    mkdir -p "$shim_dir"
-    cat > "$shim_dir/kubelogin" <<SHIM
-    #!/usr/bin/env bash
-    curl -sSL -H "Authorization: bearer \$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \\
-      "\$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" \\
-      | jq -r '.value' > "$token_file"
-    exec "$real_kubelogin" "\$@"
-    SHIM
-    chmod +x "$shim_dir/kubelogin"
-    echo "$shim_dir" >> "$GITHUB_PATH"
-    echo "AZURE_FEDERATED_TOKEN_FILE=$token_file" >> "$GITHUB_ENV"
-```
+1. It writes a fresh token from GitHub's OIDC endpoint to `$AZURE_FEDERATED_TOKEN_FILE` (`$RUNNER_TEMP/azure-federated-token`), and exports that variable for the rest of the job. A failure here fails the step.
+2. It starts a background process that rewrites the file every 2 minutes, until the job ends or 8 hours pass. If a refresh fails, the process keeps the old token and tries again.
 
-Needs `permissions: id-token: write` on the job, for `ACTIONS_ID_TOKEN_REQUEST_TOKEN` and `_URL`. Also needs `jq` on the runner.
+`kubelogin` is not wrapped or changed. It reads a file that is always fresh. The script works the same on Linux, macOS, and Windows runners. The process writes a log to `$AZURE_FEDERATED_TOKEN_FILE.log`. The log never holds the token.
 
-Test this against your own AKS setup first. It's adapted from a working internal tool. It is not verified as a drop-in here.
+Calling `cloud-auth` again later in the job refreshes the file and does not start a second process.
+
+Needs `permissions: id-token: write` on the job, for `ACTIONS_ID_TOKEN_REQUEST_TOKEN` and `_URL`. Also needs `node` on the runner. GitHub-hosted runners have it. Set `azure-refresh-federated-token: false` to skip this step.
+
+This input does not change which login mode `kubelogin` uses. The kubeconfig's own mode applies. Set `azure-kubelogin-mode` on the `kubeconfig` action if you need a specific mode. It also does not set `AZURE_CLIENT_ID` or `AZURE_TENANT_ID`.
 
 ## Security
 
