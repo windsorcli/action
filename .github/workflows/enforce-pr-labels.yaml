@@ -1,0 +1,28 @@
+name: Enforce PR Labels
+
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  check-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR labels
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const typeLabels = ['bug', 'chore', 'feature', 'documentation'];
+            const allowedLabels = [...typeLabels, 'breaking'];
+            const prLabels = context.payload.pull_request.labels.map(label => label.name);
+
+            const unknown = prLabels.filter(label => !allowedLabels.includes(label));
+            if (unknown.length > 0) {
+              core.setFailed('These labels are not allowed: ' + unknown.join(', ') + '. Allowed labels: ' + allowedLabels.join(', '));
+              return;
+            }
+            if (!prLabels.some(label => typeLabels.includes(label))) {
+              core.setFailed('Your PR must have at least one of these labels: ' + typeLabels.join(', '));
+            }

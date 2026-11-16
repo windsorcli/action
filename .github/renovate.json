@@ -52,7 +52,7 @@
       "automergeType": "pr",
       "automergeStrategy": "squash",
       "labels": [
-        "dependencies"
+        "chore"
       ]
     },
     {
@@ -78,6 +78,6 @@
     }
   ],
   "labels": [
-    "dependencies"
+    "chore"
   ]
 }
