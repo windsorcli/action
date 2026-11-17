@@ -17,7 +17,7 @@ inputs:
   mirror-version:
     description: 'Flux Mirror plugin version to install'
     required: false
-    default: v0.16.0 # renovate: datasource=github-releases depName=fluxcd/flux-mirror
+    default: v0.17.0 # renovate: datasource=github-releases depName=fluxcd/flux-mirror
   flux-version:
     description: 'Flux CLI version to install. Used only when flux is not on PATH.'
     required: false
