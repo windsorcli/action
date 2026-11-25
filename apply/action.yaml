@@ -7,7 +7,7 @@ inputs:
     required: false
     default: ""
   wait:
-    description: 'Block until kustomizations report ready. Not valid with terraform-component.'
+    description: 'Block until kustomizations report ready. Not valid with terraform-component. Ignored with Windsor CLI v0.10.0 and later, which always waits.'
     required: false
     default: "false"
   prune:
@@ -64,11 +64,11 @@ runs:
             exit 1
           fi
           args=(apply kustomize "$INPUT_KUSTOMIZE_NAME")
-          [ "$INPUT_WAIT" = "true" ] && args+=(--wait)
+          [ "$INPUT_WAIT" = "true" ] && cli_has_flag --wait apply kustomize && args+=(--wait)
           windsor "${args[@]}"
         else
           args=(apply)
-          [ "$INPUT_WAIT" = "true" ] && args+=(--wait)
+          [ "$INPUT_WAIT" = "true" ] && cli_has_flag --wait apply && args+=(--wait)
           [ "$INPUT_PRUNE" = "true" ] && args+=(--prune)
           windsor "${args[@]}"
         fi
