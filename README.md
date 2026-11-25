@@ -58,7 +58,7 @@ Wraps `windsor up`.
 
 | Input | Description |
 | --- | --- |
-| `wait` | Block until kustomizations report ready (`--wait`) |
+| `wait` | Wait for kustomizations to be ready (`--wait`). No effect on CLI v0.10.0 and later |
 | `vm-driver` | `--vm-driver` |
 | `platform` | `--platform` |
 | `blueprint` | `--blueprint` |
@@ -78,7 +78,7 @@ Wraps `windsor apply`. `terraform-component` and `kustomize-name` each scope to 
 
 | Input | Description |
 | --- | --- |
-| `wait` | Block until kustomizations report ready (`--wait`) |
+| `wait` | Wait for kustomizations to be ready (`--wait`). No effect on CLI v0.10.0 and later |
 | `prune` | Remove kustomizations the blueprint no longer declares (`--prune`) |
 | `terraform-component` | Scope to one terraform component |
 | `kustomize-name` | Scope to one kustomization |

@@ -14,6 +14,16 @@ require_windsor() {
   fi
 }
 
+# cli_has_flag succeeds when `windsor <subcommand...> --help` lists the flag
+# $1 in its flag table. Usage: cli_has_flag --wait apply. Lets a sub-action
+# pass a flag only to CLI versions that still have it.
+cli_has_flag() {
+  local flag="$1" help
+  shift
+  help=$(windsor "$@" --help 2>&1 || true)
+  grep -Eq -- "^[[:space:]]+(-[A-Za-z], )?${flag}([[:space:]]|$)" <<<"$help"
+}
+
 # resolve_workdir cds into $1, joining a relative path onto GITHUB_WORKSPACE
 # the same way the root action's workdir input does. A blank argument is a
 # no-op (stay in the current directory).
