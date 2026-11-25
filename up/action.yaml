@@ -7,7 +7,7 @@ inputs:
     required: false
     default: ""
   wait:
-    description: 'Block until kustomizations report ready. Ignored with Windsor CLI v0.10.0 and later, which always waits.'
+    description: 'Block until kustomizations report ready. Only needed before CLI v0.10.0; later versions always wait.'
     required: false
     default: "false"
   vm-driver:
