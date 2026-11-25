@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         ref:
-          - v0.9.0 # renovate: datasource=github-releases depName=windsorcli/cli
+          - v0.10.0 # renovate: datasource=github-releases depName=windsorcli/cli
           - nightly
           - main
     runs-on: ${{ matrix.os }}
@@ -258,7 +258,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         ref:
-          - v0.9.0 # renovate: datasource=github-releases depName=windsorcli/cli
+          - v0.10.0 # renovate: datasource=github-releases depName=windsorcli/cli
           - nightly
           - main
     runs-on: ${{ matrix.os }}
@@ -377,6 +377,10 @@ jobs:
             echo 'if [ "$1" = "get" ] && [ "$2" = "contexts" ]; then'
             echo '  printf "NAME          PROVIDER  BACKEND  CURRENT\n"'
             echo '  printf "stub-context  %s  <none>   *\n" "${WINDSOR_STUB_PLATFORM:-docker}"'
+            echo '  exit 0'
+            echo 'fi'
+            echo 'if [ "${!#}" = "--help" ]; then'
+            echo '  printf "Flags:\n      --wait   Wait for kustomization resources to be ready.\n  -h, --help\n"'
             echo '  exit 0'
             echo 'fi'
             echo 'echo "$*" >> "$WINDSOR_STUB_LOG"'
