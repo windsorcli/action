@@ -7,7 +7,7 @@ inputs:
     required: false
     default: ""
   wait:
-    description: 'Block until kustomizations report ready. Only needed before CLI v0.10.0; later versions always wait.'
+    description: 'Wait for kustomizations to be ready. No effect on CLI v0.10.0 and later.'
     required: false
     default: "false"
   vm-driver:
