@@ -33,7 +33,7 @@ inputs:
   azure-kubelogin-version:
     description: 'kubelogin version to install. Used only for azure.'
     required: false
-    default: v0.2.21 # renovate: datasource=github-releases depName=Azure/kubelogin
+    default: v0.2.22 # renovate: datasource=github-releases depName=Azure/kubelogin
   azure-refresh-federated-token:
     description: "Keep the federated-token file for kubelogin's workloadidentity mode fresh. kubelogin does not refresh it, and GitHub's OIDC token expires after about 5 minutes. Set to false to skip. Needs node on the runner and 'permissions: id-token: write'. Used only for azure."
     required: false
